@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const browser=await chromium.launch({channel:'chrome'});
+const page=await browser.newPage({viewport:{width:390,height:844}});
+page.on('pageerror',e=>console.log('PAGE ERROR',e.message));
+page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE ERROR',m.text());});
+await page.goto('http://localhost:3000/');
+await page.getByRole('button',{name:'Open menu'}).click();
+await page.getByRole('link',{name:'VIEW ALL',exact:true}).click();
+await page.screenshot({path:'/private/tmp/myshoppe-debug-mobile.png'});
+console.log(await page.locator('nextjs-portal').evaluateAll(els=>els.map(e=>Array.from(e.shadowRoot?.querySelectorAll('button, h1, h2, p, [role=dialog]') || []).map(n=>n.textContent).join(' | '))));
+await browser.close();

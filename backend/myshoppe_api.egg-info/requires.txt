@@ -1,0 +1,13 @@
+fastapi<1,>=0.115
+uvicorn<1,>=0.34
+sqlalchemy<2.1,>=2.0
+psycopg[binary]<4,>=3.2
+alembic<2,>=1.14
+httpx<1,>=0.28
+PyJWT[crypto]<3,>=2.10
+pillow<13,>=11
+python-multipart<1,>=0.0.20
+
+[dev]
+pytest<10,>=8
+ruff<1,>=0.11

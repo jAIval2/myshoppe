@@ -1,0 +1,63 @@
+name: focused-checks
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: myshoppe
+          POSTGRES_PASSWORD: myshoppe
+          POSTGRES_DB: myshoppe
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U myshoppe"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@127.0.0.1:55432/myshoppe
+      TEST_DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@127.0.0.1:55432/myshoppe_test
+      DEV_LOGIN_ENABLED: "true"
+      APP_ENV: development
+      PAYMENT_MODE: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: python -m venv .venv
+      - run: .venv/bin/pip install -r backend/requirements.lock
+      - run: npm ci
+        working-directory: web
+      - run: PGPASSWORD=myshoppe createdb -h 127.0.0.1 -p 55432 -U myshoppe myshoppe_test
+      - run: ../.venv/bin/alembic upgrade head
+        working-directory: backend
+      - run: ../.venv/bin/python -m app.seed
+        working-directory: backend
+      - run: .venv/bin/ruff check backend
+      - run: ../.venv/bin/pytest -q
+        working-directory: backend
+      - run: ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/myshoppe-api.log 2>&1 &
+        working-directory: backend
+      - run: ../.venv/bin/python -m app.worker > /tmp/myshoppe-worker.log 2>&1 &
+        working-directory: backend
+      - run: curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8000/api/health
+      - run: npm run typecheck && npm run build
+        working-directory: web
+      - run: npx playwright install --with-deps chrome
+        working-directory: web
+      - run: npm run start > /tmp/myshoppe-web.log 2>&1 &
+        working-directory: web
+      - run: curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://localhost:3000
+      - run: npm test
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: web/test-results

@@ -1,0 +1,67 @@
+[
+  {
+    "asset": "campaign-women.jpg",
+    "source": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "campaign-home.jpg",
+    "source": "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-1.jpg",
+    "source": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-2.jpg",
+    "source": "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-3.jpg",
+    "source": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-4.jpg",
+    "source": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-5.jpg",
+    "source": "https://images.unsplash.com/photo-1550614000-4895a10e1bfd?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "woman-6.jpg",
+    "source": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "home-1.jpg",
+    "source": "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "home-2.jpg",
+    "source": "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "home-3.jpg",
+    "source": "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "home-4.jpg",
+    "source": "https://images.unsplash.com/photo-1615874959474-d609969a20ed?auto=format&fit=crop&w=1800&q=85",
+    "usage": "Development editorial placeholder; not a photograph of sellable inventory"
+  },
+  {
+    "asset": "campaign.mp4",
+    "source": "https://www.pexels.com/video/853800/",
+    "usage": "Development clothing-rack film; replace with owned Women and Home campaign films"
+  }
+]

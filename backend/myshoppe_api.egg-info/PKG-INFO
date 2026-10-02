@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: myshoppe-api
+Version: 0.1.0
+Requires-Python: >=3.13
+Requires-Dist: fastapi<1,>=0.115
+Requires-Dist: uvicorn<1,>=0.34
+Requires-Dist: sqlalchemy<2.1,>=2.0
+Requires-Dist: psycopg[binary]<4,>=3.2
+Requires-Dist: alembic<2,>=1.14
+Requires-Dist: httpx<1,>=0.28
+Requires-Dist: PyJWT[crypto]<3,>=2.10
+Requires-Dist: pillow<13,>=11
+Requires-Dist: python-multipart<1,>=0.0.20
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=8; extra == "dev"
+Requires-Dist: ruff<1,>=0.11; extra == "dev"
