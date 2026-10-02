@@ -46,15 +46,16 @@ bootstrap: ## New Mac: install Homebrew, Python, Node, Postgres, FFmpeg, then th
 	fi; \
 	eval "$$($$BREW shellenv)"; \
 	echo "✅ Activated instantly in the current running script session"; \
-	command -v python3.13 >/dev/null 2>&1 || { echo "⚙️  Installing Python..."; brew install python; }; \
-	command -v node       >/dev/null 2>&1 || { echo "⚙️  Installing Node.js..."; brew install node; }; \
-	command -v npm        >/dev/null 2>&1 || { echo "⚙️  Installing Node.js (npm)..."; brew install node; }; \
+	command -v python3.13 >/dev/null 2>&1 || { echo "⚙️  Installing Python 3.13..."; NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 brew install python@3.13; }; \
+	if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then \
+	  echo "⚙️  Installing Node.js and npm..."; NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 brew install node; \
+	fi; \
 	command -v initdb     >/dev/null 2>&1 || { \
-	  echo "⚙️  Installing PostgreSQL..."; brew install postgresql@18; \
+	  echo "⚙️  Installing PostgreSQL..."; NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 brew install postgresql@18; \
 	  PG_LINE='export PATH="'$$(brew --prefix postgresql@18)'/bin:$$PATH"'; \
 	  grep -qxF "$$PG_LINE" "$$HOME/.zprofile" 2>/dev/null || printf '%s\n' "$$PG_LINE" >> "$$HOME/.zprofile"; \
 	  export PATH="$$(brew --prefix postgresql@18)/bin:$$PATH"; }; \
-	command -v ffmpeg     >/dev/null 2>&1 || { echo "⚙️  Installing FFmpeg..."; brew install ffmpeg; }; \
+	command -v ffmpeg     >/dev/null 2>&1 || { echo "⚙️  Installing FFmpeg..."; NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 brew install ffmpeg; }; \
 	echo "🔧 Toolchain ready"; \
 	$(MAKE) setup
 	@echo
