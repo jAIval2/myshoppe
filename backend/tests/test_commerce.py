@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from sqlalchemy import select, update, func
 from app import db
 from app.errors import DomainError
-from app.identity import Actor, IdentityService, require_permission
+from app.identity import Actor, IdentityService, consume_ip_limit, require_permission
 from app.schemas import (
     CartMutation,
     Address,
@@ -103,6 +103,32 @@ def test_bag_ownership_and_stale_version(checkout, guest, product):
     assert len(checkout.saved(guest)) == 1 and len(checkout.saved(other)) == 0
     with db.engine.connect() as c:
         assert c.execute(select(func.sum(db.inventory.c.reserved))).scalar_one() == 0
+
+
+def test_anonymous_read_routes_do_not_create_sessions_or_carts(client):
+    with db.engine.connect() as c:
+        before = (
+            c.execute(select(func.count()).select_from(db.sessions)).scalar_one(),
+            c.execute(select(func.count()).select_from(db.carts)).scalar_one(),
+        )
+    assert client.get("/api/session").status_code == 200
+    assert client.get("/api/cart").status_code == 200
+    assert client.get("/api/favourites").status_code == 200
+    with db.engine.connect() as c:
+        after = (
+            c.execute(select(func.count()).select_from(db.sessions)).scalar_one(),
+            c.execute(select(func.count()).select_from(db.carts)).scalar_one(),
+        )
+    assert after == before
+
+
+def test_ip_limiter_commits_over_limit_attempts():
+    key = "ip:test:" + uuid.uuid4().hex
+    assert consume_ip_limit(db.engine, key, 1)
+    assert not consume_ip_limit(db.engine, key, 1)
+    assert not consume_ip_limit(db.engine, key, 1)
+    with db.engine.connect() as c:
+        assert c.execute(select(db.limits.c.count).where(db.limits.c.key == key)).scalar_one() == 3
 
 
 def test_reservation_idempotency_and_immutable_totals(checkout, guest, product):
@@ -207,6 +233,41 @@ def test_webhook_signature_and_durable_deduplication(monkeypatch):
     with db.engine.connect() as c:
         assert c.execute(select(func.count()).select_from(db.events)).scalar_one() == 1
         assert c.execute(select(func.count()).select_from(db.jobs)).scalar_one() == 1
+
+
+def test_order_paid_webhook_resolves_provider_order_without_payment_entity(
+    monkeypatch, checkout, guest, product
+):
+    from app import worker
+
+    order = checkout.reserve(guest, prepare(checkout, guest, product.variants[0].id))
+    provider_order_id = "order_provider_123"
+    with db.engine.begin() as c:
+        c.execute(
+            update(db.orders)
+            .where(db.orders.c.id == order["id"])
+            .values(provider_order_id=provider_order_id)
+        )
+        c.execute(
+            db.events.insert().values(
+                event_id="order-paid-no-payment-entity",
+                body_hash="fixture",
+                payload={
+                    "event": "order.paid",
+                    "payload": {
+                        "order": {
+                            "entity": {"id": provider_order_id, "receipt": order["id"]}
+                        }
+                    },
+                },
+            )
+        )
+    reconciled = []
+    monkeypatch.setattr(worker.payments, "reconcile", reconciled.append)
+
+    worker.handle("payment.event", {"event_id": "order-paid-no-payment-entity"})
+
+    assert reconciled == [order["id"]]
 
 
 def test_campaign_revision_and_cross_department_target(owner):

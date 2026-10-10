@@ -1,5 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from app.adapters.storage import approved_media_src
 
 
 class Command(BaseModel):
@@ -7,9 +8,16 @@ class Command(BaseModel):
 
 
 class Media(Command):
-    src: str = Field(pattern=r"^(/media/|/uploads/|https://)")
+    src: str = Field(min_length=1, max_length=2000)
     alt: str = Field(min_length=3, max_length=250)
     role: Literal["lead", "continuation", "cutout", "editorial"] = "lead"
+
+    @field_validator("src")
+    @classmethod
+    def approved_media(cls, value):
+        if not approved_media_src(value):
+            raise ValueError("Use an uploaded image or an approved MyShoppe media asset")
+        return value
 
 
 class VariantInput(Command):
@@ -136,6 +144,13 @@ class CampaignBlock(Command):
     layout: Literal["full", "split", "inset"] = "full"
     target: str = Field(pattern=r"^/collections/(women|home)-[a-z-]+$")
 
+    @field_validator("src", "mobile_src", "poster")
+    @classmethod
+    def approved_media(cls, value):
+        if value and not approved_media_src(value):
+            raise ValueError("Use an uploaded campaign media asset")
+        return value
+
 
 class CampaignInput(Command):
     expected_revision: int
@@ -151,7 +166,7 @@ class CampaignInput(Command):
         ):
             raise ValueError("Required order: hero, video, at least two posters, collection-entry")
         for b in self.blocks[:-1]:
-            if not b.src.startswith(("/media/", "/uploads/")):
+            if not approved_media_src(b.src):
                 raise ValueError("Use a processed local media asset")
         return self
 

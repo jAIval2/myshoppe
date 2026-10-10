@@ -42,9 +42,11 @@ def main():
                 "8000",
             ],
             ROOT / "backend",
+            {**env, "DB_ROLE": "api"},
         ),
-        ([str(ROOT / ".venv/bin/python"), "-m", "app.worker"], ROOT / "backend"),
-        (["npm", "run", "start" if args.production_build else "dev"], ROOT / "web"),
+        ([str(ROOT / ".venv/bin/python"), "-m", "app.worker", "--lane", "commerce"], ROOT / "backend", {**env, "DB_ROLE": "commerce"}),
+        ([str(ROOT / ".venv/bin/python"), "-m", "app.worker", "--lane", "media"], ROOT / "backend", {**env, "DB_ROLE": "media"}),
+        (["npm", "run", "start" if args.production_build else "dev"], ROOT / "web", env),
     ]
     processes = []
 
@@ -53,9 +55,9 @@ def main():
 
     signal.signal(signal.SIGTERM, stop)
     try:
-        for command, cwd in commands:
+        for command, cwd, process_env in commands:
             processes.append(
-                subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+                subprocess.Popen(command, cwd=cwd, env=process_env, start_new_session=True)
             )
         print(
             "MyShoppe: http://localhost:3000 | Admin: /admin | Ctrl-C to stop",

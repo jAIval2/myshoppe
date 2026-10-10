@@ -3,6 +3,7 @@ import { useShop } from "@/components/shop-provider";
 import { ErrorMessage } from "@/components/ui";
 import {
   api,
+  ApiError,
   json,
   money,
   titleCase,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function AdminProducts() {
   const [data, setData] = useState<ProductPage | null>(null);
@@ -130,6 +131,39 @@ export function ProductEditor({ id }: { id?: string }) {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [delta, setDelta] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const errorSummary = useRef<HTMLDivElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  useEffect(() => {
+    if (Object.keys(fieldErrors).length) errorSummary.current?.focus();
+  }, [fieldErrors]);
+
+  const fieldId = (path: string) => `product-${path.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  const fieldProps = (path: string) => ({
+    id: fieldId(path),
+    ref: (element: HTMLElement | null) => {
+      fieldRefs.current[path] = element;
+    },
+    "aria-invalid": fieldErrors[path] ? (true as const) : undefined,
+    "aria-describedby": fieldErrors[path] ? `${fieldId(path)}-error` : undefined,
+    className: fieldErrors[path] ? "field-invalid" : undefined,
+  });
+  function updateField(path: string, name: keyof ProductInput, value: unknown) {
+    field(name, value);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[path];
+      if (name === "title" && !id) delete next.slug;
+      return next;
+    });
+  }
+  function focusField(path: string) {
+    const exact = fieldRefs.current[path];
+    const row = exact || fieldRefs.current[path.split(".").slice(0, 2).join(".")];
+    row?.scrollIntoView({ block: "center", behavior: "smooth" });
+    row?.focus({ preventScroll: true });
+  }
   function load(p: Product) {
     setProduct(p);
     setForm({
@@ -178,6 +212,7 @@ export function ProductEditor({ id }: { id?: string }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setFieldErrors({});
     try {
       const result = await api<Product>(
         id ? `/admin/products/${id}` : "/admin/products",
@@ -187,7 +222,11 @@ export function ProductEditor({ id }: { id?: string }) {
       shop.notify("Product saved");
       if (!id) router.replace(`/admin/products/${result.id}`);
     } catch (e) {
-      setError(e);
+      if (e instanceof ApiError && e.fields && Object.keys(e.fields).length) {
+        setFieldErrors(e.fields);
+      } else {
+        setError(e);
+      }
     } finally {
       setBusy(false);
     }
@@ -251,13 +290,29 @@ export function ProductEditor({ id }: { id?: string }) {
       <div className="admin-title">
         <h1>{id ? "Edit product" : "New product"}</h1>
         {product && (
-          <span className="status">
-            {product.status} / V{product.version}
+          <span className="status" title="Revision number used to prevent stale edits from overwriting newer changes.">
+            {product.status} / Revision {product.version}
           </span>
         )}
       </div>
       <ErrorMessage error={error} />
+      {Object.keys(fieldErrors).length > 0 && (
+        <div className="field-error-summary" role="alert" aria-labelledby="product-error-title" ref={errorSummary} tabIndex={-1}>
+          <h2 id="product-error-title">This product needs a few corrections</h2>
+          <p>Review the fields below, then save again. Your other changes are still here.</p>
+          <ul>
+            {Object.entries(fieldErrors).map(([path, message]) => (
+              <li key={path}>
+                <button type="button" onClick={() => focusField(path)}>
+                  {path.split(".").map((part) => /^\d+$/.test(part) ? `variant ${Number(part) + 1}` : titleCase(part)).join(" / ")}: {message}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <form onSubmit={save}>
+        <fieldset className="product-editor-fields" disabled={busy}>
         <div className="editor-grid">
           <section className="admin-panel">
             <h2>Product details</h2>
@@ -266,10 +321,11 @@ export function ProductEditor({ id }: { id?: string }) {
                 <label className="field" key={name}>
                   {titleCase(name)}
                   <input
+                    {...fieldProps(name)}
                     required
                     value={form[name]}
                     onChange={(e) => {
-                      field(name, e.target.value);
+                      updateField(name, name, e.target.value);
                       if (name === "title" && !id)
                         field(
                           "slug",
@@ -280,27 +336,32 @@ export function ProductEditor({ id }: { id?: string }) {
                         );
                     }}
                   />
+                  {fieldErrors[name] && <small className="field-error" id={`${fieldId(name)}-error`}>{fieldErrors[name]}</small>}
                 </label>
               ),
             )}
             <label className="field">
               Department
               <select
+                {...fieldProps("department")}
                 value={form.department}
-                onChange={(e) => field("department", e.target.value)}
+                onChange={(e) => updateField("department", "department", e.target.value)}
               >
                 <option value="women">Women</option>
                 <option value="home">Home</option>
               </select>
+              {fieldErrors.department && <small className="field-error" id={`${fieldId("department")}-error`}>{fieldErrors.department}</small>}
             </label>
             {(["description", "care"] as const).map((name) => (
               <label className="field" key={name}>
                 {titleCase(name)}
                 <textarea
+                  {...fieldProps(name)}
                   required
                   value={form[name]}
-                  onChange={(e) => field(name, e.target.value)}
+                  onChange={(e) => updateField(name, name, e.target.value)}
                 />
+                {fieldErrors[name] && <small className="field-error" id={`${fieldId(name)}-error`}>{fieldErrors[name]}</small>}
               </label>
             ))}
             {(form.department === "home"
@@ -310,15 +371,17 @@ export function ProductEditor({ id }: { id?: string }) {
               <label className="field" key={name}>
                 {titleCase(name)}
                 <input
+                  {...fieldProps(`details.${name}`)}
                   required
                   value={form.details?.[name] || ""}
                   onChange={(e) =>
-                    field("details", {
+                    updateField(`details.${name}`, "details", {
                       ...form.details,
                       [name]: e.target.value,
                     })
                   }
                 />
+                {fieldErrors[`details.${name}`] && <small className="field-error" id={`${fieldId(`details.${name}`)}-error`}>{fieldErrors[`details.${name}`]}</small>}
               </label>
             ))}
           </section>
@@ -341,14 +404,16 @@ export function ProductEditor({ id }: { id?: string }) {
             </label>
             <div className="media-editor">
               {form.media.map((m, i) => (
-                <div key={`${m.src}-${i}`}>
+                <div key={`${m.src}-${i}`} tabIndex={-1} ref={(element) => { fieldRefs.current[`media.${i}`] = element; }}>
                   <img src={m.src} alt={m.alt} />
                   <label>
                     Image role
                     <select
+                      {...fieldProps(`media.${i}.role`)}
                       value={m.role}
                       onChange={(e) =>
-                        field(
+                        updateField(
+                          `media.${i}.role`,
                           "media",
                           form.media.map((a, n) =>
                             n === i ? { ...a, role: e.target.value } : a,
@@ -362,20 +427,24 @@ export function ProductEditor({ id }: { id?: string }) {
                         ),
                       )}
                     </select>
+                    {fieldErrors[`media.${i}.role`] && <small className="field-error" id={`${fieldId(`media.${i}.role`)}-error`}>{fieldErrors[`media.${i}.role`]}</small>}
                   </label>
                   <label>
                     Alternative text
                     <input
+                      {...fieldProps(`media.${i}.alt`)}
                       value={m.alt}
                       onChange={(e) =>
-                        field(
+                        updateField(
+                          `media.${i}.alt`,
                           "media",
                           form.media.map((a, n) =>
                             n === i ? { ...a, alt: e.target.value } : a,
                           ),
                         )
                       }
-                    />
+                      />
+                    {fieldErrors[`media.${i}.alt`] && <small className="field-error" id={`${fieldId(`media.${i}.alt`)}-error`}>{fieldErrors[`media.${i}.alt`]}</small>}
                   </label>
                   <div>
                     <button
@@ -448,7 +517,7 @@ export function ProductEditor({ id }: { id?: string }) {
               </thead>
               <tbody>
                 {form.variants.map((v, i) => (
-                  <tr key={i}>
+                  <tr key={v.id || v.sku} tabIndex={-1} ref={(element) => { fieldRefs.current[`variants.${i}`] = element; }}>
                     {(
                       [
                         "sku",
@@ -462,6 +531,7 @@ export function ProductEditor({ id }: { id?: string }) {
                     ).map((k) => (
                       <td key={k}>
                         <input
+                          {...fieldProps(`variants.${i}.${k}`)}
                           aria-label={`${k} variant ${i + 1}`}
                           required={
                             k !== "dimensions" && k !== "compare_at_paise"
@@ -482,7 +552,8 @@ export function ProductEditor({ id }: { id?: string }) {
                               : v[k] || ""
                           }
                           onChange={(e) =>
-                            field(
+                            updateField(
+                              `variants.${i}.${k}`,
                               "variants",
                               form.variants.map((a, n) =>
                                 n === i
@@ -501,6 +572,7 @@ export function ProductEditor({ id }: { id?: string }) {
                             )
                           }
                         />
+                        {fieldErrors[`variants.${i}.${k}`] && <small className="field-error" id={`${fieldId(`variants.${i}.${k}`)}-error`}>{fieldErrors[`variants.${i}.${k}`]}</small>}
                       </td>
                     ))}
                     <td>
@@ -535,6 +607,7 @@ export function ProductEditor({ id }: { id?: string }) {
             + ADD VARIANT
           </button>
         </section>
+        </fieldset>
         <div className="editor-actions">
           <button className="button primary" disabled={busy}>
             SAVE PRODUCT

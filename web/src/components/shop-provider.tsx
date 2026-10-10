@@ -48,10 +48,24 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [notice, notify] = useState("");
   const [error, setError] = useState<unknown>(null);
   const refreshing = useRef<Promise<void> | null>(null);
+  const sessionInit = useRef<Promise<Session> | null>(null);
+  const ensureSession = useCallback(() => {
+    if (!sessionInit.current) {
+      sessionInit.current = api<Session>("/session", { method: "POST" })
+        .then((user) => {
+          setSession(user);
+          return user;
+        })
+        .finally(() => {
+          sessionInit.current = null;
+        });
+    }
+    return sessionInit.current;
+  }, []);
   const refresh = useCallback(() => {
     if (refreshing.current) return refreshing.current;
     refreshing.current = (async () => {
-      // Establish one session before parallel owned requests, avoiding guest-cookie races.
+      // Anonymous reads are stateless; the first mutation establishes a guest session.
       const user = await api<Session>("/session");
       setSession(user);
       const [bag, favourites] = await Promise.all([
@@ -75,6 +89,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [notice]);
   const changeQuantity = async (id: string, quantity: number) => {
     try {
+      await ensureSession();
       setCart(
         await api<Cart>(
           "/cart/items",
@@ -91,6 +106,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }
   };
   const save = async (id: string) => {
+    await ensureSession();
     await api(`/favourites/${id}`, json(saved.has(id) ? "DELETE" : "PUT"));
     setSaved((old) => {
       const next = new Set(old);

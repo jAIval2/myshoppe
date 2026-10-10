@@ -1,4 +1,4 @@
-# Implementation status — 2 October 2026
+# Implementation status — 3 October 2026
 
 The original [sprint plan](SPRINT_PLAN.md) and [styling guide](STYLING_GUIDE.md) remain the target. The application is implemented and running for local review. The following separates working code from acceptance gates that require further implementation, real assets, provider configuration or operational evidence.
 
@@ -35,3 +35,13 @@ Verified locally on 2 October: production build, TypeScript, Ruff, **21 backend 
 3. Campaigns → edit/save draft → saved preview → publish/restore.
 4. Orders → ship quantities → mark delivered → customer return → inspect/restock → refund; observe worker recovery and audit.
 5. Replace development assets and configure provider sandboxes before converting the remaining launch gates into release acceptance evidence.
+
+## Sprint 4 implementation update — 3 October 2026
+
+The requested Sprint 4 code changes are present; this update has not been run through the test suite, typecheck, lint, container build or provider sandbox. Review and execute the Sprint 4 exit matrix in [the plan](SPRINT_PLAN.md#9-sprint-4--operator-clarity-reliability-and-deployable-production) before marking its stories complete.
+
+S4.1 now documents the six operator personas, product revision labels and local shop workflow in the README. Product API validation errors focus an accessible summary, link to the affected control, show the message beside the field and preserve the draft values. Focused regression cases cover the previously crashing `order.paid` payload without a payment entity, zero-write anonymous reads and persistence of rejected IP-limit attempts.
+
+S4.2 now has separate commerce and media worker lanes, claim fencing, bounded transient write retries, PostgreSQL-clock lease/expiry checks, missing-cart tolerance, scheduled bounded retention, lazy guest session creation, and an HMAC-keyed application IP limit for auth, checkout and support, with supporting indexes in migration `003_worker_indexes`. Update the worker throughput, expiry, retention, stale-claim and serialization/deadlock cases in Sprint 4 before release; the focused tests above do not replace that failure matrix.
+
+S4.3 now includes security headers/CSP, request-duration JSON logs, liveness/readiness endpoints, constrained object media references, Supabase resumable object storage, separate media processing, stream-based upload handling, standalone web/backend containers, a local full-stack Compose profile, Nginx rate-limit examples, a 60-second public server-data cache, and migration/audit/container CI steps. Production startup requires object storage and trusted-proxy configuration. The bucket, live Supabase/Razorpay/email matrix, TLS host, database connection budget, merchant tax/invoice/shipping rules, cache invalidation, backups, restore drill, monitoring and rollback runbook still require real operator inputs and evidence.

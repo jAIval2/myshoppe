@@ -117,6 +117,7 @@ class CatalogService:
             require(row, "NOT_FOUND", "This product is unavailable.", 404)
             return Product.model_validate(hydrate(c, [row], bool(actor))[0])
 
+    @db.retry_transient_write
     def save(self, actor, command, product_id=None):
         data = command.model_dump(exclude={"variants", "expected_version"})
         with self.engine.begin() as c:
@@ -177,6 +178,7 @@ class CatalogService:
             audit(c, actor, "product.saved", product_id)
         return self.get(product_id, actor)
 
+    @db.retry_transient_write
     def publish(self, actor, product_id, version, status="published"):
         with self.engine.begin() as c:
             require_permission(c, actor, "catalog.write")
@@ -199,6 +201,7 @@ class CatalogService:
             audit(c, actor, f"product.{status}", product_id)
         return self.get(product_id, actor)
 
+    @db.retry_transient_write
     def stock(self, actor, command):
         with self.engine.begin() as c:
             require_permission(c, actor, "inventory.write")

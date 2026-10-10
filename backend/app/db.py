@@ -1,4 +1,7 @@
 import uuid
+import random
+import time
+from functools import wraps
 from datetime import datetime, timezone
 from sqlalchemy import (
     MetaData,
@@ -17,9 +20,27 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.exc import DBAPIError
 from .settings import settings
 
 metadata = MetaData()
+
+
+def retry_transient_write(function):
+    """Retry a whole idempotent service write after PostgreSQL aborted its transaction."""
+
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        for attempt in range(3):
+            try:
+                return function(*args, **kwargs)
+            except DBAPIError as exc:
+                state = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
+                if state not in {"40001", "40P01"} or attempt == 2:
+                    raise
+                time.sleep(random.uniform(0.01, min(0.2, 0.025 * 2**attempt)))
+
+    return wrapped
 
 
 def now():
@@ -120,6 +141,7 @@ carts = Table(
     metadata,
     Column("owner_id", String(64), primary_key=True),
     Column("version", Integer, default=1, nullable=False),
+    Column("updated_at", DateTime(timezone=True), default=now, nullable=False),
 )
 cart_items = Table(
     "cart_items",
@@ -237,6 +259,8 @@ jobs = Table(
     Column("attempts", Integer, default=0, nullable=False),
     Column("due_at", DateTime(timezone=True), default=now, nullable=False),
     Column("lease_until", DateTime(timezone=True)),
+    Column("claim_token", String(36)),
+    Column("completed_at", DateTime(timezone=True)),
     Column("last_error", String(500)),
     created(),
 )
@@ -285,4 +309,21 @@ limits = Table(
     Column("count", Integer, nullable=False),
 )
 
-engine = create_engine(settings.database_url, pool_size=10, max_overflow=15, pool_pre_ping=True)
+def create_database_engine(role: str = "api"):
+    pools = {"api": (5, 2), "commerce": (2, 0), "media": (1, 0)}
+    if role not in pools:
+        raise ValueError(f"Unsupported database pool role: {role}")
+    pool_size, max_overflow = pools[role]
+    options = "-c statement_timeout=10000 -c lock_timeout=2000 -c idle_in_transaction_session_timeout=30000"
+    return create_engine(
+        settings.database_url,
+        pool_size=int(settings.db_pool_size or pool_size),
+        max_overflow=int(settings.db_pool_overflow or max_overflow),
+        pool_timeout=5,
+        pool_recycle=1800,
+        pool_pre_ping=True,
+        connect_args={"options": options},
+    )
+
+
+engine = create_database_engine(settings.db_role)

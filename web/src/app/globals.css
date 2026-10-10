@@ -147,6 +147,50 @@ select:focus {
   font-size: 14px;
   white-space: pre-line;
 }
+.field-invalid {
+  border-color: var(--error) !important;
+  outline-color: var(--error);
+  box-shadow: 0 0 0 1px var(--error);
+}
+.product-editor-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.field-error {
+  display: block;
+  color: var(--error);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+.field-error-summary {
+  margin: 18px 0;
+  padding: 16px 20px;
+  border: 1px solid var(--error);
+  background: #fffafa;
+}
+.field-error-summary:focus {
+  outline: 2px solid var(--error);
+  outline-offset: 3px;
+}
+.field-error-summary h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.field-error-summary p,
+.field-error-summary ul {
+  margin: 6px 0 0;
+}
+.field-error-summary ul {
+  padding-left: 20px;
+}
+.field-error-summary button {
+  color: var(--error);
+  text-align: left;
+  text-decoration: underline;
+}
 .button {
   border: 1px solid #777770;
   min-height: 46px;

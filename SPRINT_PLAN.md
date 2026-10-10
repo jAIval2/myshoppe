@@ -1,10 +1,12 @@
-# Boutique commerce platform — three-sprint implementation plan
+# MyShoppe — implementation plan, Sprints 1–4
 
 Prepared 1 October 2026. Companion specification: [STYLING_GUIDE.md](./STYLING_GUIDE.md).
 
+**2 October 2026 validation revision:** retain the original nine stories and add **Sprint 4 with exactly three stories** in §9. That section validates the reported defects against the present repository and official provider documentation before assigning fixes. This revision is a plan, not an implementation or production-readiness claim. Existing development functionality and remaining gates are recorded in [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md). Sprint 4 acceptance supersedes conflicting earlier operational examples; all visual requirements remain in force.
+
 **Screenshot-led revision:** the user's fourteen Zara captures and described homepage behavior replace the earlier generic storefront assumptions. Requirements ZR-01–ZR-12 below are committed across the existing nine stories. This remains a planning deliverable; these behaviors are specified for implementation, not reported as already built.
 
-**Recording refinement:** the supplied 101.59-second recording adds requirements V01–V06 in [style §1.3](./STYLING_GUIDE.md#13-recording-evidence-and-decisions), verified in [style §13.2](./STYLING_GUIDE.md#132-recording-refinement-acceptance-supplement). Build heavy-sans campaign typography, one pinned campaign wordmark, a real collection-route transition at the entrance, sale navigation and the centered View 1 frame. Retain the deliberate readable text sizes. These refine existing stories; the plan remains three sprints × three stories.
+**Recording refinement:** the supplied 101.59-second recording adds requirements V01–V06 in [style §1.3](./STYLING_GUIDE.md#13-recording-evidence-and-decisions), verified in [style §13.2](./STYLING_GUIDE.md#132-recording-refinement-acceptance-supplement). Build heavy-sans campaign typography, one pinned campaign wordmark, a real collection-route transition at the entrance, sale navigation and the centered View 1 frame. Retain the deliberate readable text sizes. These refine the original three sprints; Sprint 4 hardens the resulting implementation.
 
 **Implementation constraint — compact FastAPI application:** FastAPI/Python is the sole commerce backend, PostgreSQL the data store, with explicit controller → service interface → service implementation → SQL/provider adapter boundaries. Keep one modular application, a shared Python worker and reusable frontend components. Dependency growth, duplicated business logic and repetitive generated tests are release-review concerns. ZR-01–12 and V01–V06 remain mandatory; reducing code must not reduce animation, layout or interaction fidelity. §§4.1, 4.5 and 4.6 govern this refinement.
 
@@ -14,11 +16,11 @@ Build a working boutique storefront with Zara-inspired editorial presentation, a
 
 - **Confirmed:** launch market India; currency INR; women's clothing and home textiles only.
 - **Planning assumption:** one boutique owns and fulfils all inventory. “Marketplace” means a complete commerce platform in this release. Independent seller onboarding, commissions, settlements, seller-specific shipping, and seller tenancy are not included. If multiple sellers are required, re-estimate before Sprint 1; adding a `seller_id` alone does not deliver that capability.
-- **Working brand:** MyShoppe, to be replaced by the boutique's name. Use original identity, photographs, and copy; reference sites provide design direction.
+- **Confirmed brand:** MyShoppe. Use original identity, photographs, and copy; reference sites provide design direction.
 - **Catalogue:** Women → dresses, tops/shirts, trousers, skirts, knitwear, outerwear, co-ords. Home → duvet covers, duvet inserts, bedsheets, pillowcases, quilts/bedspreads, throws, cushion covers. No men's/kids' merchandise, beauty, furniture, or unrelated seed inventory.
 - **Commercial baseline:** one fulfilment location, English, guest checkout plus optional account, domestic delivery, Razorpay hosted checkout with merchant-enabled UPI/cards, explicit shipping/serviceability rules. No COD, subscriptions, gift cards, reviews, loyalty, coupons, or automatic carrier procurement in this release.
 - **Removal semantics:** archive published or previously ordered products; permanently delete only never-published drafts with no references. Historical order lines remain intact.
-- **Repository state:** the workspace was empty during research. This document specifies future implementation; no application or database has been built by this planning task.
+- **Repository state:** the workspace was empty during initial research; a functioning local development baseline now exists. Original story acceptance is not automatically complete merely because the corresponding feature exists. §9 audits the current implementation and plans corrective work.
 
 ## 2. Research and design decisions
 
@@ -52,9 +54,11 @@ S3.3 verifies all twelve requirements and the V01–V06 refinements against scre
 
 ## 3. Delivery shape and capacity
 
-**Exactly three sprints, three stories per sprint.** Plan for three weeks per sprint: nine weeks total. These are large implementation stories containing work packages, not extra hidden stories.
+**Four sprints, exactly three stories per sprint.** Original baseline: three three-week sprints. Added hardening sprint: three weeks under the same staffing assumption, making twelve planned weeks in total. These are large implementation stories containing work packages, not extra hidden stories.
 
-Revised estimate: **184 engineering person-days**, up from 152 to cover the required presentation modes, media journey, related-product surfaces, Favourites and authoring/verification. To retain three three-week sprints, assume **six engineers** (two storefront, two commerce/backend, two full-stack/platform), one designer at roughly half time, one QA engineer and a boutique operator. Capacity is 270 person-days gross; reserve 54 for integration/review/defects, leaving 216 planned and 32 unallocated. Per-sprint demand is 54 / 68 / 62 days against 72 planned capacity each. This is a staffing assumption, not an instruction to hire or a delivery guarantee; with the original five engineers, extend sprint length/re-estimate instead of dropping the requested visuals. Photography/video production and merchant activation remain external dependencies. Retain this estimate for the FastAPI revision: simpler ownership reduces duplication, but Python/API contract integration still takes time. Confirm Python expertise and recalibrate using Sprint 1 throughput; do not promise fewer days by deleting required frontend behavior.
+Original Sprints 1–3 estimate: **184 engineering person-days**, up from 152 to cover the required presentation modes, media journey, related-product surfaces, Favourites and authoring/verification. To retain three three-week sprints, assume **six engineers** (two storefront, two commerce/backend, two full-stack/platform), one designer at roughly half time, one QA engineer and a boutique operator. Capacity is 270 person-days gross; reserve 54 for integration/review/defects, leaving 216 planned and 32 unallocated. Per-sprint demand is 54 / 68 / 62 days against 72 planned capacity each. This is a staffing assumption, not an instruction to hire or a delivery guarantee; with the original five engineers, extend sprint length/re-estimate instead of dropping the requested visuals. Photography/video production and merchant activation remain external dependencies. Retain this estimate for the FastAPI revision: simpler ownership reduces duplication, but Python/API contract integration still takes time. Confirm Python expertise and recalibrate using Sprint 1 throughput; do not promise fewer days by deleting required frontend behavior.
+
+**Sprint 4 capacity:** provisional **68 additional engineering days** (10 / 26 / 32), versus 72 planned days from six engineers over three weeks after an 18-day reserve. Combined planning envelope: **252 engineering days**, 360 gross capacity, 72 reserve and 36 unallocated. The paragraph above records the historical baseline, not measured effort already spent. Some Sprint 4 work closes unfulfilled S3.3 gates; re-estimate the remaining backlog at kickoff to avoid charging twice for verified work. These are substantial reliability and release tasks despite the “minor fixes” label. With fewer engineers, extend the sprint; do not compress it by dropping recovery, visuals or testing. Hosting, tax inputs and provider access are dependencies, not assumed completed work.
 
 | Sprint | Story | Deliverable | Eng. days | Lead / dependencies |
 | --- | --- | --- | ---: | --- |
@@ -67,11 +71,14 @@ Revised estimate: **184 engineering person-days**, up from 152 to cover the requ
 | 3 — Operate and launch | S3.1 | Admin overview, fulfilment, returns, refunds | 18 | Full-stack + backend / S2.3 |
 | 3 | S3.2 | Customer self-service, campaign/template/recommendation authoring | 22 | Frontend + full-stack / S2.3; integrates S3.1 |
 | 3 | S3.3 | Reference parity, gestures/media/state recovery, security and launch | 22 | Platform + frontend + QA / all stories |
-| | **Total** | | **184** | |
+| 4 — Operator clarity and production hardening | S4.1 | Usage guide, access matrix and precise product form errors | 10 | Frontend + full-stack / current admin baseline |
+| 4 | S4.2 | Reliable workers, transaction retries, indexes, lazy identity and retention | 26 | Backend + platform / current commerce baseline |
+| 4 | S4.3 | Reproducible deployment, media/security/performance and release evidence | 32 | Platform + frontend + QA / integrates S4.1–S4.2 |
+| | **Total** | | **252** | |
 
 Each sprint: days 1–2 confirm contracts and fixtures; days 3–10 implement vertical slices; days 11–13 integrate and exercise failure paths; days 14–15 demo, fix blockers, and release to staging. Start CI, accessibility, and security checks in Sprint 1; S3.3 verifies the integrated system. Payment merchant onboarding and real content preparation start on day 1.
 
-Critical path: S1.1 → S1.2 → S2.2 → S2.3 → S3.1 → S3.3. Frontend work can use agreed fixtures while the corresponding service is implemented; every sprint demo must use persisted PostgreSQL data.
+Critical path: S1.1 → S1.2 → S2.2 → S2.3 → S3.1 → S3.3 → S4.2 → S4.3 release verification. S4.1 and S4.3 packaging/performance work can start alongside S4.2. Frontend work can use agreed fixtures while the corresponding service is implemented; every sprint demo must use persisted PostgreSQL data.
 
 ## 4. Architecture and implementation contracts
 
@@ -89,7 +96,7 @@ Use a **modular monolith**: one Python application package owns catalogue, cart,
 | Storage/media | Retain managed object storage/CDN; direct signed uploads through the backend's storage adapter. Pillow handles image validation/derivatives; FFmpeg is an isolated worker binary for real campaign video. No separate media service. |
 | Payment/email | Razorpay hosted browser checkout; Python gateway adapter over the shared HTTPX client. One transactional email provider adapter. Never introduce parallel SDK and REST implementations for the same provider. |
 | Durable work | Same Python image, separate `python -m app.worker` process; PostgreSQL inbox/outbox with bounded leases/retries. Payment/expiry/refund/email handlers call existing services. No Redis, Celery, Kafka or extra scheduler for this release. |
-| Deployment | One Node rendering process, one FastAPI/Uvicorn API process, one Python worker process; API and worker share code/image. A same-origin edge routes `/api/*` directly to FastAPI and other paths to Next.js. PostgreSQL/storage are managed; staging and production are isolated. |
+| Deployment | One Node rendering process, one FastAPI/Uvicorn API process, separate commerce and media worker processes sharing the Python code/image. A same-origin edge routes `/api/*` directly to FastAPI and other paths to Next.js. PostgreSQL/storage are managed; staging and production are isolated. Sprint 4 supplies concrete deployment configuration and connection budgets. |
 | Tooling/tests | Python: pytest + HTTPX/TestClient, Ruff and mypy. Frontend: TypeScript check, framework lint, Playwright + axe. Native Node test runner for the few pure frontend reducers if needed; no parallel Jest/Vitest/browser-unit stack. |
 
 Framework references support these mechanics, not the project's exact architecture: [FastAPI routers](https://fastapi.tiangolo.com/tutorial/bigger-applications/), [FastAPI dependencies](https://fastapi.tiangolo.com/tutorial/dependencies/), [Python Protocol](https://docs.python.org/3/library/typing.html#typing.Protocol), and [SQLAlchemy connection/transaction contexts](https://docs.sqlalchemy.org/en/20/core/connections.html). Pin compatible maintained versions at kickoff in one Python lockfile and one frontend lockfile; do not use this plan to assert unverified version numbers.
@@ -986,4 +993,279 @@ Confirm business inputs during Sprint 1; proceed with explicit staging fixtures 
 
 If capacity tightens, defer CSV conveniences, additional editorial templates beyond the specified families, extra decorative effects absent from the supplied references and automatic carrier integrations. Do not defer ZR-01–12: Women/Home switching, real video/poster/scroll journey, all three product views, specified templates, PDP continuation gallery and separate discovery surfaces, Favourites, reference bag, and admin authoring are required. Preserve commerce integrity, product CRUD, exact variants, PostgreSQL persistence, operations, accessibility and recovery. Extend duration or adjust staffing if the committed gates do not fit; never label a removed requirement complete. Incident rollback is an operational safeguard, not an acceptance waiver.
 
-The nine story exit strategies define completion evidence and containment/rollback. A failed gate means the story remains open, even if the happy-path demo looks finished.
+The twelve story exit strategies define completion evidence and containment/rollback. A failed gate means the story remains open, even if the happy-path demo looks finished. Sprint 4 closes the validated gaps below; it does not waive outstanding Sprints 1–3 or styling acceptance.
+
+## 9. Sprint 4 — Operator clarity, reliability and deployable production
+
+### 9.1 Validation ledger — checked 2 October 2026
+
+**Method and limits:** inspected the actual handlers, schemas, migrations, frontend, tests and deployment files. Re-ran Ruff successfully, TypeScript `tsc --noEmit` successfully, and pytest collection: **21 cases collected**. Collection does not establish test success. This audit did not run a live provider transaction, browser reproduction, query-plan benchmark, load test or deployment drill. “Confirmed” below means the source establishes the issue; severity describes the risk, not a measured production incident. Existing browser coverage is four journeys. Evidence paths are relative to this repository; symbols remain useful if line numbers change.
+
+| ID / assessed priority | Verdict and evidence | Planned disposition |
+| --- | --- | --- |
+| A01 / P2 | **Partial:** [README](./README.md) already describes startup, local owner login and development checkout, but lacks an operator walkthrough and access matrix. `admin/products.tsx` displays `V{product.version}`; this is a persisted concurrency revision, not listing density. Campaign `VERSION` is another revision history. | S4.1: concise usage guide and contextual revision help. |
+| A02 / P1 usability | **Confirmed:** `main.validation_error` returns dotted `fieldErrors`; `ApiError.fields` retains them, but `ProductEditor` only calls `setError` and shared `ErrorMessage` prints the generic message. Inputs have no corresponding error mapping, `aria-invalid` or inline explanation. Native HTML validation catches some omissions but does not fix server errors. | S4.1: field binding, error summary and focus recovery. |
+| A03 / P1 robustness; claimed P0 rejected | **Incorrect as stated:** [Razorpay's official `order.paid` payload](https://razorpay.com/docs/webhooks/orders/) includes **both payment and order entities**. `worker.handle` therefore does not inevitably crash for valid documented events. **Confirmed robustness gap:** its unconditional nested lookup crashes for a missing/malformed payment entity. Four retries follow the initial attempt before failure. No evidence here establishes an every-payment outage. | S4.2: validate/normalize event shapes, support safe order-based reconciliation, record contract failures; keep provider verification and idempotent capture. |
+| A04 / P1 | **Confirmed:** `worker.tick` claims one row; main loop sleeps two seconds after processing. One process handles at most roughly 0.5 jobs/sec even before work time. `process_video` synchronously allows 20s probing, 180s transcoding and 30s poster extraction. Thus the total media block can exceed three minutes. Lease is currently **five minutes**, not two. | S4.2: bounded draining and separate media lane, no added broker. |
+| A05 / P1 | **Confirmed missing index, scan cost not measured:** `PaymentService.expire` queries pending/expired orders, bounded to 100, every tick. `001_initial.py`, frozen schema SQL and `002_delivery_time.py` supply no pending-expiry index. A sequential scan is a likely scale risk, not a measured guarantee for every planner/dataset. | S4.2: partial index, independent expiry cadence and representative `EXPLAIN (ANALYZE, BUFFERS)`. |
+| A06 / P1 | **Confirmed missing leading-column indexes:** `order_items(order_id)`, `shipments(order_id)`, `sessions(owner_id)`, `saved_items(product_id)`, `cart_items(variant_id)`. Composite primary keys on the latter two start with `owner_id`; they do not replace the desired leading-column indexes. `sessions.owner_id` is a lookup column, not actually declared an FK. PostgreSQL does not automatically index referencing FK columns. [Constraint documentation](https://www.postgresql.org/docs/18/ddl-constraints.html) | S4.2: forward migration; inspect existing constraints before adding anything else. |
+| A07 / P1 | **Confirmed:** write services own `engine.begin()` transactions without whole-transaction retry; uncaught DB errors reach `main.unexpected`. Default isolation is not explicitly SERIALIZABLE, so serialization failures are not established as common, but deadlock recovery is still missing. | S4.2: retry only `40001`/`40P01`, fresh transaction, bounded attempts; never replay an external money call. |
+| A08 / P2 | **Confirmed:** `db.now()` uses the host clock; worker leases, due checks, session validity and order expiry use it. | S4.2: authoritative DB timestamps/comparisons and short transactions. |
+| A09 / P2 | **Confirmed:** no scheduled retention implementation for sessions, rate-limit windows, jobs, events or abandoned carts. However audit/stock history and deduplication keys cannot safely be discarded as generic junk. `carts` lacks a last-activity timestamp; jobs lack completion time. | S4.2: explicit lifecycle columns, bounded cleanup, preservation/archive policy and maintenance runbook. |
+| A10 / P2 | **Confirmed for actor-dependent requests, not every public route:** `current_actor` creates a session and cart when no valid cookie exists. `ShopProvider.refresh` calls `/session` then `/cart` and `/favourites` on mount, so browsing through the frontend creates writes. A crawler requesting only public catalogue API routes need not invoke that dependency. | S4.2: stateless anonymous reads and serialized first mutation. |
+| A11 / P2 | **Confirmed:** current checkout/support limits key on actor identity; dropping cookies creates another budget. No committed edge limiter or trusted-IP dimension. The checkout cart lock already serializes creation for one cart. | S4.2 application IP limit + S4.3 edge enforcement; retain cart lock and prove the active-order invariant before adding another constraint. |
+| A12 / P2 | **Confirmed:** `cart.clear` calls `scalar_one()` and permanently fails if the cart has been deleted. | S4.2: absent cart is a successful no-op; preserve version check when present. |
+| A13 / P1 release | **Confirmed:** successful responses get `nosniff` plus request/cache headers; HSTS, CSP, frame policy, Referrer-Policy and Permissions-Policy are absent. Early middleware returns also bypass the response-header block. | S4.3: edge/app response policy covers errors and successful responses; validate payment/media compatibility. |
+| A14 / P1 release | **Confirmed:** `next.config.ts` describes production Caddy, but no Caddy/nginx config exists. `compose.yaml` only starts PostgreSQL; no application Dockerfiles or deployment/runbook automation. README/status acknowledge the gap. | S4.3: one actual deployment path, containers, proxy, environment/secrets handling, restore and rollback. |
+| A15 / P1 release | **Confirmed:** `OperationsService.video` stores absolute local paths in jobs; media output is local and served through FastAPI `StaticFiles`. Replicas on different hosts cannot share that state automatically. No runtime storage-topology guard. | S4.3: shared object-storage adapter and portable object keys; local mode explicitly development-only. |
+| A16 / P2 security | **Confirmed:** `Media.src` accepts any `https://` prefix. Product images can bypass controlled uploads and contact arbitrary hosts. This alone proves browser hotlink/tracking exposure, not an existing server-side fetch vulnerability. | S4.3: approved media references; avoid introducing SSRF when adding image optimization. |
+| A17 / P2 capacity | **Confirmed with qualification:** upload handlers read an additional complete 10MB/80MB byte buffer from the uploaded file; Pillow decoding is synchronous in a worker thread. Existing byte and 25MP limits help; this is bounded amplification and thread-pool pressure, not proof of unlimited memory or event-loop blocking. | S4.3: stream/spool or signed uploads, bounded media concurrency, limits before decoding. |
+| A18 / P1 release | **Partial:** DB statement/lock/idle-transaction timeouts and recycle policy are not configured in this repo. SQLAlchemy already has a default **30-second pool wait**, so “no pool timeout” is inaccurate. `pool_size=10, max_overflow=15` permits 25 connections **per process**, including each worker, not per whole deployment. Actual hosted DB defaults are unknown. [SQLAlchemy pooling](https://docs.sqlalchemy.org/en/20/core/pooling.html) | S4.3: explicit limits and measured whole-deployment budget; managed pooling only when needed. |
+| A19 / business-dependent release gate | **Confirmed:** no implemented invoice/tax calculation and immutable invoice flow; price copy is not an invoice engine. Production requirements depend on merchant inputs. | S4.3: implement the agreed India/INR invoice/tax contract; missing merchant rules keep live checkout blocked. |
+| A20 / P2; P1 before live trade | **Confirmed:** plain Python logs, request IDs but no request-duration metrics, configured error/queue alerts or tracing. `/api/health` queries DB; there is no independent liveness endpoint. `opentelemetry-api` appears in the lock but no app instrumentation uses it. | S4.3: structured logs, small metrics/alert surface and liveness/readiness. Full tracing or Sentry is not automatically required. |
+| A21 / P2 performance | **Partial:** there are 18 raw `<img>` sites, no `next/image` or `srcSet`. But campaign/PDP already use `fetchPriority`, several images are lazy, and uploaded images are converted to WebP. Responsive sizing is a real gap; “no modern conversion/lazy LCP control” and “biggest measured risk” overstate the evidence. | S4.3: one responsive image component, preserve authored crops/ratios; measure LCP and transferred bytes. |
+| A22 / P2 | **Confirmed:** `lib/server.ts` uses `cache: 'no-store'` for public data; API responses likewise disable caching. No explicit public catalogue cache/invalidation. | S4.3: bounded public caching with publish/archive invalidation; private state and checkout remain authoritative. |
+| A23 / P2 | **Confirmed:** no enforced bundle budget or route `loading.tsx`; only root route `error.tsx` exists. Four Playwright journeys include one mobile-listing axe scan, not a full accessibility audit. | S4.3: route-group recovery/loading where useful; expand checks over distinct interaction states. |
+| A24 / P2 evidence | **Confirmed missing implementation:** no load/soak runner, measured coverage gate, property/fuzz harness, deadlock/serialization retry test, retention test, throughput test or recorded real-provider matrix. Existing suite does cover some stock contention, capture/expiry and webhook dedupe; do not duplicate those tests. | S4.2 owns new backend risk cases; S4.3 owns CI, staged drills and performance gates. |
+| A25 / correction + P2 | **Incorrect migration claim:** `.github/workflows/check.yml` already runs `alembic upgrade head` against a fresh PostgreSQL service, then seeds it. **Confirmed gaps:** no populated previous-version upgrade gate, dependency scanning/update automation, hash-verified Python install or container build. | S4.3 extends existing CI, retaining the fresh-upgrade step. |
+| A26 / additional P1 reliability | **Found during validation:** after handling, worker completion updates only by job ID. An old worker whose lease was reclaimed can overwrite a newer claim's status. Separate lanes alone will not fix this. | S4.2: claim token/generation, fenced heartbeat and completion; business effects still require idempotency. |
+
+**Priority decision:** no reported P0 is established by this audit. First fix validation UX and worker/payment recovery, then resource bounds and release controls. Absence of a particular vendor tool, IaC framework, coverage percentage or dependency is not itself a defect: acceptance below specifies observable outcomes. Every A01–A26 has an owner, including qualified/rejected claims.
+
+### S4.1 — Explain operating the shop and make product errors actionable
+
+**Story:** As a boutique operator, I can understand my permissions and revision labels, create/edit a product, and correct exactly the fields preventing a save without losing my work.
+
+**Estimate / dependencies:** 10 engineering days. Frontend/full-stack lead; current admin/API error contract. Independent of worker changes. Covers A01–A02 and the operator-facing part of A23.
+
+**Implementation work packages:**
+
+1. Add a concise **Operating MyShoppe** section to the existing README, with direct route links and short task sequences: customer browse/View/filter/variant/bag/favourites/checkout/order/return; operator create draft → details → exact variants/prices → media roles → save → stock adjustment → preview → publish → archive; campaign draft/preview/publish/restore; fulfil → delivered → return inspection → refund. Explain INR entry versus internal paise, size/dimension requirements, stock reasons, save versus publish, and pending/failed asynchronous media/payment states. Verify labels and capabilities against the built interface. Do not claim draft deletion or staff management has a UI if it remains CLI-only.
+2. Explain **product `V1`, `V2`, `V3` = persisted revision numbers**, used to prevent one editor overwriting another; they are not tabs, product tiers or selectable storefront layouts. Use a human-readable `Revision 3` label/help in the editor. On stale revision, offer explicit reload with an unsaved-change warning; never silently discard input or auto-overwrite. Separately explain **storefront VIEW 1 = Editorial, 2 = Gallery, 3 = Compact**, and **campaign VERSION = saved content revision, with a LIVE marker and restore action**. Restoring campaign content does not restore stock or paid orders.
+3. Include this access matrix, grounded in `identity.PERMISSIONS`. Service authorization remains the source of truth; links alone never grant access. Distinguish ownership from staff permissions and local development personas from real OTP/MFA accounts.
+
+| Persona | Allowed scope to explain | Important boundary |
+| --- | --- | --- |
+| Guest | Public catalogue, own cookie-bound bag/favourites and guest checkout/order access | No staff access; clearing cookies can lose access to guest state. |
+| Customer | Own account, bag/favourites, orders and eligible return requests | Cannot inspect another customer's resources or issue refunds. |
+| Merchandiser | Product catalogue, inventory adjustments and campaign/content authoring | No order/customer operations, refunds or staff management. |
+| Fulfilment | Read orders, ship/deliver, inspect returns and restock sellable returns | No catalogue/content authoring or refunds. |
+| Support | Read orders, manage support and returns | No shipping, sellable restock or refunds; current return flow permits non-sellable receipt only. |
+| Owner | All defined staff permissions, including refunds and operational controls | Still requires real staff membership and MFA outside the development persona flow. Staff provisioning may be CLI-only. |
+
+4. Use the existing `ApiError.fields` contract and one small reusable field/error-summary component; no form library or duplicate validation schema. Bind dotted paths such as `variants.0.price_paise` and `media.1.alt` to visible labels/controls. Give repeated rows stable client IDs and map response indexes to the submitted snapshot. Disable row structural changes while a request is pending or discard/remap outdated errors safely. Invalid fields get a visible border plus text, `aria-invalid`, and `aria-describedby`; colour alone is insufficient.
+5. Focus a compact error summary on failed submit, with links that reveal/scroll/focus affected fields; expand collapsed sections. Preserve input, scroll appropriately below sticky controls, and clear/revalidate only the changed field's message. Keep native validation for simple HTML constraints. Translate API field names into operator language without hiding useful detail. Unknown paths and form-wide failures remain in the summary; do not promise a highlight for an unbound error.
+6. Extend domain errors only where a publication rule can identify a real control/section (missing lead media, invalid variant, incomplete Home dimensions). Carry optional field details through `DomainError` → central envelope → generated types. Permission, network, stale-version and stock conflicts stay action-specific, not falsely attached to every input. Preserve request ID for debugging; no internal traceback in operator copy.
+
+**Code direction — extend the current API error transport:**
+
+```tsx
+// Illustrative excerpt in ProductEditor; reuse a small Field component.
+const issues = error instanceof ApiError ? error.fields ?? {} : {};
+const path = `variants.${index}.price_paise`;
+const inputId = `variant-${row.clientId}-price`;
+const message = issues[path];
+
+<label htmlFor={inputId}>Price (INR)</label>
+<input
+  id={inputId}
+  name={path}
+  value={row.priceText}
+  onChange={(event) => changePrice(row.clientId, event.target.value)}
+  aria-invalid={message ? true : undefined}
+  aria-describedby={message ? `${inputId}-error` : undefined}
+/>
+{message && <p id={`${inputId}-error`} className="field-error">{message}</p>}
+// Summary links use the same path-to-control registry, never guessed selectors.
+```
+
+**Acceptance criteria:**
+
+- README contains the task guide, six-persona matrix and all three distinct meanings of revision/view labels, with development-only behavior explicitly labelled. A new operator completes a Women draft and a Home draft using it without developer coaching; record confusing steps and fix the copy/UI.
+- A real API 422 on a top-level field and one nested variant/media field results in the corresponding visible inline messages and keyboard-reachable summary links. Correcting and saving succeeds; unrelated valid data remains intact. Native-required, domain publication, unknown-path and stale-version cases each get the appropriate behavior.
+- Keyboard-only operation and a screen reader expose the field label, invalid state and error; error colours meet contrast requirements. Mobile focus does not land behind fixed controls. No change to storefront typography, motion or layouts.
+- A stale concurrent edit cannot overwrite a newer revision. Existing direct-API permission cases remain valid; documentation agrees with actual service checks.
+
+**Focused verification:** extend the existing operator Playwright journey with one real invalid-save → correct → save flow and a stale-edit branch. Use a compact field-path case table only for distinct nesting/unbound-path behavior; do not create one test per text input or persona/button pair. Extend the existing permission test where the support restock boundary is uncovered. Manual README and screen-reader walkthroughs cover what automation cannot establish.
+
+**Exit strategy:** demo both department drafts, capture the invalid/corrected form, and include README/operator sign-off plus passing focused checks. If a server field cannot be bound, show its human-readable summary and keep that acceptance item open. Frontend rollback may restore the prior editor without changing persisted product data; error-envelope additions must remain backward-compatible. A generic “check highlighted fields” message without actual highlights is not completion.
+
+### S4.2 — Make background work and transactions reliable under contention
+
+**Story:** As an operator, payments and order recovery continue while videos process, transient database contention recovers safely, and anonymous traffic or expired records cannot grow operational state indefinitely.
+
+**Estimate / dependencies:** 26 engineering days. Backend/platform lead; uses existing PostgreSQL/SQLAlchemy services and provider interfaces. Covers A03–A12, A26 and backend portions of A24. Coordinates IP trust, media keys and deployment with S4.3.
+
+**Implementation work packages:**
+
+1. **Normalize verified webhook events.** Keep raw-body signature validation and durable inbox commit before acknowledgement. Accept the documented combined `order.paid` payload and payment-only `payment.captured`; parse entity IDs defensively. For an order-only event, treat recovery as a compatibility path, not the official normal payload: map the provider order to a local order and reconcile through the gateway's order/payments API. Never treat `order.id` as `payment.id`, choose an arbitrary failed attempt, or mark paid based solely on webhook `status`. Verify captured state, local/provider order linkage, amount and INR before calling existing idempotent `capture`. Missing local mapping can be a retryable arrival race; persist malformed/unsupported-contract reasons separately from transient provider failures. Unsupported event types may be recorded/ignored without poison retries. Unknown financial outcomes remain reconcilable and visible.
+2. **Two worker lanes, one codebase.** Run `python -m app.worker --lane commerce` and `--lane media` from the same image. Commerce handles payment/reconciliation/refund/cart/email work; media handles transcodes and heavier derivatives. Select only the lane's kinds in SQL so commerce cannot reclaim a media job. Drain up to 25 fast jobs or a one-second scheduling budget before reconsidering maintenance/shutdown; claim just before execution, not 25 leases that expire while waiting. No mandatory two-second sleep when eligible work remains; idle polling uses bounded backoff, capped at two seconds. Individual provider calls retain timeouts and bounded concurrency. Track oldest payment work; slow email must not silently starve payment recovery. Add a small payment-priority rule with fairness for other commerce work if the queue drill demonstrates contention; no scheduler framework.
+3. **Lease ownership and shutdown.** Add a random claim token or increasing generation on each claim. Heartbeat/completion/failure updates require job ID + current token + processing state; an old claimant cannot finalize a replacement's work. DB time governs due/lease checks and renewal. Media renews leases during bounded subprocess execution, terminates the child on timeout/shutdown, and publishes output atomically. Commit no external work under database locks. Leases do not guarantee exactly-once delivery: preserve operation keys/provider idempotency and reconcile ambiguous money calls. Handle SIGTERM by stopping claims and safely finishing/returning leased work.
+4. **Expiry and indexes.** Run a bounded expiry pass on a separate DB-backed schedule, initially every 30 seconds, rather than per job. Continue draining expired rows in bounded batches without monopolizing the loop; under the agreed load release expired reservations within 60 seconds. Use the partial expiry index and five lookup indexes below in a new forward Alembic migration. Do not edit historical migrations or add duplicate indexes for existing unique prefixes. Review lane due/reclaim query plans; add a further index only if the representative plan/load evidence warrants it.
+5. **Transaction retries.** Introduce one small unit-of-work helper, used by DB-only write closures in existing services. Retry `40001` and `40P01` at most three total attempts with short capped jitter. Roll back and start a fresh transaction, including its authorization, reads and decisions. Preserve request/operation keys across attempts. Never decorate an entire checkout/refund service method if it also performs network I/O. Keep external calls outside the retry closure; persist intent/results separately. Non-retryable integrity/domain failures retain their current semantics; exhaustion maps to a retryable service-unavailable response with request ID and safe operator guidance. Log SQLSTATE/attempt/duration without customer data. Preserve consistent lock ordering; retry is a fallback, not a substitute.
+6. **DB clock.** Use server defaults and SQL expressions for new operational timestamps, due times, leases, session validity and reservation expiry. `now()` is transaction-start time; keep these transactions short, or use `statement_timestamp()` where statement time is required. Do not change business date display semantics. Tests can place timestamps before/after DB time or pass a service-only test cutoff; HTTP requests cannot override the clock. [PostgreSQL time semantics](https://www.postgresql.org/docs/18/functions-datetime.html)
+7. **Lazy identity.** Split optional actor resolution for reads from `ensure_actor` for mutations/login. No cookie or an expired cookie on `/session`, `/cart`, `/favourites` returns a stateless anonymous/empty response, creating no session/cart. Preserve existing authenticated/guest-cookie behavior. Serialize the first mutating action in the shared shop provider so simultaneous Add/Favourite actions share the returned cookie; subsequent owned refreshes are coalesced. Test expired cookies, reload, two simultaneous first actions and account merge. Do not turn a forged owner ID supplied by the client into an identity.
+8. **Abuse controls.** Keep actor limits; add a trusted-client-IP keyed budget for sensitive session/auth, checkout and support mutations, with short-lived pseudonymous keys and endpoint-specific limits. Only the configured proxy may supply forwarding headers; spoofed public headers must not select identity. Count rejected attempts durably: a rate-limit increment rolled back with a failed commerce transaction does not enforce a failed-attempt budget. Use short separate limiter transactions or edge counters. Return 429/Retry-After without logging raw secrets or IP history. Confirm same-cart concurrent requests reuse/reject an active order under the existing lock. Add a partial uniqueness constraint only if this invariant cannot otherwise be enforced; retain guest carts with genuinely different contents.
+9. **Safe no-op cleanup.** `cart.clear` uses an optional row result; absent cart returns success. A present cart is cleared only if its version matches the paid order snapshot. Never clear newly added items to repair an old job.
+10. **Retention.** Add `completed_at` for jobs and activity timestamps for guest carts; use indexed, resumable deletes/archives in batches (initially 500), with a singleton DB lease and bounded runtime. Schedule maintenance hourly from the existing worker, not a new scheduler service. Start with dry-run counts and make periods configurable. Proposed operational defaults below are design choices, not claims about statutory requirements. Observe autovacuum/dead tuples/size and analyze after meaningful churn; do not schedule routine `VACUUM FULL` or partitions without measured need.
+
+| Record class | Proposed policy and preservation rule |
+| --- | --- |
+| Sessions / rate limits | Purge sessions expired more than 24 hours ago; purge inactive rate-limit windows older than 24 hours. Neither is the financial idempotency ledger. |
+| Completed outbox jobs | Payload cleanup after 30 days from **completion**, not creation. Preserve a compact operation-key tombstone for the required replay horizon, or prove the durable domain constraint prevents re-enqueue side effects before deleting that key. Never purge pending/processing/failed/unknown work by age alone. |
+| Webhook events | Raw payload retention initially 90 days, then redact/archive only terminal, unreferenced events. Preserve event ID/body hash and financial dedupe references for the approved replay/business-record horizon. Replaying an old event after maintenance must not send money or confirmation twice. |
+| Abandoned guest carts | Remove items/cart after 30 days without meaningful activity, only with no live session, active checkout/reservation, pending clear/recovery work or account ownership. Coordinate row locks against new mutations. Account favourites are not abandoned-cart garbage. |
+| Audit / stock movements / financial records | No automatic deletion in this sprint without an approved retention policy, legal-hold handling and verified archive. Record volume and alert on growth; export older approved records with restore evidence. Keep order, refund, invoice and stock-reconciliation evidence intact. |
+
+**Code direction — migration and retry boundary (proposed):**
+
+```sql
+CREATE INDEX orders_pending_expiry_idx ON orders (expires_at)
+  WHERE status = 'pending';
+CREATE INDEX order_items_order_idx ON order_items (order_id);
+CREATE INDEX shipments_order_idx ON shipments (order_id);
+CREATE INDEX sessions_owner_idx ON sessions (owner_id);
+CREATE INDEX saved_items_product_idx ON saved_items (product_id);
+CREATE INDEX cart_items_variant_idx ON cart_items (variant_id);
+```
+
+On a populated live table, choose `CREATE INDEX CONCURRENTLY` through Alembic's autocommit block, with lock/time budgets, invalid-index detection and resumable failure instructions. On empty/test databases a normal build is sufficient. Test both schema upgrade and restart after a partial migration; do not silently accept an invalid index just because its name exists.
+
+```python
+from random import uniform
+from time import sleep
+from sqlalchemy.exc import DBAPIError
+
+def write_transaction(engine, operation):
+    """operation(conn) performs DB work only; commits exactly one attempt."""
+    for attempt in range(3):
+        try:
+            with engine.begin() as conn:
+                return operation(conn)
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) not in {"40001", "40P01"}:
+                raise
+            if attempt == 2:
+                raise  # Central mapping returns safe retryable exhaustion.
+            sleep(uniform(0.01, min(0.20, 0.025 * 2**attempt)))
+
+# Enqueue intent inside operation(conn). Provider I/O happens after commit.
+# Worker completion SQL must include the claim token:
+# UPDATE outbox_jobs SET status='done', completed_at=now(), lease_until=NULL
+# WHERE id=:id AND claim_token=:token AND status='processing';
+```
+
+The helper retries the complete transaction, including commit failures, as required by [PostgreSQL retry guidance](https://www.postgresql.org/docs/18/mvcc-serialization-failure-handling.html). Prefer this explicit boundary to a generic retry package/decorator spread across controllers. Inject the sleeper/random source only where deterministic retry tests need it.
+
+**Acceptance criteria:**
+
+- Documented payment and order event fixtures, duplicates and order-only compatibility recovery either settle the correct order once or enter a visible bounded recovery state. Invalid shape never produces repeated bare `KeyError`; amount/currency/order mismatch never pays an order. A provider timeout never causes an unverified second money operation.
+- With the media lane deliberately busy for 180 seconds, 100 no-I/O commerce jobs drain within 10 seconds on the documented local/CI runner; a ready payment recovery job begins within 2 seconds when the commerce lane is otherwise free. The measurement excludes provider latency and is separate from the staging load SLO. Mixed email/payment latency is recorded too. Media cannot claim commerce work or vice versa.
+- Forced worker death/reclaim cannot allow stale-token completion to overwrite the new claim. Retried execution preserves financial, stock and email idempotency. Missing-cart and changed-cart-version cleanup cases are successful safe no-ops.
+- Real PostgreSQL contention exercises the retry boundary: one controlled deadlock and one SERIALIZABLE-conflict scenario, with bounded attempts and exactly one committed business effect. A separate compact fault table covers exhaustion and non-retryable SQLSTATE handling. No provider call is inside the retried closure.
+- All six proposed indexes exist after fresh and populated upgrades. Representative plans and timings improve the intended query paths without requiring a forced index scan on small tables. DB clock tests tolerate a deliberately skewed Python clock. Expiry completes within the stated bound under the agreed load.
+- Repeated cookie-less read requests add **zero session/cart rows**; first mutation persists a usable session exactly once for the serialized client flow. Cookie rotation cannot reset the trusted-IP mutation limit, and spoofed forwarding headers do not bypass it. An outage in limiting has an explicit fail-closed policy for sensitive mutations, not unbounded writes.
+- Retention dry-run and apply show only eligible rows removed/redacted, preserved financial/audit/idempotency evidence and bounded transaction duration; a second run is safe. Late webhook replay, active checkout and a concurrent new cart mutation survive cleanup correctly.
+
+**Focused verification:** one parametrized webhook-shape/idempotency family; one scheduler/lease integration family with distinct blocking/stale-token cases; one DB retry family; one lifecycle cleanup family covering both safe deletion and preservation; extend current ownership/checkout cases for anonymous/IP behavior. Use real PostgreSQL for locks and atomicity, HTTPX transport fakes for provider outcomes, and no sleeps as race synchronization. New tests must name the new invariant they cover. Do not mirror each handler with identical happy-path tests or repeat the existing last-unit/capture-expiry suite in another file.
+
+**Exit strategy:** ship additive schema first, deploy token-aware lane workers together, then enable lazy identity/retention in stages. Demonstrate queue drain during video, reclaim after a killed worker, a recovered DB conflict, anonymous reads and retention dry-run/apply. Retention stays disabled until preservation/replay evidence passes. Rollback stops new claims, drains safely, restores compatible code/config and keeps additive columns/indexes; do not restart old unfenced workers alongside new claim semantics. Keep payment reconciliation available while checkout is paused. Failed acceptance keeps the story open.
+
+### S4.3 — Package, secure and measure the release without expanding the stack
+
+**Story:** As the owner, I can deploy a reproducible store, identify failures and recover it, while customers receive the same editorial experience with controlled data, memory, database and frontend costs.
+
+**Estimate / dependencies:** 32 engineering days. Platform/frontend/QA lead; integrates S4.1–S4.2. Covers A13–A25 plus edge enforcement for A11. Requires hosting/storage/provider access and merchant invoice inputs for final staging/production proof. Existing S3.3 performance, restore and visual targets are reused, not tested in parallel duplicate suites.
+
+**Implementation work packages:**
+
+1. **A real deployment path.** Add a multi-stage Node Dockerfile and one shared Python/FFmpeg image, non-root users, health checks, `.dockerignore`, graceful termination and immutable release tags. Extend Compose (or one deployment override) with web, API, commerce worker, media worker and **nginx** as the chosen same-origin edge; update the misleading Caddy comment. Production PostgreSQL and object storage are configured externally. Keep development and staging/production configuration separate; never ship default DB credentials, development login or development payment mode into production. Document image build, one-shot migration, deployment and rollback commands. Use provider-injected secrets or mounted secret files, excluded from build context/logs; no new secrets-manager framework. Supply one reproducible host bootstrap/deploy script or equivalent provider manifest. A separate Terraform platform is unnecessary until a target requires it.
+2. **Transport and abuse policy.** Commit and test nginx `/api`, static/media and Next routing, streaming/time/body limits, trusted forwarding-header handling and TLS termination configuration. Use nginx's existing request-limit module for per-IP and server-wide sensitive endpoint budgets; no custom Caddy module. Separate webhook ingress from customer/session limits so payment recovery is not throttled by a browser flood; retain signature/body checks and bounded webhook capacity. Apply HSTS on production HTTPS only, Referrer-Policy, frame protection, Permissions-Policy and a CSP covering the actual Next scripts, approved storage, Razorpay checkout frames/scripts/connect destinations and local fonts. Build the allowlist from staging traffic/provider docs; start Report-Only and resolve violations before enforcing. Do not disable checkout or add a blanket wildcard to make the policy pass. Verify 4xx/5xx as well as 2xx. [nginx request limiting](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
+3. **Portable controlled media.** Add a small storage protocol/adapter using existing HTTPX against the selected Supabase/object-storage REST interface, rather than an additional SDK. Jobs store bucket/object keys, rendition version and resource ID, never host paths. Signed temporary upload intent must be permission checked, size/type bounded, short-lived and tied to one asset; validate the stored object's real bytes/dimensions before it becomes publishable. Alternatively spool bounded chunks to a temporary file before object upload; never allocate a second full video buffer. Media workers download to bounded scratch storage, validate/decode/transcode with limits, upload immutable derivatives and mark ready only after success. Clean orphan/temp objects after a grace period. Production startup rejects local storage mode; migrate existing local assets with checksums and a reversible reference map before switching.
+4. **Approved image references and responsive rendering.** Reject arbitrary external URLs at authoring and render time; accept owned media IDs/approved same-origin references and explicitly controlled storage origins. Validate legacy catalogue/campaign URLs before rollout; flag exceptions for operator remediation rather than automatically downloading arbitrary URLs. Prevent traversal and optimizer access to internal hosts/redirects. Add one `ProductImage`/`EditorialImage` wrapper around existing Next image facilities or the controlled derivative `srcset` pipeline—choose one optimization path. Preserve cutout containment, model/editorial crops, intrinsic aspect ratio, View 1 centered frame, all gallery templates and pinned overlays. Supply correct `sizes` for 1/4/6-column modes and mobile, reserve image dimensions, preload only the active LCP image, lazy-load below-fold assets, and keep video visibility/reduced-motion behavior. Convert placeholders only through the controlled pipeline; real product photography remains a merchant input.
+5. **Public caching with bounded freshness.** Cache public catalogue/product/campaign DTOs initially for 60 seconds with keys including department, query/filter and publication revision. Keep bag, session, favourites, account, admin and checkout `no-store`; never embed private actor data in public cached responses. Publish/edit/archive/campaign activation enqueues authenticated cache invalidation, with TTL as a fallback if delivery fails. Document multi-instance cache behavior; one process-local tag call is not a global purge. Coordinate HTML caching with CSP: per-request nonces require dynamic HTML, so cache public data/renditions even if HTML remains dynamic. Do not claim cached HTML and per-request nonces without a demonstrated compatible implementation. Checkout revalidates current stock/price regardless of cached display. Tests must show stock changes/archives cannot be bought using stale UI state.
+6. **Explicit database resource envelope.** Make pool settings and SQL timeouts per-role configurable. Starting staging envelope: API pool 5 + overflow 2, commerce worker 2 + 0, media worker 1 + 0 = **10 maximum direct connections** for one process of each. Count every Uvicorn process/replica, maintenance/migrations, test tooling and emergency headroom; leave at least 20% of the provider's usable budget free. Initial API pool wait 5s, statement timeout 10s, lock timeout 2s, idle-in-transaction timeout 30s, recycle 1800s; measure and adjust by workload. Long migrations/maintenance have separate bounded settings, not globally disabled limits. Keep network/FFmpeg out of DB transactions. If the replica budget exceeds the allocated DB limit, use the host's managed pooler/PgBouncer transaction mode and test driver prepared-statement/session-state compatibility; do not add a pooler container reflexively.
+7. **Invoices and tax configuration.** Collect the boutique's registration/invoice requirements, approved product classifications/rates, origin/destination treatment, inclusive/exclusive pricing, shipping tax and rounding rules. Implement a small server-side policy module/interface, versioned configuration, immutable per-line tax snapshots, invoice identifiers/document and credit/refund linkage. Use integer paise with explicit rounding and totals reconciliation. Provide operator fixtures covering apparel and Home; validate results with the merchant's adviser. No guessed tax rates or fabricated registration details. Configuration missing or unapproved means live checkout remains disabled. A generic tax SaaS/ERP integration is not required unless these business rules demand it.
+8. **Small observability surface.** Add JSON logs using Python stdlib and request/job/operation correlation, route template, status, duration, retry/SQLSTATE and redaction. Measure request count/error rate/latency, pool saturation, worker heartbeat, oldest queued payment/media work, failed/unknown jobs, retention lag and invariant failures. Export through the chosen host's logging/metric facilities or one protected metrics endpoint; do not expose customer/payment payloads or high-cardinality IDs as metric labels. `/api/live` is cheap and DB-independent; `/api/ready` checks DB with a short timeout, preserving `/api/health` compatibility. Configure real alerts for sustained 5xx, unavailable workers, overdue payments, DB exhaustion and financial invariants, with recipients/runbook links and a drill. Full distributed tracing/Sentry/Prometheus is optional, not a new required stack. Investigate why telemetry is transitive before removing anything from the lock.
+9. **Frontend recovery, budget and accessibility.** Add route-group loading/retry states where data waits/fails (catalogue/PDP and admin), without duplicating every route's component. Keep bag/checkout input during recoverable failures. Measure production build chunks and set a reviewed byte budget per critical route: initially no more than 10% compressed first-load JS growth above the recorded baseline unless explicitly justified by a required feature; no new frontend runtime library for this sprint. Use the existing axe dependency on menu/dialog, listing, PDP variant chooser, bag/checkout and invalid admin form states. Manually review keyboard/focus, screen-reader errors, zoom/short screens and reduced motion. Preserve ZR-01–12 and V01–V06 with the existing recording/screenshot matrix, including actual transitions rather than frozen screenshots only.
+10. **CI and operational proof.** Keep the existing fresh-DB Alembic upgrade and add a populated previous-revision → head migration drill, with old/new application compatibility checks and invalid/concurrent-index recovery. Build both images and smoke the composed routes/worker lanes. Produce a hash-verified Python lock and use `pip --require-hashes`; retain `npm ci`. Add automated dependency updates and `pip-audit`/npm advisory scanning with severity/exploitability triage and dated exceptions; audit/build tools are development-only dependencies. Use diagnostic branch coverage for changed commerce/worker code to identify untested paths; gate named critical branches/invariants, not a repository-wide vanity percentage. Add one deterministic property-style sequence check for reserve/release/capture/refund conservation using existing pytest/seeded stdlib generation; adopt Hypothesis only if shrinking/generation provides demonstrated value.
+11. **Backup, rollback and sandbox matrix.** Commit a runbook for deploy/migrate, pause checkout, queue inspection/safe replay, unknown payment/refund reconciliation, credential rotation, restore and forward repair. Configure managed DB PITR/backups and storage versioning/backup lifecycle; automate verification and alerts, and restore DB plus media/config into isolation. Reuse RPO ≤15min/RTO ≤4h targets from S3.3; daily `pg_dump` alone does not meet that RPO. Reconcile payment state before reopening after restore. Run real Razorpay test-mode capture/duplicate/late event/refund, Supabase OTP/MFA/session revocation/storage, and email delivery checks in isolated staging, recording outcomes without secrets. An external outage or unavailable credentials is a named failed/pending gate, never substituted with a development mock and marked passed.
+
+**Code direction — narrow resource and storage boundaries (proposed):**
+
+```python
+from typing import BinaryIO, Protocol
+from sqlalchemy import create_engine
+
+class MediaStore(Protocol):
+    def put(self, key: str, source: BinaryIO, content_type: str) -> None: ...
+    def download(self, key: str, destination: BinaryIO) -> None: ...
+    def public_url(self, key: str) -> str: ...
+
+# Direct PostgreSQL connection example; validate options with a managed pooler.
+def api_engine(url: str):
+    return create_engine(
+        url, pool_size=5, max_overflow=2, pool_timeout=5,
+        pool_recycle=1800, pool_pre_ping=True,
+        connect_args={"options": (
+            "-c statement_timeout=10000 -c lock_timeout=2000 "
+            "-c idle_in_transaction_session_timeout=30000"
+        )},
+    )
+
+# Media payload example (no secrets, signed URLs or absolute filesystem paths):
+# {"asset_id": "…", "source_key": "originals/…", "rendition_version": 1}
+# Temporary filenames belong to the media adapter's execution context only.
+```
+
+```nginx
+# Direction only: complete TLS/routing/header configuration is a deliverable.
+# http context; client address must come from the configured trusted proxy chain.
+limit_req_zone $binary_remote_addr zone=checkout_ip:10m rate=10r/m;
+limit_req_zone $server_name zone=checkout_global:1m rate=20r/s;
+
+# server context; quotation/auth/support routes need their own explicit budgets.
+location = /api/checkout/attempts {
+    limit_req zone=checkout_ip burst=5 nodelay;
+    limit_req zone=checkout_global burst=20 nodelay;
+    limit_req_status 429;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass http://api:8000;
+}
+# Give webhook ingress its own bounded policy; never apply a browser actor limit.
+```
+
+**Acceptance criteria:**
+
+- A clean machine/CI builds and starts the documented deployment, runs forward migrations once, and routes store/API/assets correctly. Production config rejects development auth/payment and unsupported local storage. Secrets are absent from images, source, browser bundles and logs. Image rollback with the additive schema and worker claim version is rehearsed.
+- Security-header checks cover store/API/errors; enforced CSP supports campaign video, Next hydration and real test-mode checkout. Cookie rotation, forged forwarding headers and invalid-origin mutations cannot bypass the sensitive endpoint limits. Over-limit responses are 429; normal provider retries still reach the durable inbox.
+- An asset uploaded through one API instance is processed on another worker host and displayed from approved storage with no shared local disk. Oversized/invalid/unauthorized uploads fail before publication; recorded memory/concurrency bounds hold. Arbitrary external product URLs and optimizer probes cannot fetch internal resources. Legacy media migration has a verified rollback map.
+- Public cache hit/miss and invalidation are measured; publication changes reach public readers within 60 seconds even when invalidation delivery fails. Private state is never shared between visitors. Responsive downloads are smaller on mobile and View 3 without changed crops or layout shifts; repeat the original visual/motion checkpoints after the wrapper change.
+- Reuse the S3.3 **10k products/100k variants**, 50 public requests/sec for 15 minutes, and 20-concurrent-checkout drills. Add a 60-minute staging soak at a documented sustainable mixed load, including video, payment recovery and retention. Meet p95 API read <400ms, checkout DB work <800ms excluding provider latency, <1% unexpected failures, zero financial/inventory violations, and no sustained queue/pool/memory growth. Record hardware, provider latency, cache warmth and resource limits; no performance claims based on static inspection.
+- Record the frontend production bundle baseline/budget and repeated mobile lab LCP/CLS results against S3.3 targets; INP/field p75 requires real traffic and is not fabricated from CI. All distinct accessibility states pass serious/critical axe checks and manual critical flows. Existing visual fidelity gates remain blocking.
+- Invoice/tax fixtures reconcile line and order totals and refund/credit references using approved configuration. Unapproved merchant inputs block live checkout. Health checks distinguish a living process from DB readiness; an injected failure triggers a real configured alert with the correct runbook.
+- Fresh and populated migrations, hash-verified installs, vulnerability triage, image builds and the focused suite pass in CI. Real-provider staging matrix, backup/media restore, payment reconciliation and rollback evidence are attached. Pending external gates remain explicitly open in implementation status.
+
+**Focused verification and exit strategy:** use the matrix below as the single home for Sprint 4 evidence. Release to staging after S4.1/S4.2 pass, then run deployment/security/provider/performance/restore drills. Disable new checkout on financial invariant failure, retain webhook/reconciliation workers, roll back the relevant application/config/image and invalidate affected caches; never repair money by deleting rows or blindly replaying an unknown operation. Preserve old media until migrated references and backup restoration are verified. Production activation occurs only when original release gates plus Sprint 4 gates are evidenced. A runbook without an executed drill is not completion.
+
+### 9.2 Lean verification map and sequencing
+
+This map extends §4.6 and the current 21-case/four-journey baseline. Rows are **risk families, not test quotas or additional stories**. Reuse fixtures, provider transports, permission partitions and existing browser journeys. Every new test must point to an uncovered invariant below; reject near-duplicate cases, all-product viewport matrices and tests that simply restate constants. A missing branch should prompt a useful boundary test, not generated filler to raise coverage.
+
+| Risk family / owner | One evidence home | Distinct required boundaries |
+| --- | --- | --- |
+| Operator guidance and errors / S4.1 | Existing admin browser journey + one manual operator walkthrough | Nested/top-level/unbound errors; focus/input preservation; stale revision; persona and revision meanings. |
+| Webhook contract / S4.2 | Existing payment integration suite, small fixture table | Documented event shapes; order-only compatibility; malformed event; duplicate; provider mismatch/timeout; dedupe after retention. |
+| Worker scheduling and ownership / S4.2 | PostgreSQL worker integration tests + throughput drill | Media isolation, draining, reclaim/fencing, graceful shutdown, missing/changed cart; do not duplicate each handler happy path. |
+| Transaction recovery / S4.2 | Real two-connection contention fixtures plus a SQLSTATE table | Deadlock/serialization rollback/retry; bounded exhaustion; no retry on permanent failure; no duplicate external effect. |
+| Lifecycle and anonymous abuse / S4.2 | DB/HTTP integration suite | Zero-write anonymous GETs, first mutation race, trusted IP/cookie rotation, active-state retention exclusions and safe replay. |
+| Deployment/security/media / S4.3 | Container smoke + focused HTTP checks | Headers on errors, valid checkout CSP, secret/config guards, upload bounds, cross-host media, image-origin restrictions. |
+| Cache/frontend/a11y / S4.3 | Existing browser/visual matrix, build report | Private isolation, publish/archive freshness, responsive bytes, loading/error recovery, real motion and distinct accessible states. |
+| Migrations/supply chain / S4.3 | Existing CI extended | Fresh and populated upgrades, interrupted index recovery, hashed lock, advisory review, both image builds. |
+| Conservation/property behavior / S4.3 | One seeded state-sequence test in existing commerce suite | Reservations/nonnegative stock, capture/expiry/duplicate transitions and refund limits; report failing seed and minimal observed sequence. |
+| Staging operations / S4.3 | One release evidence bundle | Provider matrix, load/soak, alert, DB/media restore, rollback and invoice fixtures; no duplicate per-PR live-money tests. |
+
+**Execution order within Sprint 4:** days 1–2 confirm fixtures, baseline resource/bundle measurements, merchant inputs and hosting target. Start form/README work, additive indexes/claim columns and container/storage contracts in parallel. Days 3–10 implement vertical slices, then integrate lane workers, clock/retry boundaries, lazy identity, retention, media/caching and transport controls. Days 11–13 run the failure/performance/provider/restore drills and fix failures. Days 14–15 repeat only failed/affected gates, demo operator tasks and release to staging. If the 68-day provisional scope or an external dependency does not fit, re-estimate duration and leave the affected gate open; do not call a partial production release complete.
+
+**Completion record:** update `IMPLEMENTATION_STATUS.md` with A01–A26 disposition, named checks, deployment revision, measured results and unresolved external inputs. Update README instructions only once they describe working behavior. This planning revision itself changes no application behavior and does not represent those future checks as passed.

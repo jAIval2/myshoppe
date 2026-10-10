@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from datetime import timedelta
 import httpx
-from sqlalchemy import select, update, delete
+from sqlalchemy import BigInteger, case, func, select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from . import db
 from .errors import DomainError, require
@@ -70,6 +70,25 @@ def rate_limit(conn, key, maximum=20):
     require(count <= maximum, "RATE_LIMIT", "Please wait a minute before trying again.", 429)
 
 
+def consume_ip_limit(engine, key, maximum):
+    """Commit rejected attempts too; callers pass an HMAC, never a raw client address."""
+    window = func.floor(func.extract("epoch", func.now()) / 60).cast(BigInteger)
+    stmt = insert(db.limits).values(key=key, window=window, count=1)
+    with engine.begin() as conn:
+        count = conn.execute(
+            stmt.on_conflict_do_update(
+                index_elements=[db.limits.c.key],
+                set_={
+                    "window": window,
+                    "count": case(
+                        (db.limits.c.window == window, db.limits.c.count + 1), else_=1
+                    ),
+                },
+            ).returning(db.limits.c.count)
+        ).scalar_one()
+    return count <= maximum
+
+
 class IdentityService:
     def __init__(self, engine):
         self.engine = engine
@@ -82,7 +101,7 @@ class IdentityService:
                 c.execute(
                     select(db.sessions).where(
                         db.sessions.c.token_hash == hashlib.sha256(token.encode()).hexdigest(),
-                        db.sessions.c.expires_at > db.now(),
+                        db.sessions.c.expires_at > func.now(),
                     )
                 )
                 .mappings()
@@ -90,6 +109,7 @@ class IdentityService:
             )
             return Actor(row["owner_id"], row["user_id"], row["assurance"]) if row else None
 
+    @db.retry_transient_write
     def session(self, actor=None):
         token = secrets.token_urlsafe(32)
         actor = actor or Actor(secrets.token_hex(24))
@@ -100,7 +120,7 @@ class IdentityService:
                     owner_id=actor.owner_id,
                     user_id=actor.user_id,
                     assurance=actor.assurance,
-                    expires_at=db.now()
+                    expires_at=func.now()
                     + (
                         timedelta(minutes=30)
                         if actor.assurance == "aal2" and settings.environment == "production"
@@ -126,6 +146,7 @@ class IdentityService:
             "payment_mode": settings.payment_mode,
         }
 
+    @db.retry_transient_write
     def login(self, old_actor, email, name, assurance="aal1", provider_id=None):
         with self.engine.begin() as c:
             # Merge is serialized by guest cart; consuming guest sessions prevents replay.
@@ -178,10 +199,13 @@ class IdentityService:
                 )
                 c.execute(delete(db.sessions).where(db.sessions.c.owner_id == old_actor.owner_id))
             c.execute(
-                update(db.carts).where(db.carts.c.owner_id == uid).values(version=db.carts.c.version + 1)
+                update(db.carts)
+                .where(db.carts.c.owner_id == uid)
+                .values(version=db.carts.c.version + 1, updated_at=func.now())
             )
         return self.session(Actor(uid, uid, assurance))
 
+    @db.retry_transient_write
     def logout(self, token):
         with self.engine.begin() as c:
             c.execute(

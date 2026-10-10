@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response, UploadFile
 from starlette.concurrency import run_in_threadpool
 from pydantic import Field
-from .dependencies import current_actor, identity, payments, set_session, get_operations
+from .dependencies import current_actor, ensure_actor, identity, payments, set_session, get_operations
 from .identity import Actor
 from .errors import require
 from .schemas import Command, SupportInput
@@ -10,6 +10,7 @@ from .features.operations.interfaces import Operations
 
 router = APIRouter()
 User = Annotated[Actor, Depends(current_actor)]
+MutationUser = Annotated[Actor, Depends(ensure_actor)]
 Ops = Annotated[Operations, Depends(get_operations)]
 
 
@@ -20,6 +21,11 @@ class Login(Command):
 
 @router.get("/api/session")
 def me(actor: User):
+    return identity.me(actor)
+
+
+@router.post("/api/session")
+def establish_session(actor: MutationUser):
     return identity.me(actor)
 
 
@@ -95,7 +101,7 @@ async def webhook(request: Request):
 
 
 @router.post("/api/support")
-def support(command: SupportInput, actor: User, service: Ops):
+def support(command: SupportInput, actor: MutationUser, service: Ops):
     return service.submit_support(actor, command)
 
 
@@ -106,7 +112,7 @@ def support_list(actor: User, service: Ops):
 
 @router.post("/api/admin/media")
 def upload(file: UploadFile, actor: User, service: Ops):
-    return service.image(actor, file.file.read(10_000_001))
+    return service.image(actor, file.file)
 
 
 class Pause(Command):
@@ -120,7 +126,7 @@ def pause(command: Pause, actor: User, service: Ops):
 
 @router.post("/api/admin/media/video")
 def upload_video(file: UploadFile, actor: User, service: Ops):
-    return service.video(actor, file.file.read(80_000_001))
+    return service.video(actor, file.file)
 
 
 @router.get("/api/admin/media/jobs/{key}")

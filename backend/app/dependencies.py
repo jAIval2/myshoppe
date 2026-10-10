@@ -1,6 +1,7 @@
 from fastapi import Request, Response
+import secrets
 from . import db
-from .identity import IdentityService
+from .identity import Actor, IdentityService
 from .settings import settings
 from .features.catalog.service import CatalogService
 from .features.checkout.service import CheckoutService
@@ -30,11 +31,18 @@ def set_session(response, token):
     )
 
 
-def current_actor(request: Request, response: Response):
+def current_actor(request: Request):
     actor = identity.resolve(request.cookies.get("shop_session"))
-    if not actor:
-        token, actor = identity.session()
-        set_session(response, token)
+    # Anonymous reads use an ephemeral owner key and never create rows or cookies.
+    return actor or Actor(secrets.token_hex(24))
+
+
+def ensure_actor(request: Request, response: Response):
+    actor = identity.resolve(request.cookies.get("shop_session"))
+    if actor:
+        return actor
+    token, actor = identity.session()
+    set_session(response, token)
     return actor
 
 

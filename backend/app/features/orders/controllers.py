@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
-from app.dependencies import current_actor, get_orders
+from app.dependencies import current_actor, ensure_actor, get_orders
 from app.identity import Actor
 from app.schemas import RefundInput, ShipmentInput, ReturnInput, Command
 from .interfaces import OrderCommands
@@ -8,6 +8,7 @@ from .interfaces import OrderCommands
 router = APIRouter()
 Service = Annotated[OrderCommands, Depends(get_orders)]
 User = Annotated[Actor, Depends(current_actor)]
+MutationUser = Annotated[Actor, Depends(ensure_actor)]
 
 
 @router.get("/api/orders")
@@ -21,7 +22,7 @@ def order(order_id: str, service: Service, actor: User):
 
 
 @router.post("/api/orders/{order_id}/returns")
-def request_return(order_id: str, command: ReturnInput, service: Service, actor: User):
+def request_return(order_id: str, command: ReturnInput, service: Service, actor: MutationUser):
     return service.request_return(actor, order_id, command)
 
 

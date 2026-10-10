@@ -35,7 +35,10 @@ jobs:
       - run: npm ci
         working-directory: web
       - run: PGPASSWORD=myshoppe createdb -h 127.0.0.1 -p 55432 -U myshoppe myshoppe_test
+      - run: PGPASSWORD=myshoppe createdb -h 127.0.0.1 -p 55432 -U myshoppe myshoppe_upgrade
       - run: ../.venv/bin/alembic upgrade head
+        working-directory: backend
+      - run: DATABASE_URL=postgresql+psycopg://myshoppe:myshoppe@127.0.0.1:55432/myshoppe_upgrade ../.venv/bin/alembic upgrade 002_delivery_time && DATABASE_URL=postgresql+psycopg://myshoppe:myshoppe@127.0.0.1:55432/myshoppe_upgrade ../.venv/bin/python -m app.seed && DATABASE_URL=postgresql+psycopg://myshoppe:myshoppe@127.0.0.1:55432/myshoppe_upgrade ../.venv/bin/alembic upgrade head
         working-directory: backend
       - run: ../.venv/bin/python -m app.seed
         working-directory: backend
@@ -44,7 +47,9 @@ jobs:
         working-directory: backend
       - run: ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/myshoppe-api.log 2>&1 &
         working-directory: backend
-      - run: ../.venv/bin/python -m app.worker > /tmp/myshoppe-worker.log 2>&1 &
+      - run: DB_ROLE=commerce ../.venv/bin/python -m app.worker --lane commerce > /tmp/myshoppe-worker.log 2>&1 &
+        working-directory: backend
+      - run: DB_ROLE=media ../.venv/bin/python -m app.worker --lane media > /tmp/myshoppe-media-worker.log 2>&1 &
         working-directory: backend
       - run: curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8000/api/health
       - run: npm run typecheck && npm run build
@@ -56,6 +61,11 @@ jobs:
       - run: curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://localhost:3000
       - run: npm test
         working-directory: web
+      - run: .venv/bin/pip install pip-audit && .venv/bin/pip-audit -r backend/requirements.lock
+      - run: npm audit --audit-level=high
+        working-directory: web
+      - run: docker build -f Dockerfile.backend .
+      - run: docker build -f Dockerfile.web --build-arg API_URL=http://api:8000 .
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -1,12 +1,15 @@
 import io
 import secrets
+import shutil
 from pathlib import Path
 from PIL import Image, ImageOps
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from app import db
 from app.errors import require
 from app.identity import audit, rate_limit, require_permission
+from app.settings import settings
+from app.adapters.storage import storage
 
 MEDIA_ROOT = Path(__file__).resolve().parents[4] / "web/public/uploads"
 
@@ -15,6 +18,7 @@ class OperationsService:
     def __init__(self, engine):
         self.engine = engine
 
+    @db.retry_transient_write
     def submit_support(self, actor, command):
         with self.engine.begin() as c:
             rate_limit(c, f"support:{actor.owner_id}", 5)
@@ -38,22 +42,39 @@ class OperationsService:
     def image(self, actor, raw):
         with self.engine.connect() as c:
             require_permission(c, actor, "catalog.write")
-        require(len(raw) <= 10_000_000, "MEDIA_TOO_LARGE", "Images must be smaller than 10 MB.", 413)
+        stream = io.BytesIO(raw) if isinstance(raw, bytes) else raw
+        stream.seek(0, 2)
+        size = stream.tell()
+        stream.seek(0)
+        require(size <= 10_000_000, "MEDIA_TOO_LARGE", "Images must be smaller than 10 MB.", 413)
         Image.MAX_IMAGE_PIXELS = 25_000_000
         try:
-            image = Image.open(io.BytesIO(raw))
-            require(
-                image.width * image.height <= 25_000_000, "IMAGE_DIMENSIONS", "Image has too many pixels", 422
-            )
-            image = ImageOps.exif_transpose(image).convert("RGB")
+            with Image.open(stream) as uploaded:
+                require(
+                    uploaded.width * uploaded.height <= 25_000_000,
+                    "IMAGE_DIMENSIONS",
+                    "Image has too many pixels",
+                    422,
+                )
+                image = ImageOps.exif_transpose(uploaded).convert("RGB")
             image.thumbnail((2200, 2200))
         except (OSError, Image.DecompressionBombError):
             require(False, "INVALID_IMAGE", "Use a valid JPEG, PNG or WebP image.", 422)
-        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
         name = secrets.token_hex(16) + ".webp"
-        image.save(MEDIA_ROOT / name, "WEBP", quality=85)
-        return {"src": f"/uploads/{name}", "width": image.width, "height": image.height}
+        if settings.media_storage_mode == "object":
+            output = io.BytesIO()
+            image.save(output, "WEBP", quality=85)
+            output.seek(0, 2)
+            size = output.tell()
+            output.seek(0)
+            src = storage().put(f"products/{name}", output, size, "image/webp")
+        else:
+            MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            image.save(MEDIA_ROOT / name, "WEBP", quality=85)
+            src = f"/uploads/{name}"
+        return {"src": src, "width": image.width, "height": image.height}
 
+    @db.retry_transient_write
     def pause(self, actor, paused):
         with self.engine.begin() as c:
             require_permission(c, actor, "staff.manage")
@@ -73,24 +94,42 @@ class OperationsService:
     def video(self, actor, raw):
         with self.engine.connect() as c:
             require_permission(c, actor, "content.write")
-        require(len(raw) <= 80_000_000, "MEDIA_TOO_LARGE", "Video must be smaller than 80 MB", 413)
-        require(len(raw) > 16, "INVALID_VIDEO", "Video is empty", 422)
+        stream = io.BytesIO(raw) if isinstance(raw, bytes) else raw
+        stream.seek(0, 2)
+        size = stream.tell()
+        stream.seek(0)
+        require(size <= 80_000_000, "MEDIA_TOO_LARGE", "Video must be smaller than 80 MB", 413)
+        require(size > 16, "INVALID_VIDEO", "Video is empty", 422)
         from app.features.checkout.service import enqueue
 
         name = secrets.token_hex(16)
-        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-        private = MEDIA_ROOT.parents[2] / ".local/media-sources"
-        private.mkdir(parents=True, exist_ok=True)
-        source = private / (name + ".source")
-        source.write_bytes(raw)
+        if settings.media_storage_mode == "object":
+            source_key = f"video-sources/{name}.source"
+            storage().put(source_key, stream, size, "application/octet-stream")
+            payload = {
+                "source_key": source_key,
+                "destination_key": f"campaign/{name}.mp4",
+                "poster_key": f"campaign/{name}.jpg",
+            }
+            src = storage().public_url(payload["destination_key"])
+            poster = storage().public_url(payload["poster_key"])
+        else:
+            MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            private = MEDIA_ROOT.parents[2] / ".local/media-sources"
+            private.mkdir(parents=True, exist_ok=True)
+            source = private / (name + ".source")
+            with source.open("xb") as destination:
+                shutil.copyfileobj(stream, destination, 1024 * 1024)
+            payload = {"source": str(source), "destination": str(MEDIA_ROOT / (name + ".mp4"))}
+            src, poster = f"/uploads/{name}.mp4", f"/uploads/{name}.jpg"
         with self.engine.begin() as c:
             enqueue(
                 c,
                 f"video:{name}",
                 "media.video",
-                {"source": str(source), "destination": str(MEDIA_ROOT / (name + ".mp4"))},
+                payload,
             )
-        return {"job_key": f"video:{name}", "src": f"/uploads/{name}.mp4", "poster": f"/uploads/{name}.jpg"}
+        return {"job_key": f"video:{name}", "src": src, "poster": poster}
 
     def job(self, actor, key):
         with self.engine.connect() as c:
@@ -105,6 +144,7 @@ class OperationsService:
             require(row, "NOT_FOUND", "Job not found", 404)
             return dict(row)
 
+    @db.retry_transient_write
     def retry(self, actor, job_id):
         with self.engine.begin() as c:
             require_permission(c, actor, "staff.manage")
@@ -128,7 +168,7 @@ class OperationsService:
             c.execute(
                 update(db.jobs)
                 .where(db.jobs.c.id == job_id)
-                .values(status="pending", attempts=0, due_at=db.now(), lease_until=None)
+                .values(status="pending", attempts=0, due_at=func.now(), lease_until=None, claim_token=None)
             )
             audit(c, actor, "job.retry", job_id)
         return {"ok": True}

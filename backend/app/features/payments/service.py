@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import timedelta
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from app import db
 from app.errors import require
 from app.settings import settings
@@ -24,8 +24,9 @@ class PaymentService:
                 .first()
             )
             require(order, "NOT_FOUND", "Order not found", 404)
+            unexpired = c.execute(select(func.now() < order["expires_at"])).scalar_one()
             require(
-                order["status"] == "pending" and order["expires_at"] > db.now(),
+                order["status"] == "pending" and unexpired,
                 "CHECKOUT_EXPIRED",
                 "This checkout is no longer active.",
             )
@@ -49,7 +50,7 @@ class PaymentService:
             c.execute(
                 update(db.jobs)
                 .where(db.jobs.c.operation_key == f"reconcile:{order_id}")
-                .values(due_at=db.now() + timedelta(seconds=45))
+                .values(due_at=func.now() + timedelta(seconds=45))
             )
         # Durable marker precedes network. Never blindly retry a timed-out creation.
         result = self.gateway.create_order(order)
@@ -129,6 +130,7 @@ class PaymentService:
         self.capture(order_id, f"dev_{order_id}", order["total"])
         return {"ok": True, "development": True}
 
+    @db.retry_transient_write
     def ingest(self, raw, signature, event_id):
         self.gateway.verify(raw, signature)
         require(event_id and len(event_id) <= 150, "INVALID_EVENT", "Event ID is required", 400)
@@ -150,6 +152,7 @@ class PaymentService:
                 require(old == digest, "EVENT_CONFLICT", "Event payload changed")
             enqueue(c, f"webhook:{event_id}", "payment.event", {"event_id": event_id})
 
+    @db.retry_transient_write
     def capture(self, order_id, payment_id, amount, currency="INR", provider_order_id=None):
         with self.engine.begin() as c:
             order = (
@@ -176,7 +179,8 @@ class PaymentService:
                 "DUPLICATE_CAPTURE",
                 "Additional capture requires operator reconciliation.",
             )
-            active = order["status"] == "pending" and order["expires_at"] > db.now()
+            unexpired = c.execute(select(func.now() < order["expires_at"])).scalar_one()
+            active = order["status"] == "pending" and unexpired
             items = (
                 c.execute(
                     select(db.order_items)
@@ -237,16 +241,17 @@ class PaymentService:
                 ).scalar_one()
                 enqueue(c, f"refund:{rid}", "payment.refund", {"refund_id": rid})
 
-    def expire(self, at=None):
-        at = at or db.now()
+    @db.retry_transient_write
+    def expire(self, at=None, limit=100):
         with self.engine.begin() as c:
+            expiry = at if at is not None else func.now()
             orders = (
                 c.execute(
                     select(db.orders)
-                    .where(db.orders.c.status == "pending", db.orders.c.expires_at <= at)
-                    .order_by(db.orders.c.id)
+                    .where(db.orders.c.status == "pending", db.orders.c.expires_at <= expiry)
+                    .order_by(db.orders.c.expires_at)
                     .with_for_update(skip_locked=True)
-                    .limit(100)
+                    .limit(limit)
                 )
                 .mappings()
                 .all()

@@ -1,0 +1,115 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@postgres:5432/myshoppe
+      PUBLIC_ORIGIN: http://localhost:8080
+      DEV_LOGIN_ENABLED: "true"
+      PAYMENT_MODE: development
+      DB_ROLE: api
+      DB_POOL_SIZE: 5
+      DB_POOL_OVERFLOW: 2
+      MEDIA_STORAGE_MODE: local
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - media_uploads:/srv/myshoppe/web/public/uploads
+      - media_sources:/srv/myshoppe/.local/media-sources
+    expose: ["8000"]
+    restart: unless-stopped
+
+  commerce-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@postgres:5432/myshoppe
+      PUBLIC_ORIGIN: http://localhost:8080
+      DEV_LOGIN_ENABLED: "true"
+      PAYMENT_MODE: development
+      DB_ROLE: commerce
+      DB_POOL_SIZE: 2
+      DB_POOL_OVERFLOW: 0
+    command: ["python", "-m", "app.worker", "--lane", "commerce"]
+    working_dir: /srv/myshoppe/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  media-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@postgres:5432/myshoppe
+      PUBLIC_ORIGIN: http://localhost:8080
+      DEV_LOGIN_ENABLED: "true"
+      PAYMENT_MODE: development
+      DB_ROLE: media
+      DB_POOL_SIZE: 1
+      DB_POOL_OVERFLOW: 0
+    command: ["python", "-m", "app.worker", "--lane", "media"]
+    working_dir: /srv/myshoppe/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - media_uploads:/srv/myshoppe/web/public/uploads
+      - media_sources:/srv/myshoppe/.local/media-sources
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        API_URL: http://api:8000
+    environment:
+      API_URL: http://api:8000
+      PUBLIC_ORIGIN: http://localhost:8080
+    depends_on:
+      api:
+        condition: service_started
+    expose: ["3000"]
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.28-alpine
+    ports: ["127.0.0.1:8080:80"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [api, web]
+    restart: unless-stopped
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["tools"]
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://myshoppe:myshoppe@postgres:5432/myshoppe
+      DEV_LOGIN_ENABLED: "true"
+      PAYMENT_MODE: development
+      DB_ROLE: api
+    working_dir: /srv/myshoppe/backend
+    command: ["python", "-m", "app.seed"]
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  media_uploads:
+  media_sources:

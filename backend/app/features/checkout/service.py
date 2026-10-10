@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import timedelta
-from sqlalchemy import select, update, delete
+from sqlalchemy import func, select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from app import db
 from app.errors import require
@@ -19,7 +19,7 @@ def fingerprint(value):
 def enqueue(conn, key, kind, payload):
     conn.execute(
         insert(db.jobs)
-        .values(operation_key=key, kind=kind, payload=payload)
+        .values(operation_key=key, kind=kind, payload=payload, due_at=func.now())
         .on_conflict_do_nothing(index_elements=[db.jobs.c.operation_key])
     )
 
@@ -32,7 +32,9 @@ class CheckoutService:
         with self.engine.connect() as c:
             version = c.execute(
                 select(db.carts.c.version).where(db.carts.c.owner_id == actor.owner_id)
-            ).scalar_one()
+            ).scalar_one_or_none()
+            if version is None:
+                return {"version": 1, "items": [], "subtotal": 0, "count": 0}
             items = lines(c, actor.owner_id)
         return {
             "version": version,
@@ -49,6 +51,7 @@ class CheckoutService:
             "count": sum(i["quantity"] for i in items),
         }
 
+    @db.retry_transient_write
     def mutate(self, actor, command):
         with self.engine.begin() as c:
             cart = (
@@ -103,7 +106,7 @@ class CheckoutService:
             c.execute(
                 update(db.carts)
                 .where(db.carts.c.owner_id == actor.owner_id)
-                .values(version=cart["version"] + 1)
+                .values(version=cart["version"] + 1, updated_at=db.now())
             )
         return self.cart(actor)
 
@@ -122,6 +125,7 @@ class CheckoutService:
             )
             return hydrate(c, rows)
 
+    @db.retry_transient_write
     def save(self, actor, product_id, remove=False):
         with self.engine.begin() as c:
             if remove:
@@ -198,6 +202,7 @@ class CheckoutService:
         with self.engine.connect() as c:
             return self._quote(c, actor, address)[0]
 
+    @db.retry_transient_write
     def reserve(self, actor, command):
         request_hash = fingerprint(command.model_dump(exclude={"request_key"}))
         with self.engine.begin() as c:
@@ -223,7 +228,7 @@ class CheckoutService:
                 select(db.orders.c.id).where(
                     db.orders.c.owner_id == actor.owner_id,
                     db.orders.c.status == "pending",
-                    db.orders.c.expires_at > db.now(),
+                    db.orders.c.expires_at > func.now(),
                 )
             ).first()
             require(
@@ -259,7 +264,7 @@ class CheckoutService:
                         subtotal=quote["subtotal"],
                         shipping=quote["shipping"],
                         total=quote["total"],
-                        expires_at=db.now() + timedelta(minutes=15),
+                        expires_at=func.now() + timedelta(minutes=15),
                         payment_mode=settings.payment_mode,
                     )
                     .returning(db.orders)

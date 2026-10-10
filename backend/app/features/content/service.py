@@ -3,6 +3,8 @@ from app import db
 from app.identity import require_permission, audit
 from app.errors import require
 from pathlib import Path
+from app.adapters.storage import storage
+from app.settings import settings
 
 
 class ContentService:
@@ -35,6 +37,7 @@ class ContentService:
                 ).mappings()
             ]
 
+    @db.retry_transient_write
     def save(self, actor, department, command):
         require(department in ("women", "home"), "INVALID_DEPARTMENT", "Choose Women or Home", 422)
         require(
@@ -76,31 +79,43 @@ class ContentService:
             audit(c, actor, "campaign.saved", row["id"])
             return dict(row)
 
+    @db.retry_transient_write
     def publish(self, actor, revision_id):
+        with self.engine.connect() as c:
+            require_permission(c, actor, "content.write")
+            row = c.execute(select(db.campaigns).where(db.campaigns.c.id == revision_id)).mappings().first()
+            require(row, "NOT_FOUND", "Revision not found", 404)
+            public = Path(__file__).resolve().parents[4] / "web/public"
+            object_store = storage() if settings.media_storage_mode == "object" else None
+            for block in row["content"]["blocks"]:
+                for field in ("src", "poster", "mobile_src"):
+                    if not block.get(field):
+                        continue
+                    src = block[field]
+                    if src.startswith("/"):
+                        path = (public / src.lstrip("/")).resolve()
+                        ready = path.is_relative_to(public.resolve()) and path.is_file()
+                    else:
+                        key = object_store.key_from_public_url(src) if object_store else None
+                        ready = bool(key and object_store.exists(key))
+                    require(ready, "MEDIA_NOT_READY", "Upload and process every campaign asset before publishing.", 422)
+
         with self.engine.begin() as c:
             require_permission(c, actor, "content.write")
             c.execute(
                 select(db.settings_table).where(db.settings_table.c.key == "commerce").with_for_update()
             ).one()
-            row = c.execute(select(db.campaigns).where(db.campaigns.c.id == revision_id)).mappings().first()
-            require(row, "NOT_FOUND", "Revision not found", 404)
-            public = Path(__file__).resolve().parents[4] / "web/public"
-            for block in row["content"]["blocks"]:
-                for field in ("src", "poster", "mobile_src"):
-                    if not block.get(field):
-                        continue
-                    path = (public / block[field].lstrip("/")).resolve()
-                    require(
-                        path.is_relative_to(public.resolve()) and path.is_file(),
-                        "MEDIA_NOT_READY",
-                        "Upload and process every campaign asset before publishing.",
-                        422,
-                    )
+            current = (
+                c.execute(select(db.campaigns).where(db.campaigns.c.id == revision_id).with_for_update())
+                .mappings()
+                .first()
+            )
+            require(current and current["content"] == row["content"], "STALE_VERSION", "Reload this campaign revision.")
             c.execute(
                 update(db.campaigns)
-                .where(db.campaigns.c.department == row["department"])
+                .where(db.campaigns.c.department == current["department"])
                 .values(published=False)
             )
             c.execute(update(db.campaigns).where(db.campaigns.c.id == revision_id).values(published=True))
             audit(c, actor, "campaign.published", revision_id)
-        return self.campaign(row["department"])
+        return self.campaign(current["department"])

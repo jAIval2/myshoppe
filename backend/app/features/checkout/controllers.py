@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
-from app.dependencies import current_actor, get_checkout
+from app.dependencies import current_actor, ensure_actor, get_checkout
 from app.identity import Actor
 from app.schemas import CartMutation, Address, Checkout, Product
 from .interfaces import CheckoutCommands
@@ -8,6 +8,7 @@ from .interfaces import CheckoutCommands
 router = APIRouter()
 Service = Annotated[CheckoutCommands, Depends(get_checkout)]
 User = Annotated[Actor, Depends(current_actor)]
+MutationUser = Annotated[Actor, Depends(ensure_actor)]
 
 
 @router.get("/api/cart")
@@ -16,7 +17,7 @@ def cart(service: Service, actor: User):
 
 
 @router.put("/api/cart/items")
-def mutate(command: CartMutation, service: Service, actor: User):
+def mutate(command: CartMutation, service: Service, actor: MutationUser):
     return service.mutate(actor, command)
 
 
@@ -26,20 +27,20 @@ def favourites(service: Service, actor: User):
 
 
 @router.put("/api/favourites/{product_id}")
-def save(product_id: str, service: Service, actor: User):
+def save(product_id: str, service: Service, actor: MutationUser):
     return service.save(actor, product_id)
 
 
 @router.delete("/api/favourites/{product_id}")
-def unsave(product_id: str, service: Service, actor: User):
+def unsave(product_id: str, service: Service, actor: MutationUser):
     return service.save(actor, product_id, True)
 
 
 @router.post("/api/checkout/quote")
-def quote(address: Address, service: Service, actor: User):
+def quote(address: Address, service: Service, actor: MutationUser):
     return service.quote(actor, address)
 
 
 @router.post("/api/checkout/attempts")
-def attempt(command: Checkout, service: Service, actor: User):
+def attempt(command: Checkout, service: Service, actor: MutationUser):
     return service.reserve(actor, command)

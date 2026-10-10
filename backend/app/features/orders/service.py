@@ -44,6 +44,7 @@ class OrderService:
                 },
             }
 
+    @db.retry_transient_write
     def refund(self, actor, order_id, command):
         with self.engine.begin() as c:
             require_permission(c, actor, "refunds.write")
@@ -97,6 +98,7 @@ class OrderService:
             audit(c, actor, "refund.requested", refund["id"], {"amount": command.amount})
             return dict(refund)
 
+    @db.retry_transient_write
     def ship(self, actor, order_id, command):
         with self.engine.begin() as c:
             require_permission(c, actor, "orders.fulfil")
@@ -142,6 +144,7 @@ class OrderService:
             audit(c, actor, "order.shipped", order_id)
         return self.get(actor, order_id, True)
 
+    @db.retry_transient_write
     def deliver(self, actor, order_id):
         with self.engine.begin() as c:
             require_permission(c, actor, "orders.fulfil")
@@ -158,6 +161,7 @@ class OrderService:
             audit(c, actor, "order.delivered", order_id)
         return self.get(actor, order_id, True)
 
+    @db.retry_transient_write
     def request_return(self, actor, order_id, command):
         with self.engine.begin() as c:
             order = (
@@ -233,6 +237,7 @@ class OrderService:
                 .one()
             )
 
+    @db.retry_transient_write
     def receive_return(self, actor, return_id, sellable):
         with self.engine.begin() as c:
             require_permission(c, actor, "returns.manage")
