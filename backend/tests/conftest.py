@@ -28,6 +28,10 @@ def schema():
         c.execute(text("CREATE SEQUENCE IF NOT EXISTS order_number_seq START 10001"))
         c.execute(text("ALTER TABLE orders ALTER COLUMN number SET DEFAULT nextval('order_number_seq')"))
         c.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at timestamptz"))
+        # create_all does not add columns to an existing test database.
+        c.execute(text("ALTER TABLE carts ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()"))
+        c.execute(text("ALTER TABLE outbox_jobs ADD COLUMN IF NOT EXISTS claim_token varchar(36)"))
+        c.execute(text("ALTER TABLE outbox_jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz"))
     yield
 
 

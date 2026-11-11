@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     Index,
+    LargeBinary,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.exc import DBAPIError
@@ -309,6 +310,7 @@ limits = Table(
     Column("count", Integer, nullable=False),
 )
 
+
 def create_database_engine(role: str = "api"):
     pools = {"api": (5, 2), "commerce": (2, 0), "media": (1, 0)}
     if role not in pools:
@@ -327,3 +329,29 @@ def create_database_engine(role: str = "api"):
 
 
 engine = create_database_engine(settings.db_role)
+
+# Private bespoke references are bounded binary objects, never public catalogue media.
+bespoke_designs = Table(
+    "bespoke_designs",
+    metadata,
+    key(),
+    Column("owner_id", String(64), nullable=False, index=True),
+    Column("version", Integer, nullable=False, default=1),
+    Column("status", String(20), nullable=False, default="draft"),
+    Column("design", JSONB, nullable=False, default=dict),
+    Column("review", JSONB, nullable=False, default=dict),
+    Column("agreement", JSONB),
+    Column("history", JSONB, nullable=False, default=list),
+    Column("updated_at", DateTime(timezone=True), nullable=False, default=now),
+    created(),
+    CheckConstraint("status in ('draft','submitted','reviewing','agreed','ready')"),
+)
+bespoke_assets = Table(
+    "bespoke_assets",
+    metadata,
+    key(),
+    Column("design_id", ForeignKey("bespoke_designs.id"), nullable=False, index=True),
+    Column("content_type", String(50), nullable=False),
+    Column("data", LargeBinary, nullable=False),
+    created(),
+)

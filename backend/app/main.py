@@ -18,6 +18,7 @@ from .features.catalog.controllers import router as catalog
 from .features.checkout.controllers import router as checkout
 from .features.orders.controllers import router as orders
 from .features.content.controllers import router as content
+from .features.bespoke.controllers import router as bespoke
 from .errors import DomainError
 from .identity import consume_ip_limit
 from .settings import settings
@@ -49,7 +50,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="MyShoppe commerce API", version="0.1.0", lifespan=lifespan)
-for router in [controllers.router, catalog, checkout, orders, content]:
+for router in [controllers.router, catalog, checkout, orders, content, bespoke]:
     app.include_router(router)
 app.mount("/uploads", StaticFiles(directory=MEDIA_ROOT, check_dir=False), name="uploaded-media")
 

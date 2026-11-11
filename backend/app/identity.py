@@ -29,6 +29,7 @@ PERMISSIONS = {
         "refunds.write",
         "support.manage",
         "staff.manage",
+        "bespoke.manage",
     },
     "merchandiser": {"catalog.write", "inventory.write", "content.write"},
     "fulfilment": {"orders.read", "orders.fulfil", "returns.manage"},
@@ -80,9 +81,7 @@ def consume_ip_limit(engine, key, maximum):
                 index_elements=[db.limits.c.key],
                 set_={
                     "window": window,
-                    "count": case(
-                        (db.limits.c.window == window, db.limits.c.count + 1), else_=1
-                    ),
+                    "count": case((db.limits.c.window == window, db.limits.c.count + 1), else_=1),
                 },
             ).returning(db.limits.c.count)
         ).scalar_one()
@@ -176,8 +175,6 @@ class IdentityService:
                     stmt = insert(db.cart_items).values(
                         owner_id=uid, variant_id=item["variant_id"], quantity=item["quantity"]
                     )
-                    from sqlalchemy import func
-
                     c.execute(
                         stmt.on_conflict_do_update(
                             index_elements=[db.cart_items.c.owner_id, db.cart_items.c.variant_id],
@@ -196,6 +193,11 @@ class IdentityService:
                 c.execute(delete(db.saved).where(db.saved.c.owner_id == old_actor.owner_id))
                 c.execute(
                     update(db.orders).where(db.orders.c.owner_id == old_actor.owner_id).values(owner_id=uid)
+                )
+                c.execute(
+                    update(db.bespoke_designs)
+                    .where(db.bespoke_designs.c.owner_id == old_actor.owner_id)
+                    .values(owner_id=uid)
                 )
                 c.execute(delete(db.sessions).where(db.sessions.c.owner_id == old_actor.owner_id))
             c.execute(

@@ -19,6 +19,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <Link href="/admin/products">PRODUCTS & INVENTORY</Link>
         <Link href="/admin/orders">ORDERS</Link>
         <Link href="/admin/content">CAMPAIGNS</Link>
+        {shop.session?.permissions.includes("bespoke.manage") && (
+          <Link href="/admin/bespoke">BESPOKE STUDIO</Link>
+        )}
         <Link href="/admin/support">SUPPORT</Link>
         <p>INDIA / INR</p>
       </aside>

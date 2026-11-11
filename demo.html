@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en-IN" data-chrome="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaanch Brewer Plan</title>
+<meta name="description" content="Working plan for an all-glass G3 siphon coffee brewer for India: product, quality, price, numbers, compliance, marketing and rollout.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Tokens: MyShoppe styling guide structure, coffee palette */
+:root{
+  --paper:#FBF8F3; --canvas:#F2EBE1; --ink:#1F1611; --muted:#665649;
+  --line:#DDD2C4; --control-line:#7A6A5D; --disabled-bg:#EEE7DD;
+  --accent:#9C4A16; --error:#A12622; --success:#2F5A3A; --warning:#72520B;
+  --focus:#2459A6; --scrim:rgb(0 0 0 / .32);
+  --roast:#22160F; --roast-2:#33221A; --crema:#E8BE8A; --foam:#F3E6D6; --crema-muted:#BFA48A;
+  --water:#9CC7D3; --coffee:#6B3416; --oil:#D49A3A;
+  --font-ui:'Inter',Arial,sans-serif; --font-display:'Bodoni Moda','Times New Roman',serif; --font-campaign:'Inter',Arial,sans-serif;
+  --page-gutter:16px; --header-height:64px; --chrome-edge:16px; --rail-right:0px; --section-gap:56px;
+  --duration-fast:140ms; --duration-base:220ms; --duration-panel:280ms; --ease-out:cubic-bezier(.2,.7,.2,1);
+}
+@media (min-width:768px){:root{--page-gutter:32px;--section-gap:80px}}
+@media (min-width:1024px){:root{--page-gutter:48px;--header-height:88px;--section-gap:112px}}
+@media (min-width:1280px){:root{--header-height:0px;--chrome-edge:32px;--rail-right:clamp(144px,12vw,208px)}}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--header-height) + 16px)}
+body{margin:0;color:var(--ink);background:var(--paper);font:400 16px/1.55 var(--font-ui);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input{font:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+.dark :focus-visible{outline-color:#8AB4F8}
+.money,.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.skip{position:absolute;left:16px;top:-80px;z-index:100;background:var(--ink);color:var(--paper);padding:12px 16px}
+.skip:focus{top:16px}
+.visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Type roles */
+.campaign-title{font:900 clamp(2.5rem,8.5vw,8.5rem)/.94 var(--font-campaign);letter-spacing:-.045em;text-transform:uppercase;margin:0}
+.campaign-quote{font:800 clamp(2rem,5.4vw,5.6rem)/1.02 var(--font-campaign);letter-spacing:-.035em;margin:0}
+.entrance-title{font:400 clamp(2.25rem,4vw,3rem)/1.08 var(--font-display);letter-spacing:-.02em;margin:0}
+.h2{font:700 30px/34px var(--font-ui);letter-spacing:-.025em;margin:0 0 16px}
+@media (min-width:768px){.h2{font-size:40px;line-height:44px}}
+.h3{font:600 20px/28px var(--font-ui);letter-spacing:-.01em;margin:0 0 8px}
+.kicker,.nav{font:500 12px/16px var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
+.caption{font:400 12px/18px var(--font-ui);letter-spacing:.02em;color:var(--muted)}
+.dark .caption{color:var(--crema-muted)}
+.lede{font-size:18px;line-height:28px;max-width:640px}
+.prose{max-width:720px}
+.prose p{margin:0 0 16px}
+.muted{color:var(--muted)}
+.dark .muted{color:var(--crema-muted)}
+
+/* Chrome */
+.chrome{position:fixed;inset:0 0 auto 0;z-index:30;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:var(--paper);border-bottom:1px solid var(--line);transition:background-color var(--duration-fast),color var(--duration-fast)}
+html[data-chrome=dark] .chrome{background:var(--roast);color:var(--foam);border-color:#3D2B20}
+.chrome__mark{font:500 28px/32px var(--font-display);letter-spacing:-.03em;text-decoration:none}
+.icon-btn{display:inline-flex;align-items:center;gap:12px;min-height:44px;min-width:44px;padding:10px 12px;border:0;background:none;color:inherit;cursor:pointer}
+.menu-glyph{display:inline-grid;gap:6px;width:40px}
+.menu-glyph span{height:1.5px;background:currentColor;display:block}
+.chrome__link{min-height:44px;display:inline-flex;align-items:center;padding:0 12px;text-decoration:none;position:relative}
+.chrome__link::after{content:"";position:absolute;left:12px;right:12px;bottom:10px;height:1px;background:currentColor;transform:scaleX(.0);transform-origin:left;transition:transform var(--duration-fast) var(--ease-out)}
+.chrome__link:hover::after,.chrome__link:focus-visible::after{transform:none}
+.rail{display:none}
+@media (min-width:1024px){.chrome{height:88px;padding:0 24px}}
+@media (min-width:1280px){
+  .chrome{background:transparent!important;border:0;height:auto;padding:var(--chrome-edge);pointer-events:none;align-items:flex-start}
+  .chrome > *{pointer-events:auto}
+  .chrome__mark{display:none}
+  .menu-glyph{width:56px}
+  .chrome__link{border-bottom:1px solid currentColor;min-width:160px;justify-content:flex-start;padding:0}
+  .chrome__link::after{display:none}
+  .rail{display:block;position:fixed;right:var(--chrome-edge);top:clamp(176px,23vh,300px);z-index:30;width:var(--rail-right);transition:color var(--duration-fast)}
+  html[data-chrome=dark] .rail{color:var(--foam)}
+  .rail ol{list-style:none;margin:0;padding:0}
+  .rail a{display:flex;gap:10px;min-height:44px;align-items:center;text-decoration:none}
+  .rail a[aria-current=true]{font-weight:700}
+  .rail a span:first-child{opacity:.6;font-variant-numeric:tabular-nums}
+}
+
+/* Full-screen menu */
+.menu{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--paper);color:var(--ink)}
+.menu::backdrop{background:var(--scrim)}
+.menu[open]{animation:menu-in var(--duration-panel) var(--ease-out)}
+@keyframes menu-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.menu__inner{min-height:100%;padding:16px var(--page-gutter) 48px;overflow:auto}
+.menu__mark{font:500 clamp(48px,9vw,120px)/1 var(--font-display);letter-spacing:-.04em;margin:32px 0 40px}
+.menu__cols{display:grid;gap:32px}
+@media (min-width:768px){.menu__cols{grid-template-columns:repeat(3,1fr)}.menu__inner{padding-left:18vw}}
+.menu__group h2{font:400 28px/1.12 var(--font-display);letter-spacing:-.02em;margin:0 0 12px}
+.menu__group ol{list-style:none;margin:0;padding:0}
+.menu__group a{display:flex;gap:12px;min-height:44px;align-items:center;text-decoration:none;font-size:15px}
+.menu__group a:hover,.menu__group a:focus-visible{text-decoration:underline;text-underline-offset:4px}
+.menu__group a span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+
+/* Layout */
+main{display:block}
+.wrap{max-width:1180px;margin-inline:auto;padding-inline:var(--page-gutter)}
+@media (min-width:1280px){.wrap{padding-right:calc(var(--rail-right) + var(--chrome-edge) + 16px)}}
+.section{padding-block:var(--section-gap)}
+.section--canvas{background:var(--canvas)}
+.dark{background:var(--roast);color:var(--foam)}
+.dark--2{background:var(--roast-2)}
+.sec-head{display:grid;gap:8px;margin-bottom:40px}
+.sec-head .kicker{color:var(--accent)}
+.dark .sec-head .kicker{color:var(--crema)}
+.grid-2{display:grid;gap:40px}
+@media (min-width:900px){.grid-2{grid-template-columns:1fr 1fr;gap:56px}}
+.rule{border:0;border-top:1px solid var(--line);margin:40px 0}
+
+/* Campaign track + pinned wordmark (styling guide §4.4) */
+.campaign-track{position:relative;isolation:isolate}
+.campaign-overlay{display:none}
+@media (min-width:768px){
+  .campaign-overlay{display:block;position:sticky;top:0;height:100svh;margin-bottom:-100svh;z-index:10;pointer-events:none}
+  .campaign-overlay__mark{position:absolute;right:var(--chrome-edge);bottom:20svh;font:500 clamp(64px,8.5vw,150px)/.9 var(--font-display);letter-spacing:-.04em;color:var(--ink);transition:color var(--duration-fast)}
+  .campaign-overlay[data-tone=dark] .campaign-overlay__mark{color:var(--crema)}
+  .campaign-overlay__link{position:absolute;right:var(--chrome-edge);bottom:6svh;min-width:44px;min-height:44px;display:grid;place-items:center;pointer-events:auto;color:var(--ink);text-decoration:none;border:1px solid currentColor}
+  .campaign-overlay[data-tone=dark] .campaign-overlay__link{color:var(--crema)}
+  .hero__inline-mark{display:none}
+}
+@media (min-width:1280px){.campaign-overlay__mark,.campaign-overlay__link{right:calc(var(--rail-right) + var(--chrome-edge) + 24px)}}
+
+.hero{min-height:100svh;padding-top:calc(var(--header-height) + 32px);padding-bottom:48px;display:grid;align-items:center;overflow:hidden}
+.hero__grid{display:grid;gap:24px;align-items:center}
+@media (min-width:900px){.hero__grid{grid-template-columns:1.25fr .75fr}}
+.hero .kicker{color:var(--crema)}
+.hero .campaign-title{color:var(--foam);margin:20px 0 24px}
+.hero .lede{color:var(--foam)}
+.hero__inline-mark{font:500 64px/1 var(--font-display);letter-spacing:-.04em;color:var(--crema);margin-top:8px}
+.coil{display:block;width:100%;max-width:300px;height:auto;max-height:86svh;margin-inline:auto}
+@media (max-width:899px){.coil{max-height:58svh}}
+.btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;min-width:44px;padding:12px 24px;border:1px solid var(--ink);border-radius:0;color:var(--paper);background:var(--ink);font:500 .8125rem/1.4 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:background-color var(--duration-fast),color var(--duration-fast)}
+.button:hover{background:#3A2A20}
+.button--secondary{color:var(--ink);background:transparent;border-color:var(--control-line)}
+.button--secondary:hover{background:var(--canvas)}
+.dark .button{background:var(--crema);color:var(--roast);border-color:var(--crema)}
+.dark .button:hover{background:#F2D2A8}
+.dark .button--secondary{background:transparent;color:var(--foam);border-color:var(--crema-muted)}
+.dark .button--secondary:hover{background:#3D2B20}
+
+.poster{min-height:100svh;display:grid;align-items:center;padding-block:calc(var(--header-height) + 48px) 96px}
+.poster__grid{display:grid;gap:40px;align-items:start}
+@media (min-width:900px){.poster__grid{grid-template-columns:1fr 1fr;gap:64px}}
+.poster .campaign-quote{margin:16px 0 24px}
+.figure{margin:0}
+.figure svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.facts{list-style:none;padding:0;margin:24px 0 0;display:grid;gap:0;border-top:1px solid var(--line)}
+.dark .facts{border-color:#4A3528}
+.facts li{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.dark .facts li{border-color:#4A3528}
+.facts b{font-weight:600}
+
+/* Animation controls */
+.anim{position:relative}
+.anim-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 12px 0 0;border:0;background:none;color:inherit;cursor:pointer;font:500 12px/16px var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
+.anim-toggle::before{content:"";width:10px;height:12px;border-left:3px solid currentColor;border-right:3px solid currentColor;box-sizing:border-box}
+.anim-toggle[aria-pressed=true]::before{border:0;width:0;height:0;border-left:10px solid currentColor;border-top:6px solid transparent;border-bottom:6px solid transparent}
+.anim.is-paused *,.anim.is-offscreen *{animation-play-state:paused!important}
+
+/* Hero coil */
+.coil-jacket{fill:rgba(255,255,255,.03);stroke:rgba(255,255,255,.22);stroke-width:1.2}
+.coil-glass-back path{fill:none;stroke:rgba(255,255,255,.08);stroke-width:16;stroke-linecap:round}
+.coil-liq-back path{fill:none;stroke:url(#liq);stroke-width:7;opacity:.55;stroke-linecap:round}
+.coil-liq-front path{fill:none;stroke:url(#liq);stroke-width:9;stroke-linecap:round}
+.coil-flow path{fill:none;stroke:#F6D2A0;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:10 26;opacity:.75;animation:coil-flow 1.6s linear infinite}
+.coil-glass-front path{fill:none;stroke:rgba(255,255,255,.13);stroke-width:18;stroke-linecap:round}
+.coil-glint path{fill:none;stroke:rgba(255,255,255,.5);stroke-width:1.3;stroke-linecap:round}
+.coil-drip{fill:#3E1C0B;animation:coil-drip 1.6s ease-in infinite;transform-box:fill-box;transform-origin:50% 0}
+@keyframes coil-flow{to{stroke-dashoffset:-36}}
+@keyframes coil-drip{0%{transform:translateY(0) scale(.4);opacity:0}30%{opacity:1;transform:translateY(0) scale(1)}100%{transform:translateY(26px) scale(1);opacity:0}}
+
+/* Pores */
+.pores{background:#F7F1E8}
+.pr-drop{fill:#4F93A6;animation:pr-drop 3s linear infinite}
+.pr-ground{fill:#5A3018;stroke:#3A1D0E;stroke-width:.8;animation:pr-ground 6s var(--ease-out) infinite}
+@keyframes pr-drop{0%{transform:translateY(0);opacity:0}10%{opacity:1}88%{opacity:1}100%{transform:translateY(240px);opacity:0}}
+@keyframes pr-ground{0%{transform:translateY(-90px);opacity:0}15%{opacity:1}45%{transform:translateY(0)}88%{transform:translateY(0);opacity:1}100%{transform:translateY(0);opacity:0}}
+
+/* Oils */
+.ol-title{font:600 11px var(--font-ui);letter-spacing:.14em;fill:var(--crema)}
+.ol-w{fill:#7FB5C4;animation:ol-pass 4s linear infinite}
+.ol-oil-pass{fill:var(--oil);animation:ol-pass 4s linear infinite}
+.ol-oil-stuck{fill:var(--oil);animation:ol-stuck 4s linear infinite;transform-box:fill-box;transform-origin:50% 50%}
+.ol-cup{fill:none;stroke:var(--crema-muted);stroke-width:1.2}
+.ol-sheen{fill:#E9B65E;animation:ol-sheen 4s ease-in-out infinite}
+@keyframes ol-pass{0%{transform:translateY(0);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:translateY(196px);opacity:0}}
+@keyframes ol-stuck{0%{transform:translate(0,0);opacity:0}8%{opacity:1}36%{transform:translate(0,72px) scale(1)}46%{transform:translate(0,78px) scale(2,.55)}92%{transform:translate(0,78px) scale(2.4,.5);opacity:.85}100%{transform:translate(0,78px) scale(2.4,.5);opacity:0}}
+@keyframes ol-sheen{0%,100%{opacity:.35}50%{opacity:.95}}
+
+/* Brew cycle: one 16 s loop shared by every part */
+.how{display:grid;gap:40px}
+@media (min-width:900px){.how{grid-template-columns:minmax(260px,380px) 1fr;gap:72px;align-items:start}.how__fig{position:sticky;top:calc(var(--header-height) + 24px)}}
+.brew{display:block;width:100%;height:auto;max-height:78svh}
+.brew *{animation-duration:16s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}
+.bc-glass{fill:rgba(255,255,255,.5);fill-opacity:.25;stroke:#1F1611;stroke-opacity:.55;stroke-width:1.4}
+.bc-tube{fill:none;stroke:#1F1611;stroke-opacity:.18;stroke-width:6;stroke-linecap:round}
+.bc-liq{transform-box:fill-box;transform-origin:50% 100%}
+.bc-funw{fill:var(--water);animation-name:bc-funw}
+.bc-func{fill:var(--coffee);animation-name:bc-func}
+.bc-flaskw{fill:var(--water);animation-name:bc-flaskw}
+.bc-flaskc{fill:var(--coffee);animation-name:bc-flaskc}
+.bc-coilw{fill:none;stroke:#5E9FB0;stroke-width:3.6;stroke-dasharray:1 1;stroke-dashoffset:1;animation-name:bc-coilw}
+.bc-coilc{fill:none;stroke:var(--coffee);stroke-width:3.6;stroke-dasharray:1 1;stroke-dashoffset:1;animation-name:bc-coilc}
+.bc-grounds{fill:#4A2410;animation-name:bc-grounds}
+.bc-glow{animation-name:bc-glow}
+.bc-plate{fill:#5B3A26;animation-name:bc-plate}
+.bc-bubbles{animation-name:bc-bubbles}
+.bc-bubble{fill:#FFFFFF;fill-opacity:.85;animation:bc-bubble 1.6s linear infinite!important}
+.bc-disp{font:600 11px var(--font-ui);letter-spacing:.06em}
+.bc-on{fill:#F0A060;animation-name:bc-on}
+.bc-off{fill:#8FA3A8;animation-name:bc-off}
+@keyframes bc-glow{0%,52%{opacity:1}58%,100%{opacity:0}}
+@keyframes bc-plate{0%,52%{fill:#D9662E}58%,100%{fill:#5B3A26}}
+@keyframes bc-on{0%,52%{opacity:1}54%,100%{opacity:0}}
+@keyframes bc-off{0%,52%{opacity:0}54%,100%{opacity:1}}
+@keyframes bc-bubbles{0%,4%{opacity:0}8%,50%{opacity:1}56%,100%{opacity:0}}
+@keyframes bc-bubble{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+@keyframes bc-flaskw{0%,14%{transform:scaleY(1);opacity:1}34%,60%{transform:scaleY(.14);opacity:1}62%,93%{transform:scaleY(1);opacity:0}100%{transform:scaleY(1);opacity:1}}
+@keyframes bc-coilw{0%,14%{stroke-dashoffset:1;opacity:1}30%,55%{stroke-dashoffset:0;opacity:1}60%,100%{stroke-dashoffset:0;opacity:0}}
+@keyframes bc-funw{0%,20%{transform:scaleY(0);opacity:1}36%{transform:scaleY(1);opacity:1}50%,100%{transform:scaleY(1);opacity:0}}
+@keyframes bc-func{0%,36%{transform:scaleY(1);opacity:0}50%,58%{transform:scaleY(1);opacity:1}78%{transform:scaleY(0);opacity:1}100%{transform:scaleY(0);opacity:0}}
+@keyframes bc-grounds{0%,37%{transform:translateY(-46px);opacity:0}44%,58%{transform:translateY(0);opacity:1}78%,93%{transform:translateY(62px);opacity:1}100%{transform:translateY(62px);opacity:0}}
+@keyframes bc-coilc{0%,58%{stroke-dashoffset:1;opacity:1}72%,93%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes bc-flaskc{0%,60%{transform:scaleY(0);opacity:1}82%,93%{transform:scaleY(.86);opacity:1}100%{transform:scaleY(.86);opacity:0}}
+
+.steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.steps li{border-bottom:1px solid var(--line)}
+.step{display:grid;grid-template-columns:48px 1fr;gap:12px;width:100%;text-align:left;padding:20px 0;border:0;background:none;color:inherit;cursor:pointer;opacity:.62;transition:opacity var(--duration-base)}
+.step:hover,.step[data-on]{opacity:1}
+.step__n{font:500 12px/28px var(--font-ui);letter-spacing:.08em;color:var(--accent)}
+.step__t{font:700 22px/28px var(--font-ui);letter-spacing:-.015em;display:block;margin-bottom:4px}
+.step__b{display:block;color:var(--muted)}
+.step[data-on] .step__t::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:10px;vertical-align:middle}
+.no-sync .step{opacity:1}
+
+/* Bubble point */
+.bubble{background:var(--paper)}
+.bubble text{font:500 11px var(--font-ui);fill:var(--ink)}
+.bp-num text{font-size:12px}
+.bp-unit{fill:var(--muted)!important}
+.bp-tag{fill:var(--muted)!important;font-size:11px}
+.bp-mark{stroke:var(--accent);stroke-width:3}
+.bp-needle{stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;transform-box:view-box;transform-origin:95px 150px;animation:bp-needle 8s ease-in-out infinite}
+.bp-bubbles{animation:bp-bubbles 8s linear infinite}
+.bp-bubble{fill:#FFFFFF;stroke:#5E9FB0;stroke-width:.8;animation:bp-bubble 1.6s linear infinite}
+.bp-read{font-weight:600!important}
+.bp-read-a{animation:bp-a 8s linear infinite}
+.bp-read-b{fill:var(--accent)!important;animation:bp-b 8s linear infinite}
+@keyframes bp-needle{0%,6%{transform:rotate(-120deg)}55%,86%{transform:rotate(52.8deg)}100%{transform:rotate(-120deg)}}
+@keyframes bp-bubbles{0%,54%{opacity:0}57%,86%{opacity:1}90%,100%{opacity:0}}
+@keyframes bp-bubble{0%{transform:translateY(0);opacity:0}12%{opacity:1}100%{transform:translateY(-112px);opacity:0}}
+@keyframes bp-a{0%,54%{opacity:1}56%,90%{opacity:0}94%,100%{opacity:1}}
+@keyframes bp-b{0%,54%{opacity:0}57%,86%{opacity:1}90%,100%{opacity:0}}
+
+/* Tables */
+.table-wrap{overflow-x:auto;margin:0 0 8px;border-top:1px solid var(--ink)}
+.dark .table-wrap{border-color:var(--crema-muted)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px;line-height:20px}
+th,td{text-align:left;vertical-align:top;padding:12px 16px 12px 0;border-bottom:1px solid var(--line)}
+.dark th,.dark td{border-color:#4A3528}
+th{font:500 12px/16px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dark th{color:var(--crema-muted)}
+td.r,th.r{text-align:right}
+tr.hl td{background:var(--canvas);font-weight:600}
+tfoot td{font-weight:700;border-bottom:1px solid var(--ink)}
+
+/* Price ladder */
+.ladder{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.ladder li{display:grid;grid-template-columns:1fr;gap:4px 16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:baseline}
+@media (min-width:600px){.ladder li{grid-template-columns:minmax(120px,190px) 1fr}}
+.ladder .p{font:800 22px/28px var(--font-campaign);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ladder .tag{display:inline-block;margin-left:8px;padding:2px 6px;border-radius:2px;border:1px solid currentColor;font:500 11px/14px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);vertical-align:middle}
+.ladder li.us{background:var(--roast);color:var(--foam);padding-inline:16px;margin-inline:-16px;border-color:var(--roast)}
+.ladder li.us .tag{color:var(--crema)}
+.ladder li.us .muted{color:var(--crema-muted)}
+
+.tiers{display:grid;gap:16px;margin-top:40px}
+@media (min-width:900px){.tiers{grid-template-columns:repeat(3,1fr);gap:0}}
+.tier{border:1px solid var(--line);padding:28px 24px;background:var(--paper)}
+@media (min-width:900px){.tier+.tier{border-left:0}}
+.tier--main{background:var(--roast);color:var(--foam);border-color:var(--roast)}
+.tier__name{font:400 28px/1.1 var(--font-display);letter-spacing:-.02em;margin:0 0 4px}
+.tier__price{font:900 40px/1 var(--font-campaign);letter-spacing:-.04em;margin:16px 0 4px;font-variant-numeric:tabular-nums}
+.tier ul{padding-left:18px;margin:16px 0 0;font-size:14px}
+.tier__profit{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);font-size:14px}
+.tier--main .tier__profit{border-color:#4A3528}
+.badge{display:inline-block;padding:2px 6px;border-radius:2px;font:600 11px/14px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;background:var(--crema);color:var(--roast)}
+
+/* Cards / lists */
+.cards{display:grid;gap:0;border-top:1px solid var(--line)}
+@media (min-width:768px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1100px){.cards--3{grid-template-columns:repeat(3,1fr)}}
+.card{padding:24px 24px 24px 0;border-bottom:1px solid var(--line)}
+.dark .cards,.dark .card{border-color:#4A3528}
+.card p{margin:0;font-size:15px}
+.status{display:inline-block;margin-bottom:8px;padding:2px 6px;border-radius:2px;font:600 11px/14px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor}
+.status--do{color:var(--success)}
+.status--verify{color:var(--warning)}
+.status--no{color:var(--error)}
+.big-stat{font:900 clamp(36px,4.2vw,56px)/1 var(--font-campaign);letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:0}
+.stats{display:grid;gap:32px;margin:40px 0}
+@media (min-width:768px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stats p{margin:8px 0 0}
+
+/* Entrance (styling guide §4.3) */
+.entrance{min-height:60svh;display:grid;place-items:center;text-align:center;padding:96px var(--page-gutter)}
+@media (max-width:767px){.entrance{min-height:45svh}}
+.entrance a{display:inline-grid;justify-items:center;gap:16px;text-decoration:none;margin-top:28px;min-height:44px}
+.entrance__line{width:1px;height:150px;background:var(--line);position:relative;overflow:hidden}
+.entrance__line::after{content:"";position:absolute;inset:0;background:var(--ink);transform:scaleY(var(--p,0));transform-origin:top}
+
+/* Timeline */
+.timeline{list-style:none;margin:0;padding:0;position:relative}
+.timeline > li{display:grid;gap:8px 32px;padding:28px 0;border-top:1px solid var(--line)}
+@media (min-width:900px){.timeline > li{grid-template-columns:200px 1fr 260px}}
+.timeline .when{font:800 20px/26px var(--font-campaign);letter-spacing:-.02em}
+.timeline .when small{display:block;font:400 12px/18px var(--font-ui);letter-spacing:.02em;color:var(--muted);margin-top:4px}
+.timeline h3{margin:0 0 6px;font:700 20px/26px var(--font-ui);letter-spacing:-.01em}
+.timeline ul{margin:0;padding-left:18px;font-size:15px}
+.timeline .meta{font-size:14px;color:var(--muted)}
+.timeline .gate{margin-top:10px;padding:10px 12px;border-left:3px solid var(--accent);background:var(--canvas);font-size:14px;color:var(--ink)}
+.timeline li.milestone .when{color:var(--accent)}
+
+/* Funnel maths */
+.funnel{display:grid;gap:0;margin:24px 0;border-top:1px solid var(--crema-muted)}
+.funnel div{display:grid;grid-template-columns:1fr auto;padding:14px 0;border-bottom:1px solid #4A3528;align-items:baseline}
+.funnel b{font:800 28px/1 var(--font-campaign);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--crema)}
+
+/* Footer */
+footer{padding:64px 0 96px;background:var(--canvas);font-size:14px}
+footer ol{columns:1;padding-left:18px;margin:16px 0 0}
+@media (min-width:900px){footer ol{columns:2;column-gap:48px}}
+footer li{margin:0 0 6px;break-inside:avoid}
+
+/* Reveal (content visible without JS) */
+.js .reveal{opacity:0;transform:translateY(12px);transition:opacity 400ms var(--ease-out),transform 400ms var(--ease-out)}
+.js .reveal.in{opacity:1;transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .menu[open]{animation:none}
+  .js .reveal{opacity:1!important;transform:none!important;transition:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="chrome">
+  <button class="icon-btn" type="button" aria-haspopup="dialog" aria-controls="menu" data-open-menu>
+    <span class="menu-glyph" aria-hidden="true"><span></span><span></span></span><span class="nav">Menu</span>
+  </button>
+  <a class="chrome__mark" href="#top" aria-label="Kaanch, back to top">Kaanch</a>
+  <a class="chrome__link nav" href="#sources">Sources</a>
+</header>
+
+<nav class="rail nav" aria-label="Sections">
+  <ol>
+    <li><a href="#how" data-rail="brewer"><span>01</span><span>Brewer</span></a></li>
+    <li><a href="#price" data-rail="business"><span>02</span><span>Business</span></a></li>
+    <li><a href="#brand" data-rail="market"><span>03</span><span>Go to market</span></a></li>
+    <li><a href="#rollout" data-rail="rollout"><span>04</span><span>Rollout</span></a></li>
+  </ol>
+</nav>
+
+<dialog class="menu" id="menu" aria-label="Site menu">
+  <div class="menu__inner">
+    <button class="icon-btn" type="button" data-close-menu><span class="nav">✕ Close</span></button>
+    <p class="menu__mark" aria-hidden="true">Kaanch</p>
+    <div class="menu__cols">
+      <div class="menu__group"><h2>The brewer</h2><ol>
+        <li><a href="#top"><span>01</span>All glass</a></li>
+        <li><a href="#glass"><span>02</span>Inside the disc</a></li>
+        <li><a href="#oils"><span>03</span>Paper vs glass</a></li>
+        <li><a href="#how"><span>04</span>How one brew works</a></li>
+        <li><a href="#product"><span>05</span>Parts and care</a></li>
+        <li><a href="#qc"><span>06</span>Quality test</a></li>
+      </ol></div>
+      <div class="menu__group"><h2>The business</h2><ol>
+        <li><a href="#price"><span>07</span>Price ladder and tiers</a></li>
+        <li><a href="#numbers"><span>08</span>Unit economics</a></li>
+        <li><a href="#model"><span>09</span>Sales model</a></li>
+        <li><a href="#compliance"><span>10</span>Compliance</a></li>
+      </ol></div>
+      <div class="menu__group"><h2>Go to market</h2><ol>
+        <li><a href="#brand"><span>11</span>Brand and channels</a></li>
+        <li><a href="#rollout"><span>12</span>Rollout plan</a></li>
+        <li><a href="#risks"><span>13</span>Risks and upside</a></li>
+        <li><a href="#sources"><span>14</span>Sources</a></li>
+      </ol></div>
+    </div>
+  </div>
+</dialog>
+
+<main id="main">
+<div class="campaign-track">
+  <div class="campaign-overlay" data-tone="dark">
+    <span class="campaign-overlay__mark" aria-hidden="true">Kaanch</span>
+    <a class="campaign-overlay__link" href="#how" aria-label="Scroll to how one brew works">↓</a>
+  </div>
+
+  <!-- 01 HERO -->
+  <section id="top" class="hero dark" data-tone="dark" data-group="brewer" aria-labelledby="hero-title">
+    <div class="wrap hero__grid">
+      <div>
+        <p class="kicker">Working plan · 7 Nov 2026 · Working name, trademark check pending</p>
+        <h1 id="hero-title" class="campaign-title">All glass.<br>Nothing to replace.</h1>
+        <p class="lede">A 1-litre siphon brewer with a G3 sintered-glass filter, sourced and tested in India. No paper, no cloth, no metal mesh. This page holds the product, the numbers and the rollout to a 25-unit founding batch by March 2027.</p>
+        <div class="btns">
+          <a class="button" href="#rollout">See the rollout</a>
+          <a class="button button--secondary" href="#price">Price and numbers</a>
+        </div>
+      </div>
+      <figure class="figure anim" data-anim>
+        <svg class="coil" viewBox="0 0 300 800" role="img" aria-label="Drawing of a glass coil with amber coffee flowing down through it">
+<defs>
+<linearGradient id="liq" x1="0" y1="40" x2="0" y2="780" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#E7AE68"/><stop offset=".5" stop-color="#A2531F"/><stop offset="1" stop-color="#3E1C0B"/></linearGradient>
+<radialGradient id="pool" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#C47A33" stop-opacity=".55"/><stop offset="1" stop-color="#C47A33" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="150" cy="790" rx="140" ry="26" fill="url(#pool)"/>
+<rect class="coil-jacket" x="62" y="34" width="176" height="732" rx="30"/>
+<rect class="coil-jacket" x="136" y="0" width="28" height="34"/>
+<rect class="coil-jacket" x="136" y="766" width="28" height="34"/>
+<rect class="coil-jacket" x="238" y="90" width="34" height="14"/>
+<rect class="coil-jacket" x="28" y="690" width="34" height="14"/>
+<g class="coil-glass-back"><path d="M214.0 88.0 L213.6 87.4 L212.4 86.8 L210.4 86.3 L207.7 85.8 L204.2 85.4 L200.0 85.0 L195.3 84.7 L189.9 84.5 L184.1 84.5 L177.8 84.5 L171.1 84.7 L164.2 85.0 L157.2 85.4 L150.0 86.0 L142.8 86.7 L135.8 87.6 L128.9 88.5 L122.2 89.7 L115.9 90.9 L110.1 92.3 L104.7 93.7 L100.0 95.3 L95.8 96.9 L92.3 98.7 L89.6 100.4 L87.6 102.3 L86.4 104.1 L86.0 106.0"/><path d="M214.0 124.0 L213.6 123.4 L212.4 122.8 L210.4 122.3 L207.7 121.8 L204.2 121.4 L200.0 121.0 L195.3 120.7 L189.9 120.5 L184.1 120.5 L177.8 120.5 L171.1 120.7 L164.2 121.0 L157.2 121.4 L150.0 122.0 L142.8 122.7 L135.8 123.6 L128.9 124.5 L122.2 125.7 L115.9 126.9 L110.1 128.3 L104.7 129.7 L100.0 131.3 L95.8 132.9 L92.3 134.7 L89.6 136.4 L87.6 138.3 L86.4 140.1 L86.0 142.0"/><path d="M214.0 160.0 L213.6 159.4 L212.4 158.8 L210.4 158.3 L207.7 157.8 L204.2 157.4 L200.0 157.0 L195.3 156.7 L189.9 156.5 L184.1 156.5 L177.8 156.5 L171.1 156.7 L164.2 157.0 L157.2 157.4 L150.0 158.0 L142.8 158.7 L135.8 159.6 L128.9 160.5 L122.2 161.7 L115.9 162.9 L110.1 164.3 L104.7 165.7 L100.0 167.3 L95.8 168.9 L92.3 170.7 L89.6 172.4 L87.6 174.3 L86.4 176.1 L86.0 178.0"/><path d="M214.0 196.0 L213.6 195.4 L212.4 194.8 L210.4 194.3 L207.7 193.8 L204.2 193.4 L200.0 193.0 L195.3 192.7 L189.9 192.5 L184.1 192.5 L177.8 192.5 L171.1 192.7 L164.2 193.0 L157.2 193.4 L150.0 194.0 L142.8 194.7 L135.8 195.6 L128.9 196.5 L122.2 197.7 L115.9 198.9 L110.1 200.3 L104.7 201.7 L100.0 203.3 L95.8 204.9 L92.3 206.7 L89.6 208.4 L87.6 210.3 L86.4 212.1 L86.0 214.0"/><path d="M214.0 232.0 L213.6 231.4 L212.4 230.8 L210.4 230.3 L207.7 229.8 L204.2 229.4 L200.0 229.0 L195.3 228.7 L189.9 228.5 L184.1 228.5 L177.8 228.5 L171.1 228.7 L164.2 229.0 L157.2 229.4 L150.0 230.0 L142.8 230.7 L135.8 231.6 L128.9 232.5 L122.2 233.7 L115.9 234.9 L110.1 236.3 L104.7 237.7 L100.0 239.3 L95.8 240.9 L92.3 242.7 L89.6 244.4 L87.6 246.3 L86.4 248.1 L86.0 250.0"/><path d="M214.0 268.0 L213.6 267.4 L212.4 266.8 L210.4 266.3 L207.7 265.8 L204.2 265.4 L200.0 265.0 L195.3 264.7 L189.9 264.5 L184.1 264.5 L177.8 264.5 L171.1 264.7 L164.2 265.0 L157.2 265.4 L150.0 266.0 L142.8 266.7 L135.8 267.6 L128.9 268.5 L122.2 269.7 L115.9 270.9 L110.1 272.3 L104.7 273.7 L100.0 275.3 L95.8 276.9 L92.3 278.7 L89.6 280.4 L87.6 282.3 L86.4 284.1 L86.0 286.0"/><path d="M214.0 304.0 L213.6 303.4 L212.4 302.8 L210.4 302.3 L207.7 301.8 L204.2 301.4 L200.0 301.0 L195.3 300.7 L189.9 300.5 L184.1 300.5 L177.8 300.5 L171.1 300.7 L164.2 301.0 L157.2 301.4 L150.0 302.0 L142.8 302.7 L135.8 303.6 L128.9 304.5 L122.2 305.7 L115.9 306.9 L110.1 308.3 L104.7 309.7 L100.0 311.3 L95.8 312.9 L92.3 314.7 L89.6 316.4 L87.6 318.3 L86.4 320.1 L86.0 322.0"/><path d="M214.0 340.0 L213.6 339.4 L212.4 338.8 L210.4 338.3 L207.7 337.8 L204.2 337.4 L200.0 337.0 L195.3 336.7 L189.9 336.5 L184.1 336.5 L177.8 336.5 L171.1 336.7 L164.2 337.0 L157.2 337.4 L150.0 338.0 L142.8 338.7 L135.8 339.6 L128.9 340.5 L122.2 341.7 L115.9 342.9 L110.1 344.3 L104.7 345.7 L100.0 347.3 L95.8 348.9 L92.3 350.7 L89.6 352.4 L87.6 354.3 L86.4 356.1 L86.0 358.0"/><path d="M214.0 376.0 L213.6 375.4 L212.4 374.8 L210.4 374.3 L207.7 373.8 L204.2 373.4 L200.0 373.0 L195.3 372.7 L189.9 372.5 L184.1 372.5 L177.8 372.5 L171.1 372.7 L164.2 373.0 L157.2 373.4 L150.0 374.0 L142.8 374.7 L135.8 375.6 L128.9 376.5 L122.2 377.7 L115.9 378.9 L110.1 380.3 L104.7 381.7 L100.0 383.3 L95.8 384.9 L92.3 386.7 L89.6 388.4 L87.6 390.3 L86.4 392.1 L86.0 394.0"/><path d="M214.0 412.0 L213.6 411.4 L212.4 410.8 L210.4 410.3 L207.7 409.8 L204.2 409.4 L200.0 409.0 L195.3 408.7 L189.9 408.5 L184.1 408.5 L177.8 408.5 L171.1 408.7 L164.2 409.0 L157.2 409.4 L150.0 410.0 L142.8 410.7 L135.8 411.6 L128.9 412.5 L122.2 413.7 L115.9 414.9 L110.1 416.3 L104.7 417.7 L100.0 419.3 L95.8 420.9 L92.3 422.7 L89.6 424.4 L87.6 426.3 L86.4 428.1 L86.0 430.0"/><path d="M214.0 448.0 L213.6 447.4 L212.4 446.8 L210.4 446.3 L207.7 445.8 L204.2 445.4 L200.0 445.0 L195.3 444.7 L189.9 444.5 L184.1 444.5 L177.8 444.5 L171.1 444.7 L164.2 445.0 L157.2 445.4 L150.0 446.0 L142.8 446.7 L135.8 447.6 L128.9 448.5 L122.2 449.7 L115.9 450.9 L110.1 452.3 L104.7 453.7 L100.0 455.3 L95.8 456.9 L92.3 458.7 L89.6 460.4 L87.6 462.3 L86.4 464.1 L86.0 466.0"/><path d="M214.0 484.0 L213.6 483.4 L212.4 482.8 L210.4 482.3 L207.7 481.8 L204.2 481.4 L200.0 481.0 L195.3 480.7 L189.9 480.5 L184.1 480.5 L177.8 480.5 L171.1 480.7 L164.2 481.0 L157.2 481.4 L150.0 482.0 L142.8 482.7 L135.8 483.6 L128.9 484.5 L122.2 485.7 L115.9 486.9 L110.1 488.3 L104.7 489.7 L100.0 491.3 L95.8 492.9 L92.3 494.7 L89.6 496.4 L87.6 498.3 L86.4 500.1 L86.0 502.0"/><path d="M214.0 520.0 L213.6 519.4 L212.4 518.8 L210.4 518.3 L207.7 517.8 L204.2 517.4 L200.0 517.0 L195.3 516.7 L189.9 516.5 L184.1 516.5 L177.8 516.5 L171.1 516.7 L164.2 517.0 L157.2 517.4 L150.0 518.0 L142.8 518.7 L135.8 519.6 L128.9 520.5 L122.2 521.7 L115.9 522.9 L110.1 524.3 L104.7 525.7 L100.0 527.3 L95.8 528.9 L92.3 530.7 L89.6 532.4 L87.6 534.3 L86.4 536.1 L86.0 538.0"/><path d="M214.0 556.0 L213.6 555.4 L212.4 554.8 L210.4 554.3 L207.7 553.8 L204.2 553.4 L200.0 553.0 L195.3 552.7 L189.9 552.5 L184.1 552.5 L177.8 552.5 L171.1 552.7 L164.2 553.0 L157.2 553.4 L150.0 554.0 L142.8 554.7 L135.8 555.6 L128.9 556.5 L122.2 557.7 L115.9 558.9 L110.1 560.3 L104.7 561.7 L100.0 563.3 L95.8 564.9 L92.3 566.7 L89.6 568.4 L87.6 570.3 L86.4 572.1 L86.0 574.0"/><path d="M214.0 592.0 L213.6 591.4 L212.4 590.8 L210.4 590.3 L207.7 589.8 L204.2 589.4 L200.0 589.0 L195.3 588.7 L189.9 588.5 L184.1 588.5 L177.8 588.5 L171.1 588.7 L164.2 589.0 L157.2 589.4 L150.0 590.0 L142.8 590.7 L135.8 591.6 L128.9 592.5 L122.2 593.7 L115.9 594.9 L110.1 596.3 L104.7 597.7 L100.0 599.3 L95.8 600.9 L92.3 602.7 L89.6 604.4 L87.6 606.3 L86.4 608.1 L86.0 610.0"/><path d="M214.0 628.0 L213.6 627.4 L212.4 626.8 L210.4 626.3 L207.7 625.8 L204.2 625.4 L200.0 625.0 L195.3 624.7 L189.9 624.5 L184.1 624.5 L177.8 624.5 L171.1 624.7 L164.2 625.0 L157.2 625.4 L150.0 626.0 L142.8 626.7 L135.8 627.6 L128.9 628.5 L122.2 629.7 L115.9 630.9 L110.1 632.3 L104.7 633.7 L100.0 635.3 L95.8 636.9 L92.3 638.7 L89.6 640.4 L87.6 642.3 L86.4 644.1 L86.0 646.0"/><path d="M214.0 664.0 L213.6 663.4 L212.4 662.8 L210.4 662.3 L207.7 661.8 L204.2 661.4 L200.0 661.0 L195.3 660.7 L189.9 660.5 L184.1 660.5 L177.8 660.5 L171.1 660.7 L164.2 661.0 L157.2 661.4 L150.0 662.0 L142.8 662.7 L135.8 663.6 L128.9 664.5 L122.2 665.7 L115.9 666.9 L110.1 668.3 L104.7 669.7 L100.0 671.3 L95.8 672.9 L92.3 674.7 L89.6 676.4 L87.6 678.3 L86.4 680.1 L86.0 682.0"/><path d="M214.0 700.0 L213.6 699.4 L212.4 698.8 L210.4 698.3 L207.7 697.8 L204.2 697.4 L200.0 697.0 L195.3 696.7 L189.9 696.5 L184.1 696.5 L177.8 696.5 L171.1 696.7 L164.2 697.0 L157.2 697.4 L150.0 698.0 L142.8 698.7 L135.8 699.6 L128.9 700.5 L122.2 701.7 L115.9 702.9 L110.1 704.3 L104.7 705.7 L100.0 707.3 L95.8 708.9 L92.3 710.7 L89.6 712.4 L87.6 714.3 L86.4 716.1 L86.0 718.0"/></g>
+<g class="coil-liq-back"><path d="M214.0 88.0 L213.6 87.4 L212.4 86.8 L210.4 86.3 L207.7 85.8 L204.2 85.4 L200.0 85.0 L195.3 84.7 L189.9 84.5 L184.1 84.5 L177.8 84.5 L171.1 84.7 L164.2 85.0 L157.2 85.4 L150.0 86.0 L142.8 86.7 L135.8 87.6 L128.9 88.5 L122.2 89.7 L115.9 90.9 L110.1 92.3 L104.7 93.7 L100.0 95.3 L95.8 96.9 L92.3 98.7 L89.6 100.4 L87.6 102.3 L86.4 104.1 L86.0 106.0"/><path d="M214.0 124.0 L213.6 123.4 L212.4 122.8 L210.4 122.3 L207.7 121.8 L204.2 121.4 L200.0 121.0 L195.3 120.7 L189.9 120.5 L184.1 120.5 L177.8 120.5 L171.1 120.7 L164.2 121.0 L157.2 121.4 L150.0 122.0 L142.8 122.7 L135.8 123.6 L128.9 124.5 L122.2 125.7 L115.9 126.9 L110.1 128.3 L104.7 129.7 L100.0 131.3 L95.8 132.9 L92.3 134.7 L89.6 136.4 L87.6 138.3 L86.4 140.1 L86.0 142.0"/><path d="M214.0 160.0 L213.6 159.4 L212.4 158.8 L210.4 158.3 L207.7 157.8 L204.2 157.4 L200.0 157.0 L195.3 156.7 L189.9 156.5 L184.1 156.5 L177.8 156.5 L171.1 156.7 L164.2 157.0 L157.2 157.4 L150.0 158.0 L142.8 158.7 L135.8 159.6 L128.9 160.5 L122.2 161.7 L115.9 162.9 L110.1 164.3 L104.7 165.7 L100.0 167.3 L95.8 168.9 L92.3 170.7 L89.6 172.4 L87.6 174.3 L86.4 176.1 L86.0 178.0"/><path d="M214.0 196.0 L213.6 195.4 L212.4 194.8 L210.4 194.3 L207.7 193.8 L204.2 193.4 L200.0 193.0 L195.3 192.7 L189.9 192.5 L184.1 192.5 L177.8 192.5 L171.1 192.7 L164.2 193.0 L157.2 193.4 L150.0 194.0 L142.8 194.7 L135.8 195.6 L128.9 196.5 L122.2 197.7 L115.9 198.9 L110.1 200.3 L104.7 201.7 L100.0 203.3 L95.8 204.9 L92.3 206.7 L89.6 208.4 L87.6 210.3 L86.4 212.1 L86.0 214.0"/><path d="M214.0 232.0 L213.6 231.4 L212.4 230.8 L210.4 230.3 L207.7 229.8 L204.2 229.4 L200.0 229.0 L195.3 228.7 L189.9 228.5 L184.1 228.5 L177.8 228.5 L171.1 228.7 L164.2 229.0 L157.2 229.4 L150.0 230.0 L142.8 230.7 L135.8 231.6 L128.9 232.5 L122.2 233.7 L115.9 234.9 L110.1 236.3 L104.7 237.7 L100.0 239.3 L95.8 240.9 L92.3 242.7 L89.6 244.4 L87.6 246.3 L86.4 248.1 L86.0 250.0"/><path d="M214.0 268.0 L213.6 267.4 L212.4 266.8 L210.4 266.3 L207.7 265.8 L204.2 265.4 L200.0 265.0 L195.3 264.7 L189.9 264.5 L184.1 264.5 L177.8 264.5 L171.1 264.7 L164.2 265.0 L157.2 265.4 L150.0 266.0 L142.8 266.7 L135.8 267.6 L128.9 268.5 L122.2 269.7 L115.9 270.9 L110.1 272.3 L104.7 273.7 L100.0 275.3 L95.8 276.9 L92.3 278.7 L89.6 280.4 L87.6 282.3 L86.4 284.1 L86.0 286.0"/><path d="M214.0 304.0 L213.6 303.4 L212.4 302.8 L210.4 302.3 L207.7 301.8 L204.2 301.4 L200.0 301.0 L195.3 300.7 L189.9 300.5 L184.1 300.5 L177.8 300.5 L171.1 300.7 L164.2 301.0 L157.2 301.4 L150.0 302.0 L142.8 302.7 L135.8 303.6 L128.9 304.5 L122.2 305.7 L115.9 306.9 L110.1 308.3 L104.7 309.7 L100.0 311.3 L95.8 312.9 L92.3 314.7 L89.6 316.4 L87.6 318.3 L86.4 320.1 L86.0 322.0"/><path d="M214.0 340.0 L213.6 339.4 L212.4 338.8 L210.4 338.3 L207.7 337.8 L204.2 337.4 L200.0 337.0 L195.3 336.7 L189.9 336.5 L184.1 336.5 L177.8 336.5 L171.1 336.7 L164.2 337.0 L157.2 337.4 L150.0 338.0 L142.8 338.7 L135.8 339.6 L128.9 340.5 L122.2 341.7 L115.9 342.9 L110.1 344.3 L104.7 345.7 L100.0 347.3 L95.8 348.9 L92.3 350.7 L89.6 352.4 L87.6 354.3 L86.4 356.1 L86.0 358.0"/><path d="M214.0 376.0 L213.6 375.4 L212.4 374.8 L210.4 374.3 L207.7 373.8 L204.2 373.4 L200.0 373.0 L195.3 372.7 L189.9 372.5 L184.1 372.5 L177.8 372.5 L171.1 372.7 L164.2 373.0 L157.2 373.4 L150.0 374.0 L142.8 374.7 L135.8 375.6 L128.9 376.5 L122.2 377.7 L115.9 378.9 L110.1 380.3 L104.7 381.7 L100.0 383.3 L95.8 384.9 L92.3 386.7 L89.6 388.4 L87.6 390.3 L86.4 392.1 L86.0 394.0"/><path d="M214.0 412.0 L213.6 411.4 L212.4 410.8 L210.4 410.3 L207.7 409.8 L204.2 409.4 L200.0 409.0 L195.3 408.7 L189.9 408.5 L184.1 408.5 L177.8 408.5 L171.1 408.7 L164.2 409.0 L157.2 409.4 L150.0 410.0 L142.8 410.7 L135.8 411.6 L128.9 412.5 L122.2 413.7 L115.9 414.9 L110.1 416.3 L104.7 417.7 L100.0 419.3 L95.8 420.9 L92.3 422.7 L89.6 424.4 L87.6 426.3 L86.4 428.1 L86.0 430.0"/><path d="M214.0 448.0 L213.6 447.4 L212.4 446.8 L210.4 446.3 L207.7 445.8 L204.2 445.4 L200.0 445.0 L195.3 444.7 L189.9 444.5 L184.1 444.5 L177.8 444.5 L171.1 444.7 L164.2 445.0 L157.2 445.4 L150.0 446.0 L142.8 446.7 L135.8 447.6 L128.9 448.5 L122.2 449.7 L115.9 450.9 L110.1 452.3 L104.7 453.7 L100.0 455.3 L95.8 456.9 L92.3 458.7 L89.6 460.4 L87.6 462.3 L86.4 464.1 L86.0 466.0"/><path d="M214.0 484.0 L213.6 483.4 L212.4 482.8 L210.4 482.3 L207.7 481.8 L204.2 481.4 L200.0 481.0 L195.3 480.7 L189.9 480.5 L184.1 480.5 L177.8 480.5 L171.1 480.7 L164.2 481.0 L157.2 481.4 L150.0 482.0 L142.8 482.7 L135.8 483.6 L128.9 484.5 L122.2 485.7 L115.9 486.9 L110.1 488.3 L104.7 489.7 L100.0 491.3 L95.8 492.9 L92.3 494.7 L89.6 496.4 L87.6 498.3 L86.4 500.1 L86.0 502.0"/><path d="M214.0 520.0 L213.6 519.4 L212.4 518.8 L210.4 518.3 L207.7 517.8 L204.2 517.4 L200.0 517.0 L195.3 516.7 L189.9 516.5 L184.1 516.5 L177.8 516.5 L171.1 516.7 L164.2 517.0 L157.2 517.4 L150.0 518.0 L142.8 518.7 L135.8 519.6 L128.9 520.5 L122.2 521.7 L115.9 522.9 L110.1 524.3 L104.7 525.7 L100.0 527.3 L95.8 528.9 L92.3 530.7 L89.6 532.4 L87.6 534.3 L86.4 536.1 L86.0 538.0"/><path d="M214.0 556.0 L213.6 555.4 L212.4 554.8 L210.4 554.3 L207.7 553.8 L204.2 553.4 L200.0 553.0 L195.3 552.7 L189.9 552.5 L184.1 552.5 L177.8 552.5 L171.1 552.7 L164.2 553.0 L157.2 553.4 L150.0 554.0 L142.8 554.7 L135.8 555.6 L128.9 556.5 L122.2 557.7 L115.9 558.9 L110.1 560.3 L104.7 561.7 L100.0 563.3 L95.8 564.9 L92.3 566.7 L89.6 568.4 L87.6 570.3 L86.4 572.1 L86.0 574.0"/><path d="M214.0 592.0 L213.6 591.4 L212.4 590.8 L210.4 590.3 L207.7 589.8 L204.2 589.4 L200.0 589.0 L195.3 588.7 L189.9 588.5 L184.1 588.5 L177.8 588.5 L171.1 588.7 L164.2 589.0 L157.2 589.4 L150.0 590.0 L142.8 590.7 L135.8 591.6 L128.9 592.5 L122.2 593.7 L115.9 594.9 L110.1 596.3 L104.7 597.7 L100.0 599.3 L95.8 600.9 L92.3 602.7 L89.6 604.4 L87.6 606.3 L86.4 608.1 L86.0 610.0"/><path d="M214.0 628.0 L213.6 627.4 L212.4 626.8 L210.4 626.3 L207.7 625.8 L204.2 625.4 L200.0 625.0 L195.3 624.7 L189.9 624.5 L184.1 624.5 L177.8 624.5 L171.1 624.7 L164.2 625.0 L157.2 625.4 L150.0 626.0 L142.8 626.7 L135.8 627.6 L128.9 628.5 L122.2 629.7 L115.9 630.9 L110.1 632.3 L104.7 633.7 L100.0 635.3 L95.8 636.9 L92.3 638.7 L89.6 640.4 L87.6 642.3 L86.4 644.1 L86.0 646.0"/><path d="M214.0 664.0 L213.6 663.4 L212.4 662.8 L210.4 662.3 L207.7 661.8 L204.2 661.4 L200.0 661.0 L195.3 660.7 L189.9 660.5 L184.1 660.5 L177.8 660.5 L171.1 660.7 L164.2 661.0 L157.2 661.4 L150.0 662.0 L142.8 662.7 L135.8 663.6 L128.9 664.5 L122.2 665.7 L115.9 666.9 L110.1 668.3 L104.7 669.7 L100.0 671.3 L95.8 672.9 L92.3 674.7 L89.6 676.4 L87.6 678.3 L86.4 680.1 L86.0 682.0"/><path d="M214.0 700.0 L213.6 699.4 L212.4 698.8 L210.4 698.3 L207.7 697.8 L204.2 697.4 L200.0 697.0 L195.3 696.7 L189.9 696.5 L184.1 696.5 L177.8 696.5 L171.1 696.7 L164.2 697.0 L157.2 697.4 L150.0 698.0 L142.8 698.7 L135.8 699.6 L128.9 700.5 L122.2 701.7 L115.9 702.9 L110.1 704.3 L104.7 705.7 L100.0 707.3 L95.8 708.9 L92.3 710.7 L89.6 712.4 L87.6 714.3 L86.4 716.1 L86.0 718.0"/></g>
+<g class="coil-liq-front"><path d="M86.0 70.0 L86.4 71.9 L87.6 73.7 L89.6 75.6 L92.3 77.3 L95.8 79.1 L100.0 80.7 L104.7 82.3 L110.1 83.7 L115.9 85.1 L122.2 86.3 L128.9 87.5 L135.8 88.4 L142.8 89.3 L150.0 90.0 L157.2 90.6 L164.2 91.0 L171.1 91.3 L177.8 91.5 L184.1 91.5 L189.9 91.5 L195.3 91.3 L200.0 91.0 L204.2 90.6 L207.7 90.2 L210.4 89.7 L212.4 89.2 L213.6 88.6 L214.0 88.0"/><path d="M86.0 106.0 L86.4 107.9 L87.6 109.7 L89.6 111.6 L92.3 113.3 L95.8 115.1 L100.0 116.7 L104.7 118.3 L110.1 119.7 L115.9 121.1 L122.2 122.3 L128.9 123.5 L135.8 124.4 L142.8 125.3 L150.0 126.0 L157.2 126.6 L164.2 127.0 L171.1 127.3 L177.8 127.5 L184.1 127.5 L189.9 127.5 L195.3 127.3 L200.0 127.0 L204.2 126.6 L207.7 126.2 L210.4 125.7 L212.4 125.2 L213.6 124.6 L214.0 124.0"/><path d="M86.0 142.0 L86.4 143.9 L87.6 145.7 L89.6 147.6 L92.3 149.3 L95.8 151.1 L100.0 152.7 L104.7 154.3 L110.1 155.7 L115.9 157.1 L122.2 158.3 L128.9 159.5 L135.8 160.4 L142.8 161.3 L150.0 162.0 L157.2 162.6 L164.2 163.0 L171.1 163.3 L177.8 163.5 L184.1 163.5 L189.9 163.5 L195.3 163.3 L200.0 163.0 L204.2 162.6 L207.7 162.2 L210.4 161.7 L212.4 161.2 L213.6 160.6 L214.0 160.0"/><path d="M86.0 178.0 L86.4 179.9 L87.6 181.7 L89.6 183.6 L92.3 185.3 L95.8 187.1 L100.0 188.7 L104.7 190.3 L110.1 191.7 L115.9 193.1 L122.2 194.3 L128.9 195.5 L135.8 196.4 L142.8 197.3 L150.0 198.0 L157.2 198.6 L164.2 199.0 L171.1 199.3 L177.8 199.5 L184.1 199.5 L189.9 199.5 L195.3 199.3 L200.0 199.0 L204.2 198.6 L207.7 198.2 L210.4 197.7 L212.4 197.2 L213.6 196.6 L214.0 196.0"/><path d="M86.0 214.0 L86.4 215.9 L87.6 217.7 L89.6 219.6 L92.3 221.3 L95.8 223.1 L100.0 224.7 L104.7 226.3 L110.1 227.7 L115.9 229.1 L122.2 230.3 L128.9 231.5 L135.8 232.4 L142.8 233.3 L150.0 234.0 L157.2 234.6 L164.2 235.0 L171.1 235.3 L177.8 235.5 L184.1 235.5 L189.9 235.5 L195.3 235.3 L200.0 235.0 L204.2 234.6 L207.7 234.2 L210.4 233.7 L212.4 233.2 L213.6 232.6 L214.0 232.0"/><path d="M86.0 250.0 L86.4 251.9 L87.6 253.7 L89.6 255.6 L92.3 257.3 L95.8 259.1 L100.0 260.7 L104.7 262.3 L110.1 263.7 L115.9 265.1 L122.2 266.3 L128.9 267.5 L135.8 268.4 L142.8 269.3 L150.0 270.0 L157.2 270.6 L164.2 271.0 L171.1 271.3 L177.8 271.5 L184.1 271.5 L189.9 271.5 L195.3 271.3 L200.0 271.0 L204.2 270.6 L207.7 270.2 L210.4 269.7 L212.4 269.2 L213.6 268.6 L214.0 268.0"/><path d="M86.0 286.0 L86.4 287.9 L87.6 289.7 L89.6 291.6 L92.3 293.3 L95.8 295.1 L100.0 296.7 L104.7 298.3 L110.1 299.7 L115.9 301.1 L122.2 302.3 L128.9 303.5 L135.8 304.4 L142.8 305.3 L150.0 306.0 L157.2 306.6 L164.2 307.0 L171.1 307.3 L177.8 307.5 L184.1 307.5 L189.9 307.5 L195.3 307.3 L200.0 307.0 L204.2 306.6 L207.7 306.2 L210.4 305.7 L212.4 305.2 L213.6 304.6 L214.0 304.0"/><path d="M86.0 322.0 L86.4 323.9 L87.6 325.7 L89.6 327.6 L92.3 329.3 L95.8 331.1 L100.0 332.7 L104.7 334.3 L110.1 335.7 L115.9 337.1 L122.2 338.3 L128.9 339.5 L135.8 340.4 L142.8 341.3 L150.0 342.0 L157.2 342.6 L164.2 343.0 L171.1 343.3 L177.8 343.5 L184.1 343.5 L189.9 343.5 L195.3 343.3 L200.0 343.0 L204.2 342.6 L207.7 342.2 L210.4 341.7 L212.4 341.2 L213.6 340.6 L214.0 340.0"/><path d="M86.0 358.0 L86.4 359.9 L87.6 361.7 L89.6 363.6 L92.3 365.3 L95.8 367.1 L100.0 368.7 L104.7 370.3 L110.1 371.7 L115.9 373.1 L122.2 374.3 L128.9 375.5 L135.8 376.4 L142.8 377.3 L150.0 378.0 L157.2 378.6 L164.2 379.0 L171.1 379.3 L177.8 379.5 L184.1 379.5 L189.9 379.5 L195.3 379.3 L200.0 379.0 L204.2 378.6 L207.7 378.2 L210.4 377.7 L212.4 377.2 L213.6 376.6 L214.0 376.0"/><path d="M86.0 394.0 L86.4 395.9 L87.6 397.7 L89.6 399.6 L92.3 401.3 L95.8 403.1 L100.0 404.7 L104.7 406.3 L110.1 407.7 L115.9 409.1 L122.2 410.3 L128.9 411.5 L135.8 412.4 L142.8 413.3 L150.0 414.0 L157.2 414.6 L164.2 415.0 L171.1 415.3 L177.8 415.5 L184.1 415.5 L189.9 415.5 L195.3 415.3 L200.0 415.0 L204.2 414.6 L207.7 414.2 L210.4 413.7 L212.4 413.2 L213.6 412.6 L214.0 412.0"/><path d="M86.0 430.0 L86.4 431.9 L87.6 433.7 L89.6 435.6 L92.3 437.3 L95.8 439.1 L100.0 440.7 L104.7 442.3 L110.1 443.7 L115.9 445.1 L122.2 446.3 L128.9 447.5 L135.8 448.4 L142.8 449.3 L150.0 450.0 L157.2 450.6 L164.2 451.0 L171.1 451.3 L177.8 451.5 L184.1 451.5 L189.9 451.5 L195.3 451.3 L200.0 451.0 L204.2 450.6 L207.7 450.2 L210.4 449.7 L212.4 449.2 L213.6 448.6 L214.0 448.0"/><path d="M86.0 466.0 L86.4 467.9 L87.6 469.7 L89.6 471.6 L92.3 473.3 L95.8 475.1 L100.0 476.7 L104.7 478.3 L110.1 479.7 L115.9 481.1 L122.2 482.3 L128.9 483.5 L135.8 484.4 L142.8 485.3 L150.0 486.0 L157.2 486.6 L164.2 487.0 L171.1 487.3 L177.8 487.5 L184.1 487.5 L189.9 487.5 L195.3 487.3 L200.0 487.0 L204.2 486.6 L207.7 486.2 L210.4 485.7 L212.4 485.2 L213.6 484.6 L214.0 484.0"/><path d="M86.0 502.0 L86.4 503.9 L87.6 505.7 L89.6 507.6 L92.3 509.3 L95.8 511.1 L100.0 512.7 L104.7 514.3 L110.1 515.7 L115.9 517.1 L122.2 518.3 L128.9 519.5 L135.8 520.4 L142.8 521.3 L150.0 522.0 L157.2 522.6 L164.2 523.0 L171.1 523.3 L177.8 523.5 L184.1 523.5 L189.9 523.5 L195.3 523.3 L200.0 523.0 L204.2 522.6 L207.7 522.2 L210.4 521.7 L212.4 521.2 L213.6 520.6 L214.0 520.0"/><path d="M86.0 538.0 L86.4 539.9 L87.6 541.7 L89.6 543.6 L92.3 545.3 L95.8 547.1 L100.0 548.7 L104.7 550.3 L110.1 551.7 L115.9 553.1 L122.2 554.3 L128.9 555.5 L135.8 556.4 L142.8 557.3 L150.0 558.0 L157.2 558.6 L164.2 559.0 L171.1 559.3 L177.8 559.5 L184.1 559.5 L189.9 559.5 L195.3 559.3 L200.0 559.0 L204.2 558.6 L207.7 558.2 L210.4 557.7 L212.4 557.2 L213.6 556.6 L214.0 556.0"/><path d="M86.0 574.0 L86.4 575.9 L87.6 577.7 L89.6 579.6 L92.3 581.3 L95.8 583.1 L100.0 584.7 L104.7 586.3 L110.1 587.7 L115.9 589.1 L122.2 590.3 L128.9 591.5 L135.8 592.4 L142.8 593.3 L150.0 594.0 L157.2 594.6 L164.2 595.0 L171.1 595.3 L177.8 595.5 L184.1 595.5 L189.9 595.5 L195.3 595.3 L200.0 595.0 L204.2 594.6 L207.7 594.2 L210.4 593.7 L212.4 593.2 L213.6 592.6 L214.0 592.0"/><path d="M86.0 610.0 L86.4 611.9 L87.6 613.7 L89.6 615.6 L92.3 617.3 L95.8 619.1 L100.0 620.7 L104.7 622.3 L110.1 623.7 L115.9 625.1 L122.2 626.3 L128.9 627.5 L135.8 628.4 L142.8 629.3 L150.0 630.0 L157.2 630.6 L164.2 631.0 L171.1 631.3 L177.8 631.5 L184.1 631.5 L189.9 631.5 L195.3 631.3 L200.0 631.0 L204.2 630.6 L207.7 630.2 L210.4 629.7 L212.4 629.2 L213.6 628.6 L214.0 628.0"/><path d="M86.0 646.0 L86.4 647.9 L87.6 649.7 L89.6 651.6 L92.3 653.3 L95.8 655.1 L100.0 656.7 L104.7 658.3 L110.1 659.7 L115.9 661.1 L122.2 662.3 L128.9 663.5 L135.8 664.4 L142.8 665.3 L150.0 666.0 L157.2 666.6 L164.2 667.0 L171.1 667.3 L177.8 667.5 L184.1 667.5 L189.9 667.5 L195.3 667.3 L200.0 667.0 L204.2 666.6 L207.7 666.2 L210.4 665.7 L212.4 665.2 L213.6 664.6 L214.0 664.0"/><path d="M86.0 682.0 L86.4 683.9 L87.6 685.7 L89.6 687.6 L92.3 689.3 L95.8 691.1 L100.0 692.7 L104.7 694.3 L110.1 695.7 L115.9 697.1 L122.2 698.3 L128.9 699.5 L135.8 700.4 L142.8 701.3 L150.0 702.0 L157.2 702.6 L164.2 703.0 L171.1 703.3 L177.8 703.5 L184.1 703.5 L189.9 703.5 L195.3 703.3 L200.0 703.0 L204.2 702.6 L207.7 702.2 L210.4 701.7 L212.4 701.2 L213.6 700.6 L214.0 700.0"/></g>
+<g class="coil-flow"><path d="M86.0 70.0 L86.4 71.9 L87.6 73.7 L89.6 75.6 L92.3 77.3 L95.8 79.1 L100.0 80.7 L104.7 82.3 L110.1 83.7 L115.9 85.1 L122.2 86.3 L128.9 87.5 L135.8 88.4 L142.8 89.3 L150.0 90.0 L157.2 90.6 L164.2 91.0 L171.1 91.3 L177.8 91.5 L184.1 91.5 L189.9 91.5 L195.3 91.3 L200.0 91.0 L204.2 90.6 L207.7 90.2 L210.4 89.7 L212.4 89.2 L213.6 88.6 L214.0 88.0"/><path d="M86.0 106.0 L86.4 107.9 L87.6 109.7 L89.6 111.6 L92.3 113.3 L95.8 115.1 L100.0 116.7 L104.7 118.3 L110.1 119.7 L115.9 121.1 L122.2 122.3 L128.9 123.5 L135.8 124.4 L142.8 125.3 L150.0 126.0 L157.2 126.6 L164.2 127.0 L171.1 127.3 L177.8 127.5 L184.1 127.5 L189.9 127.5 L195.3 127.3 L200.0 127.0 L204.2 126.6 L207.7 126.2 L210.4 125.7 L212.4 125.2 L213.6 124.6 L214.0 124.0"/><path d="M86.0 142.0 L86.4 143.9 L87.6 145.7 L89.6 147.6 L92.3 149.3 L95.8 151.1 L100.0 152.7 L104.7 154.3 L110.1 155.7 L115.9 157.1 L122.2 158.3 L128.9 159.5 L135.8 160.4 L142.8 161.3 L150.0 162.0 L157.2 162.6 L164.2 163.0 L171.1 163.3 L177.8 163.5 L184.1 163.5 L189.9 163.5 L195.3 163.3 L200.0 163.0 L204.2 162.6 L207.7 162.2 L210.4 161.7 L212.4 161.2 L213.6 160.6 L214.0 160.0"/><path d="M86.0 178.0 L86.4 179.9 L87.6 181.7 L89.6 183.6 L92.3 185.3 L95.8 187.1 L100.0 188.7 L104.7 190.3 L110.1 191.7 L115.9 193.1 L122.2 194.3 L128.9 195.5 L135.8 196.4 L142.8 197.3 L150.0 198.0 L157.2 198.6 L164.2 199.0 L171.1 199.3 L177.8 199.5 L184.1 199.5 L189.9 199.5 L195.3 199.3 L200.0 199.0 L204.2 198.6 L207.7 198.2 L210.4 197.7 L212.4 197.2 L213.6 196.6 L214.0 196.0"/><path d="M86.0 214.0 L86.4 215.9 L87.6 217.7 L89.6 219.6 L92.3 221.3 L95.8 223.1 L100.0 224.7 L104.7 226.3 L110.1 227.7 L115.9 229.1 L122.2 230.3 L128.9 231.5 L135.8 232.4 L142.8 233.3 L150.0 234.0 L157.2 234.6 L164.2 235.0 L171.1 235.3 L177.8 235.5 L184.1 235.5 L189.9 235.5 L195.3 235.3 L200.0 235.0 L204.2 234.6 L207.7 234.2 L210.4 233.7 L212.4 233.2 L213.6 232.6 L214.0 232.0"/><path d="M86.0 250.0 L86.4 251.9 L87.6 253.7 L89.6 255.6 L92.3 257.3 L95.8 259.1 L100.0 260.7 L104.7 262.3 L110.1 263.7 L115.9 265.1 L122.2 266.3 L128.9 267.5 L135.8 268.4 L142.8 269.3 L150.0 270.0 L157.2 270.6 L164.2 271.0 L171.1 271.3 L177.8 271.5 L184.1 271.5 L189.9 271.5 L195.3 271.3 L200.0 271.0 L204.2 270.6 L207.7 270.2 L210.4 269.7 L212.4 269.2 L213.6 268.6 L214.0 268.0"/><path d="M86.0 286.0 L86.4 287.9 L87.6 289.7 L89.6 291.6 L92.3 293.3 L95.8 295.1 L100.0 296.7 L104.7 298.3 L110.1 299.7 L115.9 301.1 L122.2 302.3 L128.9 303.5 L135.8 304.4 L142.8 305.3 L150.0 306.0 L157.2 306.6 L164.2 307.0 L171.1 307.3 L177.8 307.5 L184.1 307.5 L189.9 307.5 L195.3 307.3 L200.0 307.0 L204.2 306.6 L207.7 306.2 L210.4 305.7 L212.4 305.2 L213.6 304.6 L214.0 304.0"/><path d="M86.0 322.0 L86.4 323.9 L87.6 325.7 L89.6 327.6 L92.3 329.3 L95.8 331.1 L100.0 332.7 L104.7 334.3 L110.1 335.7 L115.9 337.1 L122.2 338.3 L128.9 339.5 L135.8 340.4 L142.8 341.3 L150.0 342.0 L157.2 342.6 L164.2 343.0 L171.1 343.3 L177.8 343.5 L184.1 343.5 L189.9 343.5 L195.3 343.3 L200.0 343.0 L204.2 342.6 L207.7 342.2 L210.4 341.7 L212.4 341.2 L213.6 340.6 L214.0 340.0"/><path d="M86.0 358.0 L86.4 359.9 L87.6 361.7 L89.6 363.6 L92.3 365.3 L95.8 367.1 L100.0 368.7 L104.7 370.3 L110.1 371.7 L115.9 373.1 L122.2 374.3 L128.9 375.5 L135.8 376.4 L142.8 377.3 L150.0 378.0 L157.2 378.6 L164.2 379.0 L171.1 379.3 L177.8 379.5 L184.1 379.5 L189.9 379.5 L195.3 379.3 L200.0 379.0 L204.2 378.6 L207.7 378.2 L210.4 377.7 L212.4 377.2 L213.6 376.6 L214.0 376.0"/><path d="M86.0 394.0 L86.4 395.9 L87.6 397.7 L89.6 399.6 L92.3 401.3 L95.8 403.1 L100.0 404.7 L104.7 406.3 L110.1 407.7 L115.9 409.1 L122.2 410.3 L128.9 411.5 L135.8 412.4 L142.8 413.3 L150.0 414.0 L157.2 414.6 L164.2 415.0 L171.1 415.3 L177.8 415.5 L184.1 415.5 L189.9 415.5 L195.3 415.3 L200.0 415.0 L204.2 414.6 L207.7 414.2 L210.4 413.7 L212.4 413.2 L213.6 412.6 L214.0 412.0"/><path d="M86.0 430.0 L86.4 431.9 L87.6 433.7 L89.6 435.6 L92.3 437.3 L95.8 439.1 L100.0 440.7 L104.7 442.3 L110.1 443.7 L115.9 445.1 L122.2 446.3 L128.9 447.5 L135.8 448.4 L142.8 449.3 L150.0 450.0 L157.2 450.6 L164.2 451.0 L171.1 451.3 L177.8 451.5 L184.1 451.5 L189.9 451.5 L195.3 451.3 L200.0 451.0 L204.2 450.6 L207.7 450.2 L210.4 449.7 L212.4 449.2 L213.6 448.6 L214.0 448.0"/><path d="M86.0 466.0 L86.4 467.9 L87.6 469.7 L89.6 471.6 L92.3 473.3 L95.8 475.1 L100.0 476.7 L104.7 478.3 L110.1 479.7 L115.9 481.1 L122.2 482.3 L128.9 483.5 L135.8 484.4 L142.8 485.3 L150.0 486.0 L157.2 486.6 L164.2 487.0 L171.1 487.3 L177.8 487.5 L184.1 487.5 L189.9 487.5 L195.3 487.3 L200.0 487.0 L204.2 486.6 L207.7 486.2 L210.4 485.7 L212.4 485.2 L213.6 484.6 L214.0 484.0"/><path d="M86.0 502.0 L86.4 503.9 L87.6 505.7 L89.6 507.6 L92.3 509.3 L95.8 511.1 L100.0 512.7 L104.7 514.3 L110.1 515.7 L115.9 517.1 L122.2 518.3 L128.9 519.5 L135.8 520.4 L142.8 521.3 L150.0 522.0 L157.2 522.6 L164.2 523.0 L171.1 523.3 L177.8 523.5 L184.1 523.5 L189.9 523.5 L195.3 523.3 L200.0 523.0 L204.2 522.6 L207.7 522.2 L210.4 521.7 L212.4 521.2 L213.6 520.6 L214.0 520.0"/><path d="M86.0 538.0 L86.4 539.9 L87.6 541.7 L89.6 543.6 L92.3 545.3 L95.8 547.1 L100.0 548.7 L104.7 550.3 L110.1 551.7 L115.9 553.1 L122.2 554.3 L128.9 555.5 L135.8 556.4 L142.8 557.3 L150.0 558.0 L157.2 558.6 L164.2 559.0 L171.1 559.3 L177.8 559.5 L184.1 559.5 L189.9 559.5 L195.3 559.3 L200.0 559.0 L204.2 558.6 L207.7 558.2 L210.4 557.7 L212.4 557.2 L213.6 556.6 L214.0 556.0"/><path d="M86.0 574.0 L86.4 575.9 L87.6 577.7 L89.6 579.6 L92.3 581.3 L95.8 583.1 L100.0 584.7 L104.7 586.3 L110.1 587.7 L115.9 589.1 L122.2 590.3 L128.9 591.5 L135.8 592.4 L142.8 593.3 L150.0 594.0 L157.2 594.6 L164.2 595.0 L171.1 595.3 L177.8 595.5 L184.1 595.5 L189.9 595.5 L195.3 595.3 L200.0 595.0 L204.2 594.6 L207.7 594.2 L210.4 593.7 L212.4 593.2 L213.6 592.6 L214.0 592.0"/><path d="M86.0 610.0 L86.4 611.9 L87.6 613.7 L89.6 615.6 L92.3 617.3 L95.8 619.1 L100.0 620.7 L104.7 622.3 L110.1 623.7 L115.9 625.1 L122.2 626.3 L128.9 627.5 L135.8 628.4 L142.8 629.3 L150.0 630.0 L157.2 630.6 L164.2 631.0 L171.1 631.3 L177.8 631.5 L184.1 631.5 L189.9 631.5 L195.3 631.3 L200.0 631.0 L204.2 630.6 L207.7 630.2 L210.4 629.7 L212.4 629.2 L213.6 628.6 L214.0 628.0"/><path d="M86.0 646.0 L86.4 647.9 L87.6 649.7 L89.6 651.6 L92.3 653.3 L95.8 655.1 L100.0 656.7 L104.7 658.3 L110.1 659.7 L115.9 661.1 L122.2 662.3 L128.9 663.5 L135.8 664.4 L142.8 665.3 L150.0 666.0 L157.2 666.6 L164.2 667.0 L171.1 667.3 L177.8 667.5 L184.1 667.5 L189.9 667.5 L195.3 667.3 L200.0 667.0 L204.2 666.6 L207.7 666.2 L210.4 665.7 L212.4 665.2 L213.6 664.6 L214.0 664.0"/><path d="M86.0 682.0 L86.4 683.9 L87.6 685.7 L89.6 687.6 L92.3 689.3 L95.8 691.1 L100.0 692.7 L104.7 694.3 L110.1 695.7 L115.9 697.1 L122.2 698.3 L128.9 699.5 L135.8 700.4 L142.8 701.3 L150.0 702.0 L157.2 702.6 L164.2 703.0 L171.1 703.3 L177.8 703.5 L184.1 703.5 L189.9 703.5 L195.3 703.3 L200.0 703.0 L204.2 702.6 L207.7 702.2 L210.4 701.7 L212.4 701.2 L213.6 700.6 L214.0 700.0"/></g>
+<g class="coil-glass-front"><path d="M86.0 70.0 L86.4 71.9 L87.6 73.7 L89.6 75.6 L92.3 77.3 L95.8 79.1 L100.0 80.7 L104.7 82.3 L110.1 83.7 L115.9 85.1 L122.2 86.3 L128.9 87.5 L135.8 88.4 L142.8 89.3 L150.0 90.0 L157.2 90.6 L164.2 91.0 L171.1 91.3 L177.8 91.5 L184.1 91.5 L189.9 91.5 L195.3 91.3 L200.0 91.0 L204.2 90.6 L207.7 90.2 L210.4 89.7 L212.4 89.2 L213.6 88.6 L214.0 88.0"/><path d="M86.0 106.0 L86.4 107.9 L87.6 109.7 L89.6 111.6 L92.3 113.3 L95.8 115.1 L100.0 116.7 L104.7 118.3 L110.1 119.7 L115.9 121.1 L122.2 122.3 L128.9 123.5 L135.8 124.4 L142.8 125.3 L150.0 126.0 L157.2 126.6 L164.2 127.0 L171.1 127.3 L177.8 127.5 L184.1 127.5 L189.9 127.5 L195.3 127.3 L200.0 127.0 L204.2 126.6 L207.7 126.2 L210.4 125.7 L212.4 125.2 L213.6 124.6 L214.0 124.0"/><path d="M86.0 142.0 L86.4 143.9 L87.6 145.7 L89.6 147.6 L92.3 149.3 L95.8 151.1 L100.0 152.7 L104.7 154.3 L110.1 155.7 L115.9 157.1 L122.2 158.3 L128.9 159.5 L135.8 160.4 L142.8 161.3 L150.0 162.0 L157.2 162.6 L164.2 163.0 L171.1 163.3 L177.8 163.5 L184.1 163.5 L189.9 163.5 L195.3 163.3 L200.0 163.0 L204.2 162.6 L207.7 162.2 L210.4 161.7 L212.4 161.2 L213.6 160.6 L214.0 160.0"/><path d="M86.0 178.0 L86.4 179.9 L87.6 181.7 L89.6 183.6 L92.3 185.3 L95.8 187.1 L100.0 188.7 L104.7 190.3 L110.1 191.7 L115.9 193.1 L122.2 194.3 L128.9 195.5 L135.8 196.4 L142.8 197.3 L150.0 198.0 L157.2 198.6 L164.2 199.0 L171.1 199.3 L177.8 199.5 L184.1 199.5 L189.9 199.5 L195.3 199.3 L200.0 199.0 L204.2 198.6 L207.7 198.2 L210.4 197.7 L212.4 197.2 L213.6 196.6 L214.0 196.0"/><path d="M86.0 214.0 L86.4 215.9 L87.6 217.7 L89.6 219.6 L92.3 221.3 L95.8 223.1 L100.0 224.7 L104.7 226.3 L110.1 227.7 L115.9 229.1 L122.2 230.3 L128.9 231.5 L135.8 232.4 L142.8 233.3 L150.0 234.0 L157.2 234.6 L164.2 235.0 L171.1 235.3 L177.8 235.5 L184.1 235.5 L189.9 235.5 L195.3 235.3 L200.0 235.0 L204.2 234.6 L207.7 234.2 L210.4 233.7 L212.4 233.2 L213.6 232.6 L214.0 232.0"/><path d="M86.0 250.0 L86.4 251.9 L87.6 253.7 L89.6 255.6 L92.3 257.3 L95.8 259.1 L100.0 260.7 L104.7 262.3 L110.1 263.7 L115.9 265.1 L122.2 266.3 L128.9 267.5 L135.8 268.4 L142.8 269.3 L150.0 270.0 L157.2 270.6 L164.2 271.0 L171.1 271.3 L177.8 271.5 L184.1 271.5 L189.9 271.5 L195.3 271.3 L200.0 271.0 L204.2 270.6 L207.7 270.2 L210.4 269.7 L212.4 269.2 L213.6 268.6 L214.0 268.0"/><path d="M86.0 286.0 L86.4 287.9 L87.6 289.7 L89.6 291.6 L92.3 293.3 L95.8 295.1 L100.0 296.7 L104.7 298.3 L110.1 299.7 L115.9 301.1 L122.2 302.3 L128.9 303.5 L135.8 304.4 L142.8 305.3 L150.0 306.0 L157.2 306.6 L164.2 307.0 L171.1 307.3 L177.8 307.5 L184.1 307.5 L189.9 307.5 L195.3 307.3 L200.0 307.0 L204.2 306.6 L207.7 306.2 L210.4 305.7 L212.4 305.2 L213.6 304.6 L214.0 304.0"/><path d="M86.0 322.0 L86.4 323.9 L87.6 325.7 L89.6 327.6 L92.3 329.3 L95.8 331.1 L100.0 332.7 L104.7 334.3 L110.1 335.7 L115.9 337.1 L122.2 338.3 L128.9 339.5 L135.8 340.4 L142.8 341.3 L150.0 342.0 L157.2 342.6 L164.2 343.0 L171.1 343.3 L177.8 343.5 L184.1 343.5 L189.9 343.5 L195.3 343.3 L200.0 343.0 L204.2 342.6 L207.7 342.2 L210.4 341.7 L212.4 341.2 L213.6 340.6 L214.0 340.0"/><path d="M86.0 358.0 L86.4 359.9 L87.6 361.7 L89.6 363.6 L92.3 365.3 L95.8 367.1 L100.0 368.7 L104.7 370.3 L110.1 371.7 L115.9 373.1 L122.2 374.3 L128.9 375.5 L135.8 376.4 L142.8 377.3 L150.0 378.0 L157.2 378.6 L164.2 379.0 L171.1 379.3 L177.8 379.5 L184.1 379.5 L189.9 379.5 L195.3 379.3 L200.0 379.0 L204.2 378.6 L207.7 378.2 L210.4 377.7 L212.4 377.2 L213.6 376.6 L214.0 376.0"/><path d="M86.0 394.0 L86.4 395.9 L87.6 397.7 L89.6 399.6 L92.3 401.3 L95.8 403.1 L100.0 404.7 L104.7 406.3 L110.1 407.7 L115.9 409.1 L122.2 410.3 L128.9 411.5 L135.8 412.4 L142.8 413.3 L150.0 414.0 L157.2 414.6 L164.2 415.0 L171.1 415.3 L177.8 415.5 L184.1 415.5 L189.9 415.5 L195.3 415.3 L200.0 415.0 L204.2 414.6 L207.7 414.2 L210.4 413.7 L212.4 413.2 L213.6 412.6 L214.0 412.0"/><path d="M86.0 430.0 L86.4 431.9 L87.6 433.7 L89.6 435.6 L92.3 437.3 L95.8 439.1 L100.0 440.7 L104.7 442.3 L110.1 443.7 L115.9 445.1 L122.2 446.3 L128.9 447.5 L135.8 448.4 L142.8 449.3 L150.0 450.0 L157.2 450.6 L164.2 451.0 L171.1 451.3 L177.8 451.5 L184.1 451.5 L189.9 451.5 L195.3 451.3 L200.0 451.0 L204.2 450.6 L207.7 450.2 L210.4 449.7 L212.4 449.2 L213.6 448.6 L214.0 448.0"/><path d="M86.0 466.0 L86.4 467.9 L87.6 469.7 L89.6 471.6 L92.3 473.3 L95.8 475.1 L100.0 476.7 L104.7 478.3 L110.1 479.7 L115.9 481.1 L122.2 482.3 L128.9 483.5 L135.8 484.4 L142.8 485.3 L150.0 486.0 L157.2 486.6 L164.2 487.0 L171.1 487.3 L177.8 487.5 L184.1 487.5 L189.9 487.5 L195.3 487.3 L200.0 487.0 L204.2 486.6 L207.7 486.2 L210.4 485.7 L212.4 485.2 L213.6 484.6 L214.0 484.0"/><path d="M86.0 502.0 L86.4 503.9 L87.6 505.7 L89.6 507.6 L92.3 509.3 L95.8 511.1 L100.0 512.7 L104.7 514.3 L110.1 515.7 L115.9 517.1 L122.2 518.3 L128.9 519.5 L135.8 520.4 L142.8 521.3 L150.0 522.0 L157.2 522.6 L164.2 523.0 L171.1 523.3 L177.8 523.5 L184.1 523.5 L189.9 523.5 L195.3 523.3 L200.0 523.0 L204.2 522.6 L207.7 522.2 L210.4 521.7 L212.4 521.2 L213.6 520.6 L214.0 520.0"/><path d="M86.0 538.0 L86.4 539.9 L87.6 541.7 L89.6 543.6 L92.3 545.3 L95.8 547.1 L100.0 548.7 L104.7 550.3 L110.1 551.7 L115.9 553.1 L122.2 554.3 L128.9 555.5 L135.8 556.4 L142.8 557.3 L150.0 558.0 L157.2 558.6 L164.2 559.0 L171.1 559.3 L177.8 559.5 L184.1 559.5 L189.9 559.5 L195.3 559.3 L200.0 559.0 L204.2 558.6 L207.7 558.2 L210.4 557.7 L212.4 557.2 L213.6 556.6 L214.0 556.0"/><path d="M86.0 574.0 L86.4 575.9 L87.6 577.7 L89.6 579.6 L92.3 581.3 L95.8 583.1 L100.0 584.7 L104.7 586.3 L110.1 587.7 L115.9 589.1 L122.2 590.3 L128.9 591.5 L135.8 592.4 L142.8 593.3 L150.0 594.0 L157.2 594.6 L164.2 595.0 L171.1 595.3 L177.8 595.5 L184.1 595.5 L189.9 595.5 L195.3 595.3 L200.0 595.0 L204.2 594.6 L207.7 594.2 L210.4 593.7 L212.4 593.2 L213.6 592.6 L214.0 592.0"/><path d="M86.0 610.0 L86.4 611.9 L87.6 613.7 L89.6 615.6 L92.3 617.3 L95.8 619.1 L100.0 620.7 L104.7 622.3 L110.1 623.7 L115.9 625.1 L122.2 626.3 L128.9 627.5 L135.8 628.4 L142.8 629.3 L150.0 630.0 L157.2 630.6 L164.2 631.0 L171.1 631.3 L177.8 631.5 L184.1 631.5 L189.9 631.5 L195.3 631.3 L200.0 631.0 L204.2 630.6 L207.7 630.2 L210.4 629.7 L212.4 629.2 L213.6 628.6 L214.0 628.0"/><path d="M86.0 646.0 L86.4 647.9 L87.6 649.7 L89.6 651.6 L92.3 653.3 L95.8 655.1 L100.0 656.7 L104.7 658.3 L110.1 659.7 L115.9 661.1 L122.2 662.3 L128.9 663.5 L135.8 664.4 L142.8 665.3 L150.0 666.0 L157.2 666.6 L164.2 667.0 L171.1 667.3 L177.8 667.5 L184.1 667.5 L189.9 667.5 L195.3 667.3 L200.0 667.0 L204.2 666.6 L207.7 666.2 L210.4 665.7 L212.4 665.2 L213.6 664.6 L214.0 664.0"/><path d="M86.0 682.0 L86.4 683.9 L87.6 685.7 L89.6 687.6 L92.3 689.3 L95.8 691.1 L100.0 692.7 L104.7 694.3 L110.1 695.7 L115.9 697.1 L122.2 698.3 L128.9 699.5 L135.8 700.4 L142.8 701.3 L150.0 702.0 L157.2 702.6 L164.2 703.0 L171.1 703.3 L177.8 703.5 L184.1 703.5 L189.9 703.5 L195.3 703.3 L200.0 703.0 L204.2 702.6 L207.7 702.2 L210.4 701.7 L212.4 701.2 L213.6 700.6 L214.0 700.0"/></g>
+<g class="coil-glint" transform="translate(0 -5)"><path d="M86.0 70.0 L86.4 71.9 L87.6 73.7 L89.6 75.6 L92.3 77.3 L95.8 79.1 L100.0 80.7 L104.7 82.3 L110.1 83.7 L115.9 85.1 L122.2 86.3 L128.9 87.5 L135.8 88.4 L142.8 89.3 L150.0 90.0 L157.2 90.6 L164.2 91.0 L171.1 91.3 L177.8 91.5 L184.1 91.5 L189.9 91.5 L195.3 91.3 L200.0 91.0 L204.2 90.6 L207.7 90.2 L210.4 89.7 L212.4 89.2 L213.6 88.6 L214.0 88.0"/><path d="M86.0 106.0 L86.4 107.9 L87.6 109.7 L89.6 111.6 L92.3 113.3 L95.8 115.1 L100.0 116.7 L104.7 118.3 L110.1 119.7 L115.9 121.1 L122.2 122.3 L128.9 123.5 L135.8 124.4 L142.8 125.3 L150.0 126.0 L157.2 126.6 L164.2 127.0 L171.1 127.3 L177.8 127.5 L184.1 127.5 L189.9 127.5 L195.3 127.3 L200.0 127.0 L204.2 126.6 L207.7 126.2 L210.4 125.7 L212.4 125.2 L213.6 124.6 L214.0 124.0"/><path d="M86.0 142.0 L86.4 143.9 L87.6 145.7 L89.6 147.6 L92.3 149.3 L95.8 151.1 L100.0 152.7 L104.7 154.3 L110.1 155.7 L115.9 157.1 L122.2 158.3 L128.9 159.5 L135.8 160.4 L142.8 161.3 L150.0 162.0 L157.2 162.6 L164.2 163.0 L171.1 163.3 L177.8 163.5 L184.1 163.5 L189.9 163.5 L195.3 163.3 L200.0 163.0 L204.2 162.6 L207.7 162.2 L210.4 161.7 L212.4 161.2 L213.6 160.6 L214.0 160.0"/><path d="M86.0 178.0 L86.4 179.9 L87.6 181.7 L89.6 183.6 L92.3 185.3 L95.8 187.1 L100.0 188.7 L104.7 190.3 L110.1 191.7 L115.9 193.1 L122.2 194.3 L128.9 195.5 L135.8 196.4 L142.8 197.3 L150.0 198.0 L157.2 198.6 L164.2 199.0 L171.1 199.3 L177.8 199.5 L184.1 199.5 L189.9 199.5 L195.3 199.3 L200.0 199.0 L204.2 198.6 L207.7 198.2 L210.4 197.7 L212.4 197.2 L213.6 196.6 L214.0 196.0"/><path d="M86.0 214.0 L86.4 215.9 L87.6 217.7 L89.6 219.6 L92.3 221.3 L95.8 223.1 L100.0 224.7 L104.7 226.3 L110.1 227.7 L115.9 229.1 L122.2 230.3 L128.9 231.5 L135.8 232.4 L142.8 233.3 L150.0 234.0 L157.2 234.6 L164.2 235.0 L171.1 235.3 L177.8 235.5 L184.1 235.5 L189.9 235.5 L195.3 235.3 L200.0 235.0 L204.2 234.6 L207.7 234.2 L210.4 233.7 L212.4 233.2 L213.6 232.6 L214.0 232.0"/><path d="M86.0 250.0 L86.4 251.9 L87.6 253.7 L89.6 255.6 L92.3 257.3 L95.8 259.1 L100.0 260.7 L104.7 262.3 L110.1 263.7 L115.9 265.1 L122.2 266.3 L128.9 267.5 L135.8 268.4 L142.8 269.3 L150.0 270.0 L157.2 270.6 L164.2 271.0 L171.1 271.3 L177.8 271.5 L184.1 271.5 L189.9 271.5 L195.3 271.3 L200.0 271.0 L204.2 270.6 L207.7 270.2 L210.4 269.7 L212.4 269.2 L213.6 268.6 L214.0 268.0"/><path d="M86.0 286.0 L86.4 287.9 L87.6 289.7 L89.6 291.6 L92.3 293.3 L95.8 295.1 L100.0 296.7 L104.7 298.3 L110.1 299.7 L115.9 301.1 L122.2 302.3 L128.9 303.5 L135.8 304.4 L142.8 305.3 L150.0 306.0 L157.2 306.6 L164.2 307.0 L171.1 307.3 L177.8 307.5 L184.1 307.5 L189.9 307.5 L195.3 307.3 L200.0 307.0 L204.2 306.6 L207.7 306.2 L210.4 305.7 L212.4 305.2 L213.6 304.6 L214.0 304.0"/><path d="M86.0 322.0 L86.4 323.9 L87.6 325.7 L89.6 327.6 L92.3 329.3 L95.8 331.1 L100.0 332.7 L104.7 334.3 L110.1 335.7 L115.9 337.1 L122.2 338.3 L128.9 339.5 L135.8 340.4 L142.8 341.3 L150.0 342.0 L157.2 342.6 L164.2 343.0 L171.1 343.3 L177.8 343.5 L184.1 343.5 L189.9 343.5 L195.3 343.3 L200.0 343.0 L204.2 342.6 L207.7 342.2 L210.4 341.7 L212.4 341.2 L213.6 340.6 L214.0 340.0"/><path d="M86.0 358.0 L86.4 359.9 L87.6 361.7 L89.6 363.6 L92.3 365.3 L95.8 367.1 L100.0 368.7 L104.7 370.3 L110.1 371.7 L115.9 373.1 L122.2 374.3 L128.9 375.5 L135.8 376.4 L142.8 377.3 L150.0 378.0 L157.2 378.6 L164.2 379.0 L171.1 379.3 L177.8 379.5 L184.1 379.5 L189.9 379.5 L195.3 379.3 L200.0 379.0 L204.2 378.6 L207.7 378.2 L210.4 377.7 L212.4 377.2 L213.6 376.6 L214.0 376.0"/><path d="M86.0 394.0 L86.4 395.9 L87.6 397.7 L89.6 399.6 L92.3 401.3 L95.8 403.1 L100.0 404.7 L104.7 406.3 L110.1 407.7 L115.9 409.1 L122.2 410.3 L128.9 411.5 L135.8 412.4 L142.8 413.3 L150.0 414.0 L157.2 414.6 L164.2 415.0 L171.1 415.3 L177.8 415.5 L184.1 415.5 L189.9 415.5 L195.3 415.3 L200.0 415.0 L204.2 414.6 L207.7 414.2 L210.4 413.7 L212.4 413.2 L213.6 412.6 L214.0 412.0"/><path d="M86.0 430.0 L86.4 431.9 L87.6 433.7 L89.6 435.6 L92.3 437.3 L95.8 439.1 L100.0 440.7 L104.7 442.3 L110.1 443.7 L115.9 445.1 L122.2 446.3 L128.9 447.5 L135.8 448.4 L142.8 449.3 L150.0 450.0 L157.2 450.6 L164.2 451.0 L171.1 451.3 L177.8 451.5 L184.1 451.5 L189.9 451.5 L195.3 451.3 L200.0 451.0 L204.2 450.6 L207.7 450.2 L210.4 449.7 L212.4 449.2 L213.6 448.6 L214.0 448.0"/><path d="M86.0 466.0 L86.4 467.9 L87.6 469.7 L89.6 471.6 L92.3 473.3 L95.8 475.1 L100.0 476.7 L104.7 478.3 L110.1 479.7 L115.9 481.1 L122.2 482.3 L128.9 483.5 L135.8 484.4 L142.8 485.3 L150.0 486.0 L157.2 486.6 L164.2 487.0 L171.1 487.3 L177.8 487.5 L184.1 487.5 L189.9 487.5 L195.3 487.3 L200.0 487.0 L204.2 486.6 L207.7 486.2 L210.4 485.7 L212.4 485.2 L213.6 484.6 L214.0 484.0"/><path d="M86.0 502.0 L86.4 503.9 L87.6 505.7 L89.6 507.6 L92.3 509.3 L95.8 511.1 L100.0 512.7 L104.7 514.3 L110.1 515.7 L115.9 517.1 L122.2 518.3 L128.9 519.5 L135.8 520.4 L142.8 521.3 L150.0 522.0 L157.2 522.6 L164.2 523.0 L171.1 523.3 L177.8 523.5 L184.1 523.5 L189.9 523.5 L195.3 523.3 L200.0 523.0 L204.2 522.6 L207.7 522.2 L210.4 521.7 L212.4 521.2 L213.6 520.6 L214.0 520.0"/><path d="M86.0 538.0 L86.4 539.9 L87.6 541.7 L89.6 543.6 L92.3 545.3 L95.8 547.1 L100.0 548.7 L104.7 550.3 L110.1 551.7 L115.9 553.1 L122.2 554.3 L128.9 555.5 L135.8 556.4 L142.8 557.3 L150.0 558.0 L157.2 558.6 L164.2 559.0 L171.1 559.3 L177.8 559.5 L184.1 559.5 L189.9 559.5 L195.3 559.3 L200.0 559.0 L204.2 558.6 L207.7 558.2 L210.4 557.7 L212.4 557.2 L213.6 556.6 L214.0 556.0"/><path d="M86.0 574.0 L86.4 575.9 L87.6 577.7 L89.6 579.6 L92.3 581.3 L95.8 583.1 L100.0 584.7 L104.7 586.3 L110.1 587.7 L115.9 589.1 L122.2 590.3 L128.9 591.5 L135.8 592.4 L142.8 593.3 L150.0 594.0 L157.2 594.6 L164.2 595.0 L171.1 595.3 L177.8 595.5 L184.1 595.5 L189.9 595.5 L195.3 595.3 L200.0 595.0 L204.2 594.6 L207.7 594.2 L210.4 593.7 L212.4 593.2 L213.6 592.6 L214.0 592.0"/><path d="M86.0 610.0 L86.4 611.9 L87.6 613.7 L89.6 615.6 L92.3 617.3 L95.8 619.1 L100.0 620.7 L104.7 622.3 L110.1 623.7 L115.9 625.1 L122.2 626.3 L128.9 627.5 L135.8 628.4 L142.8 629.3 L150.0 630.0 L157.2 630.6 L164.2 631.0 L171.1 631.3 L177.8 631.5 L184.1 631.5 L189.9 631.5 L195.3 631.3 L200.0 631.0 L204.2 630.6 L207.7 630.2 L210.4 629.7 L212.4 629.2 L213.6 628.6 L214.0 628.0"/><path d="M86.0 646.0 L86.4 647.9 L87.6 649.7 L89.6 651.6 L92.3 653.3 L95.8 655.1 L100.0 656.7 L104.7 658.3 L110.1 659.7 L115.9 661.1 L122.2 662.3 L128.9 663.5 L135.8 664.4 L142.8 665.3 L150.0 666.0 L157.2 666.6 L164.2 667.0 L171.1 667.3 L177.8 667.5 L184.1 667.5 L189.9 667.5 L195.3 667.3 L200.0 667.0 L204.2 666.6 L207.7 666.2 L210.4 665.7 L212.4 665.2 L213.6 664.6 L214.0 664.0"/><path d="M86.0 682.0 L86.4 683.9 L87.6 685.7 L89.6 687.6 L92.3 689.3 L95.8 691.1 L100.0 692.7 L104.7 694.3 L110.1 695.7 L115.9 697.1 L122.2 698.3 L128.9 699.5 L135.8 700.4 L142.8 701.3 L150.0 702.0 L157.2 702.6 L164.2 703.0 L171.1 703.3 L177.8 703.5 L184.1 703.5 L189.9 703.5 L195.3 703.3 L200.0 703.0 L204.2 702.6 L207.7 702.2 L210.4 701.7 L212.4 701.2 L213.6 700.6 L214.0 700.0"/></g>
+<circle class="coil-drip" cx="150" cy="772" r="4.5"/>
+</svg>
+        <figcaption class="caption"><button class="anim-toggle" type="button" aria-pressed="false">Pause animation</button> Coffee darkens as it runs down the coil.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 02 POSTER A: pores -->
+  <section id="glass" class="poster section--canvas" data-tone="light" data-group="brewer" aria-labelledby="glass-title">
+    <div class="wrap poster__grid">
+      <div>
+        <p class="kicker" style="color:var(--accent)">Inside the disc</p>
+        <h2 id="glass-title" class="campaign-quote">Smaller than the finest grind.</h2>
+        <p class="lede">The filter is glass powder fused into a disc. The gaps between the grains are 16–40 µm (G3 / ISO P40). Water passes. Grounds stay on top. Glass does not absorb flavour, and it does not rust or tear.</p>
+        <ul class="facts">
+          <li><b>Grade</b><span>G3 / ISO 4793 P40, pores 16–40 µm</span></li>
+          <li><b>Material</b><span>Borosilicate 3.3, like lab glassware</span></li>
+          <li><b>Honest limit</b><span>Very fine particles (~20–50 µm) can lodge in the pores, so the disc needs a citric-acid soak from time to time.</span></li>
+        </ul>
+      </div>
+      <figure class="figure anim" data-anim>
+        <svg class="pores" viewBox="0 0 400 260" role="img" aria-label="Cross-section of a sintered glass disc: small water droplets pass through the gaps between fused glass grains, larger coffee grounds stay on top">
+<defs><radialGradient id="grain" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4DACD"/></radialGradient></defs>
+<rect x="0" y="104" width="400" height="80" fill="#E9DFD2"/>
+<g class="pr-drops"><circle class="pr-drop" cx="137.3" cy="14" r="3.4" style="animation-duration:2.78s;animation-delay:-1.81s"/><circle class="pr-drop" cx="47.8" cy="14" r="3.4" style="animation-duration:3.24s;animation-delay:-1.19s"/><circle class="pr-drop" cx="42.6" cy="14" r="3.4" style="animation-duration:3.21s;animation-delay:-0.12s"/><circle class="pr-drop" cx="176.4" cy="14" r="3.4" style="animation-duration:2.68s;animation-delay:-0.24s"/><circle class="pr-drop" cx="173.1" cy="14" r="3.4" style="animation-duration:3.59s;animation-delay:-0.44s"/><circle class="pr-drop" cx="101.5" cy="14" r="3.4" style="animation-duration:3.35s;animation-delay:-3.18s"/><circle class="pr-drop" cx="227.4" cy="14" r="3.4" style="animation-duration:3.08s;animation-delay:-3.00s"/><circle class="pr-drop" cx="38.6" cy="14" r="3.4" style="animation-duration:3.63s;animation-delay:-1.05s"/><circle class="pr-drop" cx="73.4" cy="14" r="3.4" style="animation-duration:2.74s;animation-delay:-0.85s"/><circle class="pr-drop" cx="312.5" cy="14" r="3.4" style="animation-duration:2.82s;animation-delay:-1.64s"/><circle class="pr-drop" cx="249.5" cy="14" r="3.4" style="animation-duration:3.05s;animation-delay:-1.67s"/><circle class="pr-drop" cx="44.4" cy="14" r="3.4" style="animation-duration:2.67s;animation-delay:-0.55s"/><circle class="pr-drop" cx="264.2" cy="14" r="3.4" style="animation-duration:3.11s;animation-delay:-0.98s"/><circle class="pr-drop" cx="230.5" cy="14" r="3.4" style="animation-duration:3.14s;animation-delay:-0.94s"/><circle class="pr-drop" cx="304.8" cy="14" r="3.4" style="animation-duration:3.44s;animation-delay:-0.84s"/><circle class="pr-drop" cx="226.5" cy="14" r="3.4" style="animation-duration:3.23s;animation-delay:-2.83s"/><circle class="pr-drop" cx="281.7" cy="14" r="3.4" style="animation-duration:2.95s;animation-delay:-2.89s"/><circle class="pr-drop" cx="64.0" cy="14" r="3.4" style="animation-duration:3.10s;animation-delay:-2.35s"/><circle class="pr-drop" cx="76.1" cy="14" r="3.4" style="animation-duration:3.19s;animation-delay:-0.12s"/><circle class="pr-drop" cx="259.9" cy="14" r="3.4" style="animation-duration:3.52s;animation-delay:-2.02s"/></g>
+<g class="pr-grains" stroke="#BDAE9C" stroke-width=".8"><circle cx="9.2" cy="112.9" r="9.4" fill="url(#grain)"/><circle cx="34.2" cy="116.3" r="9.9" fill="url(#grain)"/><circle cx="56.6" cy="116.4" r="11.5" fill="url(#grain)"/><circle cx="74.2" cy="112.6" r="9.3" fill="url(#grain)"/><circle cx="94.2" cy="112.5" r="10.5" fill="url(#grain)"/><circle cx="119.4" cy="115.7" r="10.0" fill="url(#grain)"/><circle cx="138.9" cy="115.5" r="8.9" fill="url(#grain)"/><circle cx="160.0" cy="116.0" r="10.9" fill="url(#grain)"/><circle cx="181.5" cy="113.9" r="9.1" fill="url(#grain)"/><circle cx="202.7" cy="113.2" r="11.0" fill="url(#grain)"/><circle cx="224.8" cy="113.5" r="9.8" fill="url(#grain)"/><circle cx="245.7" cy="115.1" r="9.1" fill="url(#grain)"/><circle cx="261.8" cy="112.3" r="11.3" fill="url(#grain)"/><circle cx="286.8" cy="112.2" r="11.1" fill="url(#grain)"/><circle cx="308.9" cy="114.8" r="9.7" fill="url(#grain)"/><circle cx="327.3" cy="112.2" r="8.6" fill="url(#grain)"/><circle cx="350.8" cy="114.7" r="10.2" fill="url(#grain)"/><circle cx="371.6" cy="113.7" r="11.2" fill="url(#grain)"/><circle cx="392.0" cy="112.6" r="9.4" fill="url(#grain)"/><circle cx="21.3" cy="127.0" r="10.4" fill="url(#grain)"/><circle cx="42.1" cy="127.9" r="9.0" fill="url(#grain)"/><circle cx="67.0" cy="127.5" r="10.0" fill="url(#grain)"/><circle cx="86.0" cy="130.3" r="9.9" fill="url(#grain)"/><circle cx="109.0" cy="128.3" r="10.2" fill="url(#grain)"/><circle cx="127.6" cy="125.9" r="9.9" fill="url(#grain)"/><circle cx="146.6" cy="125.8" r="11.0" fill="url(#grain)"/><circle cx="167.5" cy="128.1" r="10.8" fill="url(#grain)"/><circle cx="190.8" cy="127.4" r="10.2" fill="url(#grain)"/><circle cx="211.8" cy="129.7" r="8.9" fill="url(#grain)"/><circle cx="232.9" cy="127.0" r="9.4" fill="url(#grain)"/><circle cx="255.1" cy="128.3" r="10.3" fill="url(#grain)"/><circle cx="276.1" cy="130.3" r="9.9" fill="url(#grain)"/><circle cx="296.2" cy="128.3" r="10.1" fill="url(#grain)"/><circle cx="317.7" cy="128.0" r="10.2" fill="url(#grain)"/><circle cx="337.4" cy="130.5" r="10.7" fill="url(#grain)"/><circle cx="360.8" cy="130.5" r="9.4" fill="url(#grain)"/><circle cx="379.9" cy="130.5" r="11.1" fill="url(#grain)"/><circle cx="9.8" cy="140.7" r="9.9" fill="url(#grain)"/><circle cx="30.4" cy="141.3" r="8.8" fill="url(#grain)"/><circle cx="55.0" cy="144.0" r="11.3" fill="url(#grain)"/><circle cx="72.9" cy="143.6" r="10.6" fill="url(#grain)"/><circle cx="93.9" cy="144.5" r="11.5" fill="url(#grain)"/><circle cx="115.3" cy="144.8" r="9.8" fill="url(#grain)"/><circle cx="137.9" cy="145.0" r="11.1" fill="url(#grain)"/><circle cx="157.0" cy="142.2" r="10.1" fill="url(#grain)"/><circle cx="179.0" cy="141.0" r="9.6" fill="url(#grain)"/><circle cx="202.3" cy="140.2" r="10.3" fill="url(#grain)"/><circle cx="221.6" cy="140.2" r="9.6" fill="url(#grain)"/><circle cx="243.7" cy="142.6" r="8.8" fill="url(#grain)"/><circle cx="266.9" cy="144.0" r="11.5" fill="url(#grain)"/><circle cx="282.6" cy="141.4" r="8.7" fill="url(#grain)"/><circle cx="307.7" cy="141.4" r="9.0" fill="url(#grain)"/><circle cx="326.5" cy="144.6" r="11.1" fill="url(#grain)"/><circle cx="346.6" cy="140.8" r="11.4" fill="url(#grain)"/><circle cx="369.4" cy="143.6" r="8.9" fill="url(#grain)"/><circle cx="387.3" cy="143.5" r="9.9" fill="url(#grain)"/><circle cx="19.9" cy="159.0" r="10.5" fill="url(#grain)"/><circle cx="45.3" cy="154.8" r="11.2" fill="url(#grain)"/><circle cx="61.9" cy="158.7" r="10.0" fill="url(#grain)"/><circle cx="84.5" cy="157.1" r="11.4" fill="url(#grain)"/><circle cx="105.1" cy="155.0" r="10.2" fill="url(#grain)"/><circle cx="125.9" cy="154.9" r="9.1" fill="url(#grain)"/><circle cx="145.8" cy="155.3" r="9.5" fill="url(#grain)"/><circle cx="168.3" cy="158.1" r="9.5" fill="url(#grain)"/><circle cx="190.5" cy="155.2" r="9.6" fill="url(#grain)"/><circle cx="208.6" cy="155.6" r="8.6" fill="url(#grain)"/><circle cx="233.9" cy="157.1" r="9.2" fill="url(#grain)"/><circle cx="253.3" cy="159.0" r="8.9" fill="url(#grain)"/><circle cx="276.4" cy="156.5" r="10.1" fill="url(#grain)"/><circle cx="297.5" cy="156.3" r="10.1" fill="url(#grain)"/><circle cx="317.6" cy="159.3" r="9.6" fill="url(#grain)"/><circle cx="339.5" cy="157.9" r="10.5" fill="url(#grain)"/><circle cx="357.9" cy="156.1" r="8.8" fill="url(#grain)"/><circle cx="377.3" cy="154.7" r="10.8" fill="url(#grain)"/><circle cx="10.5" cy="169.4" r="8.9" fill="url(#grain)"/><circle cx="35.0" cy="173.0" r="10.6" fill="url(#grain)"/><circle cx="52.7" cy="169.8" r="9.5" fill="url(#grain)"/><circle cx="74.8" cy="169.4" r="9.9" fill="url(#grain)"/><circle cx="94.6" cy="173.4" r="11.5" fill="url(#grain)"/><circle cx="117.3" cy="169.8" r="11.5" fill="url(#grain)"/><circle cx="136.9" cy="170.4" r="8.6" fill="url(#grain)"/><circle cx="158.3" cy="171.0" r="10.1" fill="url(#grain)"/><circle cx="178.2" cy="171.1" r="8.6" fill="url(#grain)"/><circle cx="199.6" cy="169.1" r="9.8" fill="url(#grain)"/><circle cx="219.3" cy="168.7" r="9.5" fill="url(#grain)"/><circle cx="241.4" cy="171.5" r="10.2" fill="url(#grain)"/><circle cx="265.5" cy="171.9" r="10.7" fill="url(#grain)"/><circle cx="287.3" cy="170.6" r="9.6" fill="url(#grain)"/><circle cx="308.9" cy="169.4" r="10.8" fill="url(#grain)"/><circle cx="327.9" cy="168.8" r="11.1" fill="url(#grain)"/><circle cx="350.4" cy="171.8" r="10.8" fill="url(#grain)"/><circle cx="370.9" cy="169.3" r="10.2" fill="url(#grain)"/><circle cx="390.0" cy="172.8" r="11.0" fill="url(#grain)"/></g>
+<g class="pr-grounds"><polygon class="pr-ground" points="57.4,95.1 51.6,106.8 41.1,110.3 31.9,99.2 35.1,91.2 42.4,83.2 55.2,87.8" style="animation-delay:0.00s"/><polygon class="pr-ground" points="105.3,92.7 101.7,101.0 91.4,104.0 81.1,102.0 81.1,90.5 88.0,79.6 97.5,82.5" style="animation-delay:-0.55s"/><polygon class="pr-ground" points="153.8,97.4 145.4,104.8 137.9,106.3 125.7,98.5 129.5,91.8 136.1,84.3 148.0,84.6" style="animation-delay:-1.10s"/><polygon class="pr-ground" points="197.7,90.3 194.6,102.8 180.1,105.4 174.2,98.9 177.2,88.1 185.7,79.4 196.6,84.2" style="animation-delay:-1.65s"/><polygon class="pr-ground" points="242.5,93.4 237.9,102.4 231.9,105.0 222.5,100.7 222.3,91.7 227.9,84.3 237.8,85.6" style="animation-delay:-2.20s"/><polygon class="pr-ground" points="288.7,97.0 286.4,104.6 276.3,106.9 263.6,100.4 266.7,91.2 273.6,86.8 284.3,87.0" style="animation-delay:-2.75s"/><polygon class="pr-ground" points="332.0,94.4 327.5,107.5 321.4,108.8 312.2,104.1 310.9,87.1 320.6,84.9 328.2,87.2" style="animation-delay:-3.30s"/><polygon class="pr-ground" points="375.9,96.1 369.6,103.9 356.5,109.7 348.5,99.6 350.8,88.0 357.6,84.1 367.7,87.5" style="animation-delay:-3.85s"/></g>
+<line x1="0" y1="104" x2="400" y2="104" stroke="#7A6A5D" stroke-width="1"/>
+<line x1="0" y1="184" x2="400" y2="184" stroke="#7A6A5D" stroke-width="1"/>
+</svg>
+        <figcaption class="caption">
+          <span class="legend"><span><i style="background:#4F93A6"></i>Water</span><span><i style="background:#5A3018"></i>Coffee grounds</span><span><i style="background:#fff;border:1px solid #BDAE9C"></i>Fused glass grains</span></span>
+          <button class="anim-toggle" type="button" aria-pressed="false">Pause animation</button> Not to scale: real grounds are 10–30× larger than the pores.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 03 POSTER B: oils -->
+  <section id="oils" class="poster dark dark--2" data-tone="dark" data-group="brewer" aria-labelledby="oils-title">
+    <div class="wrap poster__grid">
+      <div>
+        <p class="kicker" style="color:var(--crema)">Paper vs glass</p>
+        <h2 id="oils-title" class="campaign-quote" style="color:var(--foam)">Paper keeps the oils. Glass gives them back.</h2>
+        <p class="lede">Paper filters trap most coffee oils. A glass disc lets them through, so the cup has more body, like a metal-filter brew, but clearer. Nothing in the brew path is plastic, paper or metal.</p>
+      </div>
+      <figure class="figure anim" data-anim>
+        <svg class="oils" viewBox="0 0 420 270" role="img" aria-label="Side by side: on the left a paper filter catches amber oil droplets; on the right a glass filter lets them through to the cup">
+<defs><radialGradient id="grain2" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset="1" stop-color="#CDBFAF" stop-opacity=".9"/></radialGradient></defs>
+<text class="ol-title" x="100" y="22" text-anchor="middle">PAPER</text>
+<text class="ol-title" x="320" y="22" text-anchor="middle">GLASS</text>
+<g class="ol-water"><circle class="ol-w" cx="34.4" cy="40" r="3" style="animation-duration:3.86s;animation-delay:-1.46s"/><circle class="ol-w" cx="78.5" cy="40" r="3" style="animation-duration:3.53s;animation-delay:-0.60s"/><circle class="ol-w" cx="114.0" cy="40" r="3" style="animation-duration:3.48s;animation-delay:-1.22s"/><circle class="ol-w" cx="165.5" cy="40" r="3" style="animation-duration:3.32s;animation-delay:-3.20s"/><circle class="ol-w" cx="256.5" cy="40" r="3" style="animation-duration:3.56s;animation-delay:-2.92s"/><circle class="ol-w" cx="303.9" cy="40" r="3" style="animation-duration:3.63s;animation-delay:-0.18s"/><circle class="ol-w" cx="339.7" cy="40" r="3" style="animation-duration:3.57s;animation-delay:-3.29s"/><circle class="ol-w" cx="376.3" cy="40" r="3" style="animation-duration:3.56s;animation-delay:-3.20s"/></g>
+<g><circle class="ol-oil-stuck" cx="32.0" cy="40" r="4.2" style="animation-duration:3.61s;animation-delay:-2.93s"/><circle class="ol-oil-stuck" cx="72.0" cy="40" r="4.2" style="animation-duration:3.24s;animation-delay:-0.11s"/><circle class="ol-oil-stuck" cx="94.8" cy="40" r="4.2" style="animation-duration:4.12s;animation-delay:-1.06s"/><circle class="ol-oil-stuck" cx="134.2" cy="40" r="4.2" style="animation-duration:4.10s;animation-delay:-1.39s"/><circle class="ol-oil-stuck" cx="159.7" cy="40" r="4.2" style="animation-duration:4.16s;animation-delay:-2.57s"/></g>
+<g><circle class="ol-oil-pass" cx="254.7" cy="40" r="4.2" style="animation-duration:3.92s;animation-delay:-1.24s"/><circle class="ol-oil-pass" cx="286.1" cy="40" r="4.2" style="animation-duration:3.20s;animation-delay:-2.42s"/><circle class="ol-oil-pass" cx="325.0" cy="40" r="4.2" style="animation-duration:3.83s;animation-delay:-3.62s"/><circle class="ol-oil-pass" cx="345.5" cy="40" r="4.2" style="animation-duration:3.43s;animation-delay:-1.63s"/><circle class="ol-oil-pass" cx="387.9" cy="40" r="4.2" style="animation-duration:4.15s;animation-delay:-1.61s"/></g>
+<clipPath id="paperclip"><rect x="6" y="108" width="188" height="36"/></clipPath>
+<rect x="6" y="108" width="188" height="36" fill="#F1E8DC"/>
+<g stroke="#B9A894" stroke-width=".9" clip-path="url(#paperclip)"><line x1="160.1" y1="137.0" x2="166.8" y2="131.1"/><line x1="135.6" y1="112.9" x2="114.0" y2="115.7"/><line x1="74.4" y1="135.4" x2="42.8" y2="127.6"/><line x1="123.5" y1="131.1" x2="133.6" y2="125.7"/><line x1="8.6" y1="133.0" x2="32.4" y2="126.1"/><line x1="106.5" y1="113.8" x2="119.2" y2="132.6"/><line x1="54.4" y1="119.4" x2="20.4" y2="132.4"/><line x1="45.8" y1="139.3" x2="64.9" y2="125.8"/><line x1="78.4" y1="131.1" x2="76.7" y2="133.5"/><line x1="121.5" y1="114.2" x2="132.9" y2="116.1"/><line x1="54.7" y1="120.5" x2="74.2" y2="127.9"/><line x1="10.3" y1="119.5" x2="-24.9" y2="130.8"/><line x1="135.4" y1="120.1" x2="149.4" y2="126.5"/><line x1="93.5" y1="115.3" x2="90.8" y2="137.0"/><line x1="44.7" y1="138.2" x2="82.9" y2="112.5"/><line x1="92.5" y1="139.1" x2="118.0" y2="124.6"/><line x1="57.4" y1="138.5" x2="34.2" y2="117.9"/><line x1="115.0" y1="126.7" x2="86.3" y2="138.7"/><line x1="32.4" y1="126.2" x2="58.0" y2="136.8"/><line x1="137.4" y1="137.1" x2="115.9" y2="125.6"/><line x1="12.6" y1="125.8" x2="-27.1" y2="124.6"/><line x1="63.6" y1="121.6" x2="34.8" y2="120.9"/><line x1="162.6" y1="133.0" x2="122.7" y2="135.5"/><line x1="30.1" y1="132.0" x2="64.2" y2="137.2"/><line x1="61.3" y1="123.0" x2="51.1" y2="140.0"/><line x1="116.4" y1="124.0" x2="105.3" y2="119.7"/><line x1="16.9" y1="135.4" x2="-15.0" y2="120.0"/><line x1="180.1" y1="119.4" x2="160.1" y2="126.3"/><line x1="42.9" y1="138.8" x2="32.8" y2="136.8"/><line x1="157.4" y1="137.6" x2="167.9" y2="138.3"/><line x1="109.1" y1="113.4" x2="126.6" y2="132.5"/><line x1="91.0" y1="130.0" x2="111.2" y2="120.0"/><line x1="17.0" y1="115.6" x2="51.2" y2="125.2"/><line x1="71.2" y1="132.7" x2="55.1" y2="139.3"/><line x1="55.9" y1="120.4" x2="68.4" y2="127.6"/><line x1="80.6" y1="116.5" x2="54.0" y2="117.8"/><line x1="174.7" y1="118.2" x2="174.5" y2="137.4"/><line x1="191.4" y1="115.9" x2="187.3" y2="117.4"/><line x1="24.7" y1="114.6" x2="12.0" y2="118.7"/><line x1="55.5" y1="136.8" x2="61.1" y2="133.0"/><line x1="84.0" y1="126.7" x2="77.1" y2="122.6"/><line x1="70.2" y1="119.8" x2="35.2" y2="139.1"/><line x1="31.2" y1="129.6" x2="31.4" y2="136.2"/><line x1="47.7" y1="119.0" x2="29.4" y2="123.2"/><line x1="90.0" y1="135.8" x2="126.4" y2="136.4"/><line x1="12.0" y1="131.9" x2="-25.4" y2="137.1"/><line x1="95.1" y1="112.0" x2="102.1" y2="123.0"/><line x1="178.5" y1="136.0" x2="204.6" y2="139.2"/><line x1="53.7" y1="116.3" x2="22.4" y2="126.6"/><line x1="133.5" y1="132.2" x2="168.8" y2="130.1"/><line x1="148.7" y1="127.4" x2="145.3" y2="113.1"/><line x1="151.9" y1="137.8" x2="130.5" y2="130.1"/><line x1="63.9" y1="119.1" x2="34.1" y2="129.8"/><line x1="136.5" y1="114.0" x2="105.5" y2="126.7"/><line x1="115.3" y1="118.3" x2="106.3" y2="128.8"/><line x1="9.9" y1="124.9" x2="-6.0" y2="138.9"/><line x1="126.6" y1="125.3" x2="157.3" y2="118.6"/><line x1="53.5" y1="131.7" x2="90.3" y2="120.6"/><line x1="12.0" y1="130.9" x2="11.9" y2="123.8"/><line x1="55.3" y1="137.9" x2="68.7" y2="118.4"/><line x1="14.3" y1="123.8" x2="1.3" y2="131.1"/><line x1="44.4" y1="132.7" x2="68.2" y2="126.1"/><line x1="45.8" y1="120.7" x2="83.3" y2="135.0"/><line x1="50.5" y1="133.3" x2="28.2" y2="120.3"/><line x1="183.2" y1="117.2" x2="182.8" y2="118.3"/><line x1="84.7" y1="138.6" x2="98.0" y2="116.1"/><line x1="80.4" y1="139.3" x2="57.4" y2="116.0"/><line x1="17.5" y1="123.0" x2="-17.7" y2="137.1"/><line x1="170.6" y1="139.9" x2="189.2" y2="138.1"/><line x1="68.6" y1="138.2" x2="43.4" y2="132.9"/></g>
+<rect x="226" y="108" width="188" height="36" fill="#3A281D"/>
+<g stroke="#9E8D7C" stroke-width=".6"><circle cx="230.5" cy="113.6" r="7.2" fill="url(#grain2)"/><circle cx="249.6" cy="112.4" r="7.8" fill="url(#grain2)"/><circle cx="263.4" cy="115.6" r="7.7" fill="url(#grain2)"/><circle cx="277.6" cy="113.1" r="6.8" fill="url(#grain2)"/><circle cx="291.2" cy="115.4" r="6.4" fill="url(#grain2)"/><circle cx="305.2" cy="115.3" r="6.7" fill="url(#grain2)"/><circle cx="319.4" cy="111.7" r="7.3" fill="url(#grain2)"/><circle cx="336.0" cy="116.4" r="8.0" fill="url(#grain2)"/><circle cx="354.9" cy="112.8" r="6.4" fill="url(#grain2)"/><circle cx="364.6" cy="114.0" r="7.6" fill="url(#grain2)"/><circle cx="381.7" cy="112.7" r="7.0" fill="url(#grain2)"/><circle cx="397.7" cy="114.9" r="7.7" fill="url(#grain2)"/><circle cx="414.1" cy="114.8" r="6.4" fill="url(#grain2)"/><circle cx="241.5" cy="123.2" r="7.3" fill="url(#grain2)"/><circle cx="253.7" cy="125.4" r="6.6" fill="url(#grain2)"/><circle cx="268.0" cy="122.9" r="6.5" fill="url(#grain2)"/><circle cx="286.8" cy="124.6" r="6.9" fill="url(#grain2)"/><circle cx="298.9" cy="126.7" r="7.2" fill="url(#grain2)"/><circle cx="312.9" cy="125.7" r="7.5" fill="url(#grain2)"/><circle cx="332.4" cy="122.2" r="7.1" fill="url(#grain2)"/><circle cx="346.4" cy="125.9" r="8.0" fill="url(#grain2)"/><circle cx="356.7" cy="123.2" r="6.4" fill="url(#grain2)"/><circle cx="372.6" cy="126.6" r="7.4" fill="url(#grain2)"/><circle cx="392.1" cy="123.6" r="7.9" fill="url(#grain2)"/><circle cx="404.2" cy="123.0" r="7.8" fill="url(#grain2)"/><circle cx="234.7" cy="132.4" r="7.4" fill="url(#grain2)"/><circle cx="247.7" cy="133.0" r="6.9" fill="url(#grain2)"/><circle cx="259.8" cy="132.9" r="6.7" fill="url(#grain2)"/><circle cx="277.6" cy="135.2" r="6.6" fill="url(#grain2)"/><circle cx="289.1" cy="133.5" r="7.6" fill="url(#grain2)"/><circle cx="305.1" cy="133.5" r="6.6" fill="url(#grain2)"/><circle cx="323.8" cy="134.6" r="6.3" fill="url(#grain2)"/><circle cx="334.6" cy="133.9" r="7.3" fill="url(#grain2)"/><circle cx="352.8" cy="132.4" r="6.5" fill="url(#grain2)"/><circle cx="368.2" cy="133.9" r="6.8" fill="url(#grain2)"/><circle cx="380.8" cy="136.7" r="6.8" fill="url(#grain2)"/><circle cx="397.4" cy="133.7" r="7.0" fill="url(#grain2)"/><circle cx="414.2" cy="136.9" r="6.9" fill="url(#grain2)"/></g>
+<rect class="ol-cup" x="40" y="228" width="120" height="34"/>
+<rect class="ol-cup" x="260" y="228" width="120" height="34"/>
+<rect x="41" y="238" width="118" height="23" fill="#4A230E"/>
+<rect x="261" y="238" width="118" height="23" fill="#4A230E"/>
+<ellipse class="ol-sheen" cx="320" cy="239" rx="56" ry="3.2"/>
+</svg>
+        <figcaption class="caption"><span class="legend"><span><i style="background:#D49A3A"></i>Coffee oils</span><span><i style="background:#7FB5C4"></i>Water</span></span>
+        <button class="anim-toggle" type="button" aria-pressed="false">Pause animation</button> Simplified illustration.</figcaption>
+      </figure>
+    </div>
+  </section>
+</div>
+
+<!-- Entrance -->
+<div class="entrance" data-tone="light">
+  <div>
+    <p class="entrance-title">The brewer</p>
+    <a href="#how" aria-label="Scroll to how one brew works"><span class="kicker">Scroll down</span><span class="entrance__line" aria-hidden="true"></span></a>
+  </div>
+</div>
+
+<!-- 04 HOW IT WORKS -->
+<section id="how" class="section" data-tone="light" data-group="brewer" aria-labelledby="how-title">
+  <div class="wrap how">
+    <figure class="figure how__fig anim" data-anim data-brew>
+      <svg class="brew" viewBox="0 0 320 720" role="img" aria-label="Animated diagram of one brew: the hotplate heats water in the flask, the water rises through the glass coil into the filter funnel, grounds steep, then the coffee is pulled back down through the glass disc into the flask">
+<defs>
+<pattern id="sinter" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#EDE5DA"/><circle cx="3" cy="3" r="2.2" fill="#FFFFFF" stroke="#BDAE9C" stroke-width=".5"/></pattern>
+<clipPath id="bc-funnel"><polygon points="82,44 238,44 219,150 101,150"/></clipPath>
+<clipPath id="bc-flask"><path d="M149 506 L64 650 Q61 660 72 661 L248 661 Q259 660 256 650 L171 506 Z"/></clipPath>
+<radialGradient id="bc-heat" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#E8743B" stop-opacity=".9"/><stop offset="1" stop-color="#E8743B" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse class="bc-glow" cx="160" cy="664" rx="118" ry="16" fill="url(#bc-heat)"/>
+<!-- funnel liquids -->
+<g clip-path="url(#bc-funnel)">
+<rect class="bc-liq bc-funw" data-brew-ref x="80" y="58" width="160" height="92"/>
+<rect class="bc-liq bc-func" x="80" y="58" width="160" height="92"/>
+</g>
+<g class="bc-grounds"><circle cx="128.5" cy="81.6" r="2.6"/><circle cx="108.6" cy="84.4" r="3.0"/><circle cx="193.3" cy="76.5" r="4.0"/><circle cx="155.9" cy="72.6" r="2.2"/><circle cx="165.4" cy="80.3" r="4.0"/><circle cx="117.3" cy="80.0" r="2.9"/><circle cx="160.5" cy="72.3" r="2.8"/><circle cx="162.2" cy="84.8" r="2.4"/><circle cx="159.0" cy="82.9" r="4.1"/><circle cx="128.5" cy="72.0" r="4.1"/><circle cx="209.5" cy="77.7" r="2.3"/><circle cx="204.3" cy="76.2" r="4.0"/><circle cx="172.5" cy="83.2" r="2.5"/><circle cx="189.7" cy="73.6" r="3.0"/><circle cx="196.0" cy="83.3" r="2.6"/><circle cx="130.7" cy="76.4" r="3.2"/><circle cx="147.9" cy="72.0" r="2.7"/><circle cx="183.4" cy="84.4" r="2.3"/><circle cx="166.5" cy="82.1" r="2.3"/><circle cx="195.2" cy="71.9" r="3.4"/><circle cx="165.2" cy="80.0" r="2.8"/><circle cx="151.7" cy="79.3" r="3.1"/><circle cx="176.5" cy="77.1" r="3.1"/><circle cx="110.4" cy="79.9" r="3.2"/><circle cx="132.5" cy="82.2" r="3.8"/><circle cx="155.7" cy="72.9" r="3.1"/><circle cx="119.1" cy="72.1" r="3.1"/><circle cx="117.5" cy="77.1" r="3.2"/><circle cx="112.2" cy="80.2" r="2.4"/><circle cx="184.3" cy="82.4" r="3.2"/><circle cx="113.6" cy="78.1" r="3.0"/><circle cx="206.9" cy="72.2" r="3.9"/><circle cx="211.6" cy="81.7" r="3.8"/><circle cx="128.1" cy="85.7" r="3.2"/><circle cx="207.5" cy="84.7" r="2.5"/><circle cx="190.0" cy="84.9" r="2.3"/><circle cx="144.5" cy="82.1" r="2.5"/><circle cx="201.2" cy="74.4" r="3.8"/><circle cx="122.9" cy="78.0" r="4.0"/><circle cx="129.7" cy="74.2" r="3.2"/><circle cx="141.2" cy="70.6" r="2.6"/><circle cx="124.8" cy="85.0" r="3.6"/><circle cx="201.1" cy="72.7" r="3.8"/><circle cx="120.0" cy="78.5" r="3.5"/><circle cx="145.4" cy="84.0" r="3.3"/><circle cx="168.3" cy="84.1" r="2.4"/></g>
+<!-- funnel glass -->
+<path class="bc-glass" d="M78 38 L242 38 L222 150 L222 160 L184 190 L170 190 L170 222 L150 222 L150 190 L136 190 L98 160 L98 150 Z"/>
+<rect x="100" y="150" width="120" height="10" fill="url(#sinter)" stroke="#7A6A5D" stroke-width=".8"/>
+<!-- condenser -->
+<rect class="bc-glass" x="128" y="222" width="64" height="226" rx="10"/>
+<rect class="bc-glass" x="192" y="240" width="18" height="9"/>
+<rect class="bc-glass" x="110" y="420" width="18" height="9"/>
+<path class="bc-tube" d="M160.0 222.0 L160.0 232.0 L160.0 232.0 L163.8 233.0 L167.4 234.1 L170.6 235.1 L173.3 236.2 L175.3 237.2 L176.6 238.2 L177.0 239.3 L176.6 240.3 L175.3 241.4 L173.3 242.4 L170.6 243.4 L167.4 244.5 L163.8 245.5 L160.0 246.6 L156.2 247.6 L152.6 248.7 L149.4 249.7 L146.7 250.7 L144.7 251.8 L143.4 252.8 L143.0 253.9 L143.4 254.9 L144.7 255.9 L146.7 257.0 L149.4 258.0 L152.6 259.1 L156.2 260.1 L160.0 261.1 L163.8 262.2 L167.4 263.2 L170.6 264.3 L173.3 265.3 L175.3 266.3 L176.6 267.4 L177.0 268.4 L176.6 269.5 L175.3 270.5 L173.3 271.6 L170.6 272.6 L167.4 273.6 L163.8 274.7 L160.0 275.7 L156.2 276.8 L152.6 277.8 L149.4 278.8 L146.7 279.9 L144.7 280.9 L143.4 282.0 L143.0 283.0 L143.4 284.0 L144.7 285.1 L146.7 286.1 L149.4 287.2 L152.6 288.2 L156.2 289.2 L160.0 290.3 L163.8 291.3 L167.4 292.4 L170.6 293.4 L173.3 294.4 L175.3 295.5 L176.6 296.5 L177.0 297.6 L176.6 298.6 L175.3 299.7 L173.3 300.7 L170.6 301.7 L167.4 302.8 L163.8 303.8 L160.0 304.9 L156.2 305.9 L152.6 306.9 L149.4 308.0 L146.7 309.0 L144.7 310.1 L143.4 311.1 L143.0 312.1 L143.4 313.2 L144.7 314.2 L146.7 315.3 L149.4 316.3 L152.6 317.3 L156.2 318.4 L160.0 319.4 L163.8 320.5 L167.4 321.5 L170.6 322.6 L173.3 323.6 L175.3 324.6 L176.6 325.7 L177.0 326.7 L176.6 327.8 L175.3 328.8 L173.3 329.8 L170.6 330.9 L167.4 331.9 L163.8 333.0 L160.0 334.0 L156.2 335.0 L152.6 336.1 L149.4 337.1 L146.7 338.2 L144.7 339.2 L143.4 340.2 L143.0 341.3 L143.4 342.3 L144.7 343.4 L146.7 344.4 L149.4 345.4 L152.6 346.5 L156.2 347.5 L160.0 348.6 L163.8 349.6 L167.4 350.7 L170.6 351.7 L173.3 352.7 L175.3 353.8 L176.6 354.8 L177.0 355.9 L176.6 356.9 L175.3 357.9 L173.3 359.0 L170.6 360.0 L167.4 361.1 L163.8 362.1 L160.0 363.1 L156.2 364.2 L152.6 365.2 L149.4 366.3 L146.7 367.3 L144.7 368.3 L143.4 369.4 L143.0 370.4 L143.4 371.5 L144.7 372.5 L146.7 373.6 L149.4 374.6 L152.6 375.6 L156.2 376.7 L160.0 377.7 L163.8 378.8 L167.4 379.8 L170.6 380.8 L173.3 381.9 L175.3 382.9 L176.6 384.0 L177.0 385.0 L176.6 386.0 L175.3 387.1 L173.3 388.1 L170.6 389.2 L167.4 390.2 L163.8 391.2 L160.0 392.3 L156.2 393.3 L152.6 394.4 L149.4 395.4 L146.7 396.4 L144.7 397.5 L143.4 398.5 L143.0 399.6 L143.4 400.6 L144.7 401.7 L146.7 402.7 L149.4 403.7 L152.6 404.8 L156.2 405.8 L160.0 406.9 L163.8 407.9 L167.4 408.9 L170.6 410.0 L173.3 411.0 L175.3 412.1 L176.6 413.1 L177.0 414.1 L176.6 415.2 L175.3 416.2 L173.3 417.3 L170.6 418.3 L167.4 419.3 L163.8 420.4 L160.0 421.4 L156.2 422.5 L152.6 423.5 L149.4 424.6 L146.7 425.6 L144.7 426.6 L143.4 427.7 L143.0 428.7 L143.4 429.8 L144.7 430.8 L146.7 431.8 L149.4 432.9 L152.6 433.9 L156.2 435.0 L160.0 436.0 L160.0 446.0 L160.0 456.0"/>
+<path class="bc-coilw" d="M160.0 456.0 L160.0 446.0 L160.0 436.0 L156.2 435.0 L152.6 433.9 L149.4 432.9 L146.7 431.8 L144.7 430.8 L143.4 429.8 L143.0 428.7 L143.4 427.7 L144.7 426.6 L146.7 425.6 L149.4 424.6 L152.6 423.5 L156.2 422.5 L160.0 421.4 L163.8 420.4 L167.4 419.3 L170.6 418.3 L173.3 417.3 L175.3 416.2 L176.6 415.2 L177.0 414.1 L176.6 413.1 L175.3 412.1 L173.3 411.0 L170.6 410.0 L167.4 408.9 L163.8 407.9 L160.0 406.9 L156.2 405.8 L152.6 404.8 L149.4 403.7 L146.7 402.7 L144.7 401.7 L143.4 400.6 L143.0 399.6 L143.4 398.5 L144.7 397.5 L146.7 396.4 L149.4 395.4 L152.6 394.4 L156.2 393.3 L160.0 392.3 L163.8 391.2 L167.4 390.2 L170.6 389.2 L173.3 388.1 L175.3 387.1 L176.6 386.0 L177.0 385.0 L176.6 384.0 L175.3 382.9 L173.3 381.9 L170.6 380.8 L167.4 379.8 L163.8 378.8 L160.0 377.7 L156.2 376.7 L152.6 375.6 L149.4 374.6 L146.7 373.6 L144.7 372.5 L143.4 371.5 L143.0 370.4 L143.4 369.4 L144.7 368.3 L146.7 367.3 L149.4 366.3 L152.6 365.2 L156.2 364.2 L160.0 363.1 L163.8 362.1 L167.4 361.1 L170.6 360.0 L173.3 359.0 L175.3 357.9 L176.6 356.9 L177.0 355.9 L176.6 354.8 L175.3 353.8 L173.3 352.7 L170.6 351.7 L167.4 350.7 L163.8 349.6 L160.0 348.6 L156.2 347.5 L152.6 346.5 L149.4 345.4 L146.7 344.4 L144.7 343.4 L143.4 342.3 L143.0 341.3 L143.4 340.2 L144.7 339.2 L146.7 338.2 L149.4 337.1 L152.6 336.1 L156.2 335.0 L160.0 334.0 L163.8 333.0 L167.4 331.9 L170.6 330.9 L173.3 329.8 L175.3 328.8 L176.6 327.8 L177.0 326.7 L176.6 325.7 L175.3 324.6 L173.3 323.6 L170.6 322.6 L167.4 321.5 L163.8 320.5 L160.0 319.4 L156.2 318.4 L152.6 317.3 L149.4 316.3 L146.7 315.3 L144.7 314.2 L143.4 313.2 L143.0 312.1 L143.4 311.1 L144.7 310.1 L146.7 309.0 L149.4 308.0 L152.6 306.9 L156.2 305.9 L160.0 304.9 L163.8 303.8 L167.4 302.8 L170.6 301.7 L173.3 300.7 L175.3 299.7 L176.6 298.6 L177.0 297.6 L176.6 296.5 L175.3 295.5 L173.3 294.4 L170.6 293.4 L167.4 292.4 L163.8 291.3 L160.0 290.3 L156.2 289.2 L152.6 288.2 L149.4 287.2 L146.7 286.1 L144.7 285.1 L143.4 284.0 L143.0 283.0 L143.4 282.0 L144.7 280.9 L146.7 279.9 L149.4 278.8 L152.6 277.8 L156.2 276.8 L160.0 275.7 L163.8 274.7 L167.4 273.6 L170.6 272.6 L173.3 271.6 L175.3 270.5 L176.6 269.5 L177.0 268.4 L176.6 267.4 L175.3 266.3 L173.3 265.3 L170.6 264.3 L167.4 263.2 L163.8 262.2 L160.0 261.1 L156.2 260.1 L152.6 259.1 L149.4 258.0 L146.7 257.0 L144.7 255.9 L143.4 254.9 L143.0 253.9 L143.4 252.8 L144.7 251.8 L146.7 250.7 L149.4 249.7 L152.6 248.7 L156.2 247.6 L160.0 246.6 L163.8 245.5 L167.4 244.5 L170.6 243.4 L173.3 242.4 L175.3 241.4 L176.6 240.3 L177.0 239.3 L176.6 238.2 L175.3 237.2 L173.3 236.2 L170.6 235.1 L167.4 234.1 L163.8 233.0 L160.0 232.0 L160.0 232.0 L160.0 222.0" pathLength="1"/>
+<path class="bc-coilc" d="M160.0 222.0 L160.0 232.0 L160.0 232.0 L163.8 233.0 L167.4 234.1 L170.6 235.1 L173.3 236.2 L175.3 237.2 L176.6 238.2 L177.0 239.3 L176.6 240.3 L175.3 241.4 L173.3 242.4 L170.6 243.4 L167.4 244.5 L163.8 245.5 L160.0 246.6 L156.2 247.6 L152.6 248.7 L149.4 249.7 L146.7 250.7 L144.7 251.8 L143.4 252.8 L143.0 253.9 L143.4 254.9 L144.7 255.9 L146.7 257.0 L149.4 258.0 L152.6 259.1 L156.2 260.1 L160.0 261.1 L163.8 262.2 L167.4 263.2 L170.6 264.3 L173.3 265.3 L175.3 266.3 L176.6 267.4 L177.0 268.4 L176.6 269.5 L175.3 270.5 L173.3 271.6 L170.6 272.6 L167.4 273.6 L163.8 274.7 L160.0 275.7 L156.2 276.8 L152.6 277.8 L149.4 278.8 L146.7 279.9 L144.7 280.9 L143.4 282.0 L143.0 283.0 L143.4 284.0 L144.7 285.1 L146.7 286.1 L149.4 287.2 L152.6 288.2 L156.2 289.2 L160.0 290.3 L163.8 291.3 L167.4 292.4 L170.6 293.4 L173.3 294.4 L175.3 295.5 L176.6 296.5 L177.0 297.6 L176.6 298.6 L175.3 299.7 L173.3 300.7 L170.6 301.7 L167.4 302.8 L163.8 303.8 L160.0 304.9 L156.2 305.9 L152.6 306.9 L149.4 308.0 L146.7 309.0 L144.7 310.1 L143.4 311.1 L143.0 312.1 L143.4 313.2 L144.7 314.2 L146.7 315.3 L149.4 316.3 L152.6 317.3 L156.2 318.4 L160.0 319.4 L163.8 320.5 L167.4 321.5 L170.6 322.6 L173.3 323.6 L175.3 324.6 L176.6 325.7 L177.0 326.7 L176.6 327.8 L175.3 328.8 L173.3 329.8 L170.6 330.9 L167.4 331.9 L163.8 333.0 L160.0 334.0 L156.2 335.0 L152.6 336.1 L149.4 337.1 L146.7 338.2 L144.7 339.2 L143.4 340.2 L143.0 341.3 L143.4 342.3 L144.7 343.4 L146.7 344.4 L149.4 345.4 L152.6 346.5 L156.2 347.5 L160.0 348.6 L163.8 349.6 L167.4 350.7 L170.6 351.7 L173.3 352.7 L175.3 353.8 L176.6 354.8 L177.0 355.9 L176.6 356.9 L175.3 357.9 L173.3 359.0 L170.6 360.0 L167.4 361.1 L163.8 362.1 L160.0 363.1 L156.2 364.2 L152.6 365.2 L149.4 366.3 L146.7 367.3 L144.7 368.3 L143.4 369.4 L143.0 370.4 L143.4 371.5 L144.7 372.5 L146.7 373.6 L149.4 374.6 L152.6 375.6 L156.2 376.7 L160.0 377.7 L163.8 378.8 L167.4 379.8 L170.6 380.8 L173.3 381.9 L175.3 382.9 L176.6 384.0 L177.0 385.0 L176.6 386.0 L175.3 387.1 L173.3 388.1 L170.6 389.2 L167.4 390.2 L163.8 391.2 L160.0 392.3 L156.2 393.3 L152.6 394.4 L149.4 395.4 L146.7 396.4 L144.7 397.5 L143.4 398.5 L143.0 399.6 L143.4 400.6 L144.7 401.7 L146.7 402.7 L149.4 403.7 L152.6 404.8 L156.2 405.8 L160.0 406.9 L163.8 407.9 L167.4 408.9 L170.6 410.0 L173.3 411.0 L175.3 412.1 L176.6 413.1 L177.0 414.1 L176.6 415.2 L175.3 416.2 L173.3 417.3 L170.6 418.3 L167.4 419.3 L163.8 420.4 L160.0 421.4 L156.2 422.5 L152.6 423.5 L149.4 424.6 L146.7 425.6 L144.7 426.6 L143.4 427.7 L143.0 428.7 L143.4 429.8 L144.7 430.8 L146.7 431.8 L149.4 432.9 L152.6 433.9 L156.2 435.0 L160.0 436.0 L160.0 446.0 L160.0 456.0" pathLength="1"/>
+<!-- flask -->
+<g clip-path="url(#bc-flask)">
+<rect class="bc-liq bc-flaskw" x="56" y="560" width="208" height="102"/>
+<rect class="bc-liq bc-flaskc" x="56" y="560" width="208" height="102"/>
+<g class="bc-bubbles"><circle class="bc-bubble" cx="105.9" cy="650" r="3.4" style="animation-delay:0.00s"/><circle class="bc-bubble" cx="118.7" cy="650" r="3.7" style="animation-delay:-0.23s"/><circle class="bc-bubble" cx="137.2" cy="650" r="4.0" style="animation-delay:-0.46s"/><circle class="bc-bubble" cx="160.9" cy="650" r="3.0" style="animation-delay:-0.69s"/><circle class="bc-bubble" cx="183.2" cy="650" r="3.2" style="animation-delay:-0.92s"/><circle class="bc-bubble" cx="196.1" cy="650" r="3.6" style="animation-delay:-1.15s"/><circle class="bc-bubble" cx="214.6" cy="650" r="3.7" style="animation-delay:-1.38s"/></g>
+</g>
+<path class="bc-glass" d="M146 448 L174 448 L174 504 L260 650 Q264 664 250 664 L70 664 Q56 664 60 650 L146 504 Z"/>
+<!-- hotplate -->
+<rect class="bc-plate" x="52" y="666" width="216" height="8"/>
+<rect x="40" y="674" width="240" height="34" fill="#2B1C14"/>
+<rect x="58" y="681" width="58" height="20" fill="#120B07"/>
+<text class="bc-disp bc-on" x="87" y="695.5" text-anchor="middle">96°C</text>
+<text class="bc-disp bc-off" x="87" y="695.5" text-anchor="middle">OFF</text>
+<circle cx="250" cy="691" r="9" fill="#8C5A35"/>
+</svg>
+      <figcaption class="caption"><button class="anim-toggle" type="button" aria-pressed="false">Pause animation</button> One brew, about 6–8 minutes, shown in 16 seconds.</figcaption>
+    </figure>
+    <div>
+      <div class="sec-head"><p class="kicker">01 · How one brew works</p><h2 id="how-title" class="h2">Five steps. Glass at every step.</h2>
+      <p class="muted">Select a step to jump the drawing to it.</p></div>
+      <ol class="steps">
+        <li><button class="step" type="button" data-from="0" data-to=".2"><span class="step__n">01</span><span><span class="step__t">Heat</span><span class="step__b">The hotplate heats up to ~800 ml of water in the 1 L flask.</span></span></button></li>
+        <li><button class="step" type="button" data-from=".2" data-to=".38"><span class="step__n">02</span><span><span class="step__t">Rise</span><span class="step__b">Steam pressure pushes the hot water up through the glass coil into the filter funnel.</span></span></button></li>
+        <li><button class="step" type="button" data-from=".38" data-to=".56"><span class="step__n">03</span><span><span class="step__t">Brew</span><span class="step__b">Add the grounds and stir once. Full immersion for about 60–90 s, at a steady temperature.</span></span></button></li>
+        <li><button class="step" type="button" data-from=".56" data-to=".8"><span class="step__n">04</span><span><span class="step__t">Draw down</span><span class="step__b">Switch off. The flask cools, the pressure drops, and the vacuum pulls the coffee down through the G3 disc. The grounds stay on the disc.</span></span></button></li>
+        <li><button class="step" type="button" data-from=".8" data-to="1.01"><span class="step__n">05</span><span><span class="step__t">Serve and rinse</span><span class="step__b">Lift off the funnel and pour. Rinse the disc while it is warm. Soak in citric acid weekly.</span></span></button></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 05 PRODUCT -->
+<section id="product" class="section section--canvas" data-tone="light" data-group="brewer" aria-labelledby="product-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">02 · Parts and care</p><h2 id="product-title" class="h2">Three glass parts, one hotplate, one box.</h2></div>
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Part</th><th>Specification</th><th>Prices seen in India</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td><b>Sintered funnel</b></td><td>1000 ml, borosilicate 3.3, G3 / P40 disc</td><td class="money">₹1,800 middleman · ₹4,550 Unity Glass · ₹5,800 B.S. Scientific · ₹10,000 Glassco</td><td>All excl. GST and freight. Test before ordering.</td></tr>
+          <tr><td><b>Graham condenser</b></td><td>300 mm coil, joints matching funnel and flask</td><td class="money">₹871 + GST (Borosil)</td><td>A 200 mm coil shrinks the box.</td></tr>
+          <tr><td><b>Flask</b></td><td>1 L borosilicate</td><td class="money">₹357 + GST (Borosil Erlenmeyer)</td><td>Check wall thickness for vacuum use.</td></tr>
+          <tr><td><b>Heat source</b></td><td>Hotplate</td><td class="money">₹565 (non-ISI) to ₹1,000–1,200</td><td>Prefer ISI-marked; mandatory status unconfirmed.</td></tr>
+          <tr><td><b>Box</b></td><td>~43 × 38 × 18 cm, 20 mm foam, condenser arms up</td><td class="money">₹600–700 box and print · ~₹400 courier</td><td>~5.6 kg chargeable weight.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">Your target: glass landed at ₹5,000 or less including GST and shipping, or ₹6,000–7,000 from premium lab makers.</p>
+    <div class="cards cards--3" style="margin-top:40px">
+      <div class="card reveal"><h3 class="h3">Clean</h3><p>Rinse with hot water after each brew. Soak in 2–5% citric acid weekly. Use IPA or ethanol for oil build-up.</p></div>
+      <div class="card reveal"><h3 class="h3">Never</h3><p>No hydrofluoric acid, no hot concentrated phosphoric acid, no hot alkali or dishwasher detergent on the disc.</p></div>
+      <div class="card reveal"><h3 class="h3">Limits</h3><p>Keep temperature changes under 100 K; no cold water on hot glass. The brew vacuum is mild (−0.2 to −0.3 bar); discs are rated to ~1 bar differential.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 QC -->
+<section id="qc" class="section" data-tone="light" data-group="brewer" aria-labelledby="qc-title">
+  <div class="wrap grid-2">
+    <div>
+      <div class="sec-head reveal"><p class="kicker">03 · Quality is the brand</p><h2 id="qc-title" class="h2">Every disc gets a bubble-point test, and a number.</h2></div>
+      <div class="prose reveal">
+        <p>Wet the disc, then push air up from below. The pressure at which the first bubbles appear shows the largest pore: d ≈ 4γ / ΔP, so 4 × 0.072 N/m ÷ 7,000 Pa ≈ 41 µm.</p>
+        <p><b>Pass:</b> first bubbles at 70–75 cm of water (~7 kPa). <b>Fail:</b> under ~35 cm, which means pores larger than 80 µm.</p>
+        <p>This is what separates a ₹20K brewer from a ₹1,800 lab funnel. Film it and print the result on a card in every box.</p>
+      </div>
+      <h3 class="h3" style="margin-top:32px">Test every supplier sample</h3>
+      <ol class="prose" style="padding-left:20px">
+        <li><b>Oil immersion:</b> confirms borosilicate.</li>
+        <li><b>Bubble point:</b> confirms the G3 grade.</li>
+        <li><b>Flow time:</b> 500 ml through a wet disc, compared with a reference unit.</li>
+        <li><b>Thermal shock:</b> hot water into the funnel at room temperature, within the 100 K limit.</li>
+        <li><b>Visual and fit:</b> even fusion, no chips or star cracks, the joints seat properly.</li>
+      </ol>
+    </div>
+    <div>
+      <figure class="figure anim reveal" data-anim>
+        <svg class="bubble" viewBox="0 0 420 290" role="img" aria-label="Bubble-point test: air pressure under a wetted glass disc rises on a gauge until the first stream of bubbles appears at about 7 kilopascals">
+<defs><pattern id="sinter2" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#EDE5DA"/><circle cx="3" cy="3" r="2.2" fill="#FFFFFF" stroke="#BDAE9C" stroke-width=".5"/></pattern></defs>
+<circle cx="95" cy="150" r="60" fill="#FBF8F3" stroke="#1F1611" stroke-width="1.5"/>
+<g stroke="#1F1611" stroke-width="1.2"><line x1="43.0" y1="180.0" x2="51.7" y2="175.0"/><line x1="35.3" y1="156.3" x2="41.3" y2="155.6"/><line x1="37.9" y1="131.5" x2="43.6" y2="133.3"/><line x1="50.4" y1="109.9" x2="54.9" y2="113.9"/><line x1="70.6" y1="95.2" x2="73.0" y2="100.7"/><line x1="95.0" y1="90.0" x2="95.0" y2="100.0"/><line x1="119.4" y1="95.2" x2="117.0" y2="100.7"/><line x1="139.6" y1="109.9" x2="135.1" y2="113.9"/><line x1="152.1" y1="131.5" x2="146.4" y2="133.3"/><line x1="154.7" y1="156.3" x2="148.7" y2="155.6"/><line x1="147.0" y1="180.0" x2="138.3" y2="175.0"/></g>
+<g class="bp-num"><text x="62.1" y="173.0" text-anchor="middle">0</text><text x="95.0" y="116.0" text-anchor="middle">5</text><text x="127.9" y="173.0" text-anchor="middle">10</text></g>
+<line class="bp-mark" x1="146.0" y1="111.3" x2="133.2" y2="121.0"/>
+<line class="bp-needle" x1="95" y1="150" x2="95" y2="104"/>
+<circle cx="95" cy="150" r="4" fill="#1F1611"/>
+<text class="bp-unit" x="95" y="180" text-anchor="middle">kPa</text>
+<text class="bp-read bp-read-a" x="95" y="248" text-anchor="middle">raising air pressure…</text>
+<text class="bp-read bp-read-b" x="95" y="248" text-anchor="middle">7.2 kPa · first bubbles</text>
+<path d="M155 150 H215 V270 H310 V252" fill="none" stroke="#1F1611" stroke-width="3"/>
+<rect x="270" y="30" width="80" height="222" fill="none" stroke="#1F1611" stroke-width="1.5"/>
+<rect x="271.5" y="56" width="77" height="124" fill="#9CC7D3" opacity=".5"/>
+<line x1="271.5" y1="56" x2="348.5" y2="56" stroke="#5E9FB0" stroke-width="1.5"/>
+<g class="bp-bubbles"><circle class="bp-bubble" cx="279.0" cy="174" r="4.4" style="animation-duration:1.68s;animation-delay:-0.99s"/><circle class="bp-bubble" cx="288.2" cy="174" r="2.4" style="animation-duration:1.49s;animation-delay:-0.05s"/><circle class="bp-bubble" cx="293.6" cy="174" r="3.3" style="animation-duration:1.67s;animation-delay:-0.86s"/><circle class="bp-bubble" cx="304.1" cy="174" r="2.9" style="animation-duration:1.38s;animation-delay:-0.90s"/><circle class="bp-bubble" cx="308.1" cy="174" r="3.1" style="animation-duration:1.30s;animation-delay:-0.14s"/><circle class="bp-bubble" cx="316.9" cy="174" r="3.6" style="animation-duration:1.43s;animation-delay:-0.85s"/><circle class="bp-bubble" cx="323.8" cy="174" r="3.3" style="animation-duration:1.67s;animation-delay:-0.23s"/><circle class="bp-bubble" cx="334.2" cy="174" r="2.7" style="animation-duration:1.45s;animation-delay:-0.14s"/><circle class="bp-bubble" cx="340.6" cy="174" r="4.0" style="animation-duration:1.82s;animation-delay:-0.73s"/></g>
+<rect x="270" y="180" width="80" height="12" fill="url(#sinter2)" stroke="#7A6A5D" stroke-width=".8"/>
+<text class="bp-tag" x="362" y="120">water</text>
+<text class="bp-tag" x="362" y="190">G3 disc</text>
+<text class="bp-tag" x="362" y="226">air in</text>
+</svg>
+        <figcaption class="caption"><button class="anim-toggle" type="button" aria-pressed="false">Pause animation</button> Bubble-point test, simplified.</figcaption>
+      </figure>
+      <div class="table-wrap reveal" style="margin-top:32px">
+        <table>
+          <thead><tr><th>1000 ml funnel quote</th><th class="r">Price</th><th>Profit per kit at ₹17,999</th></tr></thead>
+          <tbody>
+            <tr><td>Glassco</td><td class="r money">₹10,000</td><td>~₹0, not viable</td></tr>
+            <tr><td>Local middleman</td><td class="r money">₹1,800</td><td>~₹8,500–9,500</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="caption">Before ordering a batch from the middleman, get a written spec and the workshop's name, then test a sample.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 07 PRICE -->
+<section id="price" class="section section--canvas" data-tone="light" data-group="business" aria-labelledby="price-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">04 · Price</p><h2 id="price-title" class="h2">Floor, middle, ceiling: priced as a showcase at ₹19,999.</h2>
+    <p class="lede muted">We skip the ₹1 instant-coffee market. The floor is the ₹5–6K starter kit; the ceiling is a fully loaded 1 L+ setup. ₹19,999 sits next to a Fellow kettle and an entry espresso machine, and below what Kazumi actually costs once imported.</p></div>
+    <ol class="ladder reveal" aria-label="Prices of home coffee gear in India, low to high">
+      <li><span class="p">₹1,999–4,450</span><span>Starter pour-over kits: TGL, DOPPIO, Hario Switch <span class="tag">Floor</span></span></li>
+      <li><span class="p">₹4,597–8,396</span><span>Full pour-over station: kettle, grinder, dripper (InstaCuppa)</span></li>
+      <li><span class="p">₹11,529–14,912</span><span>Hario Technica siphons, with a cloth or metal filter, up to 600 ml</span></li>
+      <li><span class="p">₹15,000–18,999</span><span>Paragon pour-over set · Fellow Stagg EKG kettle (₹18,999 for the kettle alone)</span></li>
+      <li><span class="p">₹16,998</span><span>De'Longhi Dedica, an entry espresso machine and the most likely alternative a buyer weighs</span></li>
+      <li class="us"><span class="p">₹19,999</span><span>Our 1 L all-glass brewer with hotplate <span class="tag">Showcase</span><br><span class="muted">Level with Kazumi's US list price of $199.99 (~₹19.3K, no heat source)</span></span></li>
+      <li><span class="p">₹26–38K</span><span>Kazumi landed in India after courier and duty</span></li>
+      <li><span class="p">₹30–52K</span><span>Gaggia espresso machines · premium kettle editions <span class="tag">Ceiling</span></span></li>
+    </ol>
+
+    <div class="tiers">
+      <article class="tier reveal"><h3 class="tier__name">Core</h3><p class="muted" style="margin:0">Catches buyers who would otherwise go to Hario</p>
+        <p class="tier__price">₹16,999</p><p class="caption">incl. GST · you keep ₹14,406</p>
+        <ul><li>1 L glass set</li><li>Spirit lamp</li></ul>
+        <p class="tier__profit">Profit <b class="money">~₹8.5–8.9K</b> per kit</p></article>
+      <article class="tier tier--main reveal"><span class="badge">Lead offer</span><h3 class="tier__name" style="margin-top:12px">Showcase</h3><p style="margin:0;color:var(--crema-muted)">Where most buyers should land</p>
+        <p class="tier__price">₹19,999</p><p class="caption">incl. GST · you keep ₹16,948</p>
+        <ul><li>1 L glass set + ISI hotplate</li><li>Premium stand and cleaning kit</li><li>Numbered unit with a bubble-point card</li></ul>
+        <p class="tier__profit">Profit <b class="money">~₹8–10K</b> per kit (47–59%)</p></article>
+      <article class="tier reveal"><h3 class="tier__name">Halo</h3><p class="muted" style="margin:0">Makes ₹19,999 look sensible</p>
+        <p class="tier__price">₹24,999</p><p class="caption">incl. GST · you keep ₹21,185</p>
+        <ul><li>Everything in Showcase</li><li>Spare G2 and G4 funnels</li><li>Wooden or brass stand, gift box, engraving</li></ul>
+        <p class="tier__profit">Profit <b class="money">~₹11–12.5K</b> per kit</p></article>
+    </div>
+
+    <div class="grid-2" style="margin-top:56px">
+      <div class="prose reveal"><h3 class="h3">Let buyers set the price</h3>
+        <p>Ask 20–30 people in roaster communities four questions: at what price is it too cheap to trust, a bargain, getting expensive, too expensive to consider?</p>
+        <p>Then run deposits at two prices, ₹17,999 and ₹19,999. If the ₹19,999 group puts down deposits at 70% or more of the ₹17,999 rate, the higher price earns more.</p></div>
+      <div class="prose reveal"><h3 class="h3">Two rules</h3>
+        <p><b>Don't claim "permanent" or "never needs fixing".</b> Glass breaks and discs clog. Say "no paper, no cloth, nothing to replace", and sell spare parts.</p>
+        <p><b>A launch price must be real.</b> "Founding batch ₹17,999, then ₹19,999" is fine only if the price really goes up afterwards.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 NUMBERS -->
+<section id="numbers" class="section" data-tone="light" data-group="business" aria-labelledby="numbers-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">05 · Unit economics</p><h2 id="numbers-title" class="h2">Cost about ₹7–9K. Price ₹19,999. Keep about ₹8–10K.</h2></div>
+    <div class="grid-2">
+      <div class="table-wrap reveal">
+        <table style="min-width:0">
+          <thead><tr><th>Cost per kit</th><th class="r">Standard</th><th class="r">Premium lab</th></tr></thead>
+          <tbody>
+            <tr><td>Glass set, landed (GST + freight)</td><td class="r money">₹3,500–5,000</td><td class="r money">₹6,000–7,000</td></tr>
+            <tr><td>Hotplate</td><td class="r money">₹1,000–1,200</td><td class="r money">₹1,000–1,200</td></tr>
+            <tr><td>Box, foam, print</td><td class="r money">₹600–700</td><td class="r money">₹600–700</td></tr>
+            <tr><td>Courier to customer</td><td class="r money">~₹400</td><td class="r money">~₹400</td></tr>
+            <tr><td>Breakage reserve</td><td class="r money">~₹300</td><td class="r money">~₹300</td></tr>
+            <tr><td>Payment fee (~2%)</td><td class="r money">~₹400</td><td class="r money">~₹400</td></tr>
+            <tr><td>Defects (1–2 per 100)</td><td class="r money">₹0–80</td><td class="r money">₹0–80</td></tr>
+            <tr><td>Showcase extras (stand, cleaning kit, test card)</td><td class="r money">₹500–800</td><td class="r money">₹500–800</td></tr>
+          </tbody>
+          <tfoot><tr><td>Total, Showcase kit</td><td class="r money">~₹6.7–8.9K</td><td class="r money">~₹9.2–10.9K</td></tr></tfoot>
+        </table>
+      </div>
+      <div class="prose reveal">
+        <p><b>GST:</b> ₹19,999 includes 18% GST, so you keep ₹16,948. Register as a regular taxpayer and buy from GST-registered suppliers, so you can claim back the GST on your purchases (input tax credit).</p>
+        <p><b>Premium glass</b> (₹6–7K) still leaves about ₹6–7.5K per Showcase kit. A ₹10K funnel leaves almost nothing.</p>
+        <p class="caption">Ranges, not quotes. Breakage and fees are estimates; re-run them once the first 25 kits ship.</p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="reveal"><p class="big-stat">~120–140</p><p>Showcase kits a year for ₹12L profit, about 10–12 a month at ₹8–10K each.</p></div>
+      <div class="reveal"><p class="big-stat">₹1.1–2.6L</p><p>One-time development (samples, test rig, design, packaging, legal). The minimum viable version is ₹60–80K.</p></div>
+      <div class="reveal"><p class="big-stat">₹70K–1.2L</p><p>Launch marketing: seed units at cost, creators and a content shoot. Adds about 20–35 kits to the year-one target.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 MODEL -->
+<section id="model" class="section dark" data-tone="dark" data-group="business" aria-labelledby="model-title">
+  <div class="wrap grid-2">
+    <div class="reveal">
+      <div class="sec-head"><p class="kicker">06 · Sales model</p><h2 id="model-title" class="h2">Build to order. No stock, no COD.</h2></div>
+      <ol class="facts" style="list-style:none">
+        <li><b>Deposit</b><span>₹3,000 to reserve a numbered unit; refundable until the batch order is placed.</span></li>
+        <li><b>Batch</b><span>Order the glass once a batch fills, and bubble-point test every disc.</span></li>
+        <li><b>Balance</b><span>Paid before dispatch, delivered within 4–6 weeks. Prepaid only, no COD.</span></li>
+        <li><b>Unboxing</b><span>A QR code on the box opens a page where the buyer uploads an unboxing video. That video is the evidence for transit-damage claims, which you then replace for free.</span></li>
+      </ol>
+    </div>
+    <div class="reveal">
+      <h3 class="h3" style="margin-top:8px">Stack, at zero fixed cost</h3>
+      <ol class="facts" style="list-style:none">
+        <li><b>Site</b><span>Free container host, behind a Cloudflare Tunnel to your laptop</span></li>
+        <li><b>Orders</b><span>Supabase always takes the order, then syncs to your laptop's Postgres, with pg_dump backups. Note: Supabase's free tier pauses after 7 days of inactivity.</span></li>
+        <li><b>Payments</b><span>Razorpay: deposit link, then a balance invoice</span></li>
+        <li><b>Email</b><span>Brevo or Resend; get a domain before launch</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 10 COMPLIANCE -->
+<section id="compliance" class="section section--canvas" data-tone="light" data-group="business" aria-labelledby="comp-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">07 · Compliance</p><h2 id="comp-title" class="h2">Sort these out before taking the first deposit.</h2></div>
+    <div class="cards cards--3">
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">GST registration</h3><p>Required before selling goods to other states, whatever your turnover. Choose regular registration, not the composition scheme, which bars inter-state sales.</p></div>
+      <div class="card reveal"><span class="status status--verify">Verify</span><h3 class="h3">BIS laboratory glassware order</h3><p>Whether the order covers a brewer is unclear (IS 1381 scope is disputed). Get a written opinion. Don't count on the MSME relaxation; it is ending.</p></div>
+      <div class="card reveal"><span class="status status--verify">Verify</span><h3 class="h3">Hotplate ISI mark</h3><p>Whether an ISI mark is mandatory is unconfirmed. Ship an ISI-marked hotplate anyway.</p></div>
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">Legal Metrology label</h3><p>MRP, contents, maker or packer address, month and year, and a customer-care contact on every box.</p></div>
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">E-Commerce Rules 2020</h3><p>Publish refund and return terms, a grievance officer and the country of origin. You can't refuse a refund for defective goods.</p></div>
+      <div class="card reveal"><span class="status status--no">Don't</span><h3 class="h3">Dark patterns (2023)</h3><p>No false urgency, no fake "was" price, no fees added at checkout.</p></div>
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">Food contact</h3><p>Borosilicate 3.3 is food-safe. There is no named Indian Standard for glass food contact, so keep supplier material declarations on file.</p></div>
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">Original brand</h3><p>Original name, art and photos only. No Kazumi marks or footage. Run a trademark search on the working name.</p></div>
+      <div class="card reveal"><span class="status status--do">Do</span><h3 class="h3">Safety sheet</h3><p>Instructions on heat, vacuum and handling. Tell buyers to inspect the glass for chips before each brew and to keep the brewer away from children.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 BRAND -->
+<section id="brand" class="section" data-tone="light" data-group="market" aria-labelledby="brand-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">08 · Brand and channels</p><h2 id="brand-title" class="h2">The brand is the margin. Quality checks back it up.</h2>
+    <p class="lede muted">The glass costs about ₹5K. The other ₹15K pays for trust, looks and the story, and the visible quality checks are what make that believable.</p></div>
+    <div class="cards cards--3">
+      <div class="card reveal"><h3 class="h3">The show</h3><p>A siphon is the most watchable way to make coffee: it boils, rises, then gets pulled down through glass. Every brew is a Reel.</p></div>
+      <div class="card reveal"><h3 class="h3">Lab glass in the kitchen</h3><p>Lean into the science: borosilicate, an ISO P40 disc, a numbered test card in the box.</p></div>
+      <div class="card reveal"><h3 class="h3">One promise</h3><p>"No paper. No cloth. Nothing to replace." Back it with spare parts that are always in stock.</p></div>
+    </div>
+    <hr class="rule">
+    <div class="grid-2">
+      <div class="reveal"><h3 class="h3">Where the buyers already are</h3>
+        <ul class="prose" style="padding-left:20px">
+          <li><b>Specialty roasters:</b> a bundle with one roaster's beans beats ten influencers.</li>
+          <li><b>Instagram coffee pages:</b> micro creators (10–50K followers) charge ~₹5–25K per Reel; coffee enthusiasts often accept the product instead.</li>
+          <li><b>Reddit, Team-BHP's coffee thread, Discord and WhatsApp brewer groups:</b> answer questions, don't advertise.</li>
+          <li><b>Brewers Cup and barista circles:</b> one respected brewer's endorsement is enough.</li>
+          <li><b>Corporate and wedding gifting:</b> a second channel at ₹20K.</li>
+        </ul></div>
+      <div class="reveal"><h3 class="h3">What makes or breaks it</h3>
+        <ol class="prose" style="padding-left:20px">
+          <li><b>You on camera.</b> Accounts fronted by the founder sell niche hardware; faceless brand accounts don't.</li>
+          <li><b>Content that teaches:</b> why glass filters give a clearer cup, how to clean the disc, how to dial in a recipe.</li>
+          <li><b>Consistency:</b> 3 posts a week for 12 weeks matters more than one viral hit.</li>
+          <li><b>Proof on film:</b> the same beans through glass, paper and cloth, a blind tasting, and the bubble-point test.</li>
+        </ol></div>
+    </div>
+  </div>
+</section>
+
+<!-- Entrance 2 -->
+<div class="entrance" data-tone="light">
+  <div>
+    <p class="entrance-title">The rollout</p>
+    <a href="#rollout" aria-label="Scroll to the rollout plan"><span class="kicker">Scroll down</span><span class="entrance__line" aria-hidden="true"></span></a>
+  </div>
+</div>
+
+<!-- 12 ROLLOUT -->
+<section id="rollout" class="section section--canvas" data-tone="light" data-group="rollout" aria-labelledby="rollout-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">09 · Rollout</p><h2 id="rollout-title" class="h2">Four months to the first 25 kits. Three go/no-go gates.</h2>
+    <p class="muted">Starting 9 Nov 2026. Launch budget about ₹70K–1.2L, plus seed units at cost.</p></div>
+    <ol class="timeline">
+      <li class="reveal"><div class="when">9–22 Nov<small>Weeks 1–2</small></div>
+        <div><h3>Foundations</h3><ul><li>Trademark search on the working name, then lock the name</li><li>Order funnel samples from the middleman and one lab maker (Unity or B.S. Scientific)</li><li>Apply for GST registration (regular scheme)</li><li>Write to BIS asking whether the lab glassware order covers a brewer</li></ul></div>
+        <div class="meta">Cost: samples ~₹8–15K<br>Owner: you</div></li>
+      <li class="reveal"><div class="when">23 Nov – 20 Dec<small>Weeks 3–6</small></div>
+        <div><h3>Prototype and build in public</h3><ul><li>Run all five tests on every sample; choose the supplier</li><li>Dial in recipes on the 1 L set</li><li>Box prototype, 43 × 38 × 18 cm, with a drop test</li><li>3 Reels a week: sourcing, bubble-point tests, first brews, failures</li><li>Waitlist live on the site, backed by Supabase</li></ul></div>
+        <div class="meta">Cost: ₹0 plus your time<div class="gate">Gate 1 (20 Dec): a sample passes all five tests and the waitlist has 150+ sign-ups.</div></div></li>
+      <li class="reveal"><div class="when">Dec<small>Weeks 5–7</small></div>
+        <div><h3>Proof content and price check</h3><ul><li>Side-by-side film of glass, paper and cloth; cleaning demo; blind tasting</li><li>One proper product shoot</li><li>Put the four price questions to 20–30 people in roaster communities</li></ul></div>
+        <div class="meta">Cost: ₹10–15K</div></li>
+      <li class="reveal"><div class="when">15 Dec – 15 Jan<small>Weeks 6–10</small></div>
+        <div><h3>Seed</h3><ul><li>4–6 units to specialty roasters and cafés: a bean bundle, a display unit, brews on camera</li><li>3–4 micro creators (10–50K followers)</li></ul></div>
+        <div class="meta">Cost: ~₹30–40K in units, ₹20–50K for creators</div></li>
+      <li class="reveal milestone"><div class="when">16–31 Jan<small>Founding batch</small></div>
+        <div><h3>25 numbered units open</h3><ul><li>₹17,999 incl. GST for the founding batch, then genuinely ₹19,999</li><li>₹3,000 deposit; balance before dispatch; no COD</li><li>Optional: split the waitlist between ₹17,999 and ₹19,999 to test which price sells</li></ul></div>
+        <div class="meta">Founding profit: ~₹6.3–8.3K per unit, ~₹1.6–2.1L for the batch<div class="gate">Gate 2 (31 Jan): 15 or more paid deposits. Under 10, stop or rethink.</div></div></li>
+      <li class="reveal"><div class="when">1–20 Feb<small>Make</small></div>
+        <div><h3>Batch order and testing</h3><ul><li>Order the glass for the batch, bubble-point test every disc, and log the serial and the reading</li><li>Print test cards; pack; drop-test a sample box</li></ul></div>
+        <div class="meta">Cash needed: ~₹1.7–2.2L for 25 kits, covered by deposits plus your float</div></li>
+      <li class="reveal milestone"><div class="when">26–28 Feb<small>IICF Bengaluru</small></div>
+        <div><h3>Live demo at the India International Coffee Festival</h3><ul><li>About 20,000 visitors in 2026. The 2027 dates come from an event listing; confirm them with the Specialty Coffee Association of India</li><li>Brew all day; take deposits for batch 2; meet retailers such as Brewing Gadgets</li></ul></div>
+        <div class="meta">Ask the Specialty Coffee Association of India for stall or partner rates</div></li>
+      <li class="reveal"><div class="when">March<small>Ship</small></div>
+        <div><h3>Deliver the founding batch</h3><ul><li>Unboxing videos via the QR code become content</li><li>Collect reviews and recipes; fix what breaks</li></ul></div>
+        <div class="meta">Re-run the breakage and fee estimates with real data</div></li>
+      <li class="reveal"><div class="when">Apr – Jun<small>Batch 2+</small></div>
+        <div><h3>Full price and three tiers</h3><ul><li>Core ₹16,999, Showcase ₹19,999, Halo ₹24,999</li><li>Talk to retailers; build a corporate gifting list; sell spare parts</li></ul></div>
+        <div class="meta"><div class="gate">Gate 3 (30 Jun): selling 10 or more kits a month, the pace needed for ₹12L a year.</div></div></li>
+    </ol>
+
+    <div class="dark" style="margin-top:56px;padding:40px var(--page-gutter)">
+      <div class="grid-2">
+        <div><p class="kicker" style="color:var(--crema)">Sales funnel (assumptions, not data)</p>
+          <div class="funnel"><div><span>Followers by January</span><b>1,500</b></div><div><span>Waitlist sign-ups</span><b>300</b></div><div><span>Paid deposits at 5–10%</span><b>15–30</b></div></div></div>
+        <div class="prose" style="align-self:center"><p>15–30 deposits fill the founding batch and validate the price. Batch 2 after IICF is where ₹12L a year either starts to look possible or doesn't.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 RISKS -->
+<section id="risks" class="section" data-tone="light" data-group="rollout" aria-labelledby="risks-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="kicker">10 · Risks and upside</p><h2 id="risks-title" class="h2">Both sides, honestly.</h2></div>
+    <div class="grid-2">
+      <div class="reveal"><h3 class="h3">Why it could fail</h3><ul class="prose" style="padding-left:20px">
+        <li>Evidence of demand in India is weak, and an unknown brand at ₹20K narrows it further.</li>
+        <li>Glass breaks in transit and in kitchens; that costs replacements and reviews.</li>
+        <li>Supplier quality varies; the ₹1,800 funnel is unproven until tested.</li>
+        <li>Unclear BIS and ISI rules could delay launch.</li>
+        <li>Content takes founder time every week for months.</li>
+      </ul></div>
+      <div class="reveal"><h3 class="h3">What could go our way</h3><ul class="prose" style="padding-left:20px">
+        <li>No glass-filter siphon is sold in India that we could find.</li>
+        <li>Kazumi costs ₹26–38K landed; we're ₹6–18K cheaper with a heat source included.</li>
+        <li>The product creates its own content, and the coffee festival audience is large.</li>
+        <li>47–59% margins on Showcase with no inventory risk, because every kit is built to order.</li>
+        <li>Spare parts, cleaning kits and roaster bundles add repeat revenue.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer id="sources" data-tone="light">
+  <div class="wrap">
+    <p class="kicker">Sources</p>
+    <p class="caption">Prices were checked Oct–Nov 2026 and change often. Kazumi is named only as a competitor benchmark; no Kazumi media is used. All drawings are original.</p>
+    <ol>
+      <li><a href="https://kazumicoffee.com/collections/kazumi-coffee-maker">Kazumi coffee maker collection</a></li>
+      <li><a href="https://brewinggadgets.in/collections/syphon">Brewing Gadgets: siphons</a></li>
+      <li><a href="https://coffeeplus.in/products/syphon-5-cups">Coffee Plus: Hario 5-cup siphon</a></li>
+      <li><a href="https://instacuppastore.com/blogs/main-page/home-barista-setup-india-build-your-pour-over-station-under-rs-10-000">InstaCuppa: pour-over station under ₹10,000</a></li>
+      <li><a href="https://www.tglcompany.com/products/craft-coffee-kit">TGL Craft Coffee Kit</a></li>
+      <li><a href="https://www.arakucoffee.in/collections/brewing-equipment">Araku: brewing equipment</a></li>
+      <li><a href="https://www.chefpicks.in/reviews/best-espresso-machines-india/">ChefPicks: espresso machines in India</a></li>
+      <li><a href="https://luxury.tatacliq.com/fellow-black-stagg-ekg-temperature-control-electric-kettle-small-for-pourover-coffee-900-ml/p-mp000000014116421">Tata CLiQ Luxury: Fellow Stagg EKG</a></li>
+      <li><a href="https://www.smartprix.com/coffee_makers/gaggia-brand">Smartprix: Gaggia prices</a></li>
+      <li><a href="https://www.team-bhp.com/forum/shifting-gears/85271-yetiguide-coffee-post5475397.html">Team-BHP: coffee thread</a></li>
+      <li><a href="https://yourstory.com/2026/03/india-international-coffee-festival-market-photography">YourStory: IICF 2027 plans</a></li>
+      <li><a href="https://www.timeout.com/india/news/indias-biggest-coffee-festival-is-finally-back-in-bengaluru-021226">Time Out: IICF 2026</a></li>
+      <li><a href="https://internshala.com/competitions/india-international-coffee-festival-2027-preliminaries-dates-eligibility/">IICF 2027 dates (aggregator, unconfirmed)</a></li>
+      <li><a href="https://brewinggadgets.in/pages/iicf-2026">Brewing Gadgets at IICF 2026</a></li>
+      <li><a href="https://bosswallah.com/blog/brand-collaborations/micro-influencer-rates-in-india-what-to-actually-charge-in-2026/">Boss Wallah: micro-influencer rates 2026</a></li>
+      <li><a href="https://upgrowth.in/influencer-marketing-pricing-india-2026/">Upgrowth: influencer pricing India 2026</a></li>
+      <li><a href="https://www.modash.io/find-influencers/india/coffee/affiliates">Modash: Indian coffee creators</a></li>
+    </ol>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const html = document.documentElement;
+  html.classList.add('js');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Menu dialog
+  const menu = document.getElementById('menu');
+  document.querySelector('[data-open-menu]').addEventListener('click', () => menu.showModal());
+  menu.querySelector('[data-close-menu]').addEventListener('click', () => menu.close());
+  menu.addEventListener('click', e => { if (e.target.closest('a')) menu.close(); });
+
+  // Chrome tone and pinned-wordmark tone follow the section beneath them
+  const toned = [...document.querySelectorAll('[data-tone]')].filter(el => !el.classList.contains('campaign-overlay'));
+  const overlay = document.querySelector('.campaign-overlay');
+  const watch = (margin, fn) => {
+    const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && fn(e.target)), { rootMargin: margin });
+    toned.forEach(el => io.observe(el));
+  };
+  watch('0px 0px -96% 0px', el => { html.dataset.chrome = el.dataset.tone; });
+  if (overlay) watch('-72% 0px -26% 0px', el => { if (el.closest('.campaign-track')) overlay.dataset.tone = el.dataset.tone; });
+
+  // Rail: current group
+  const railLinks = document.querySelectorAll('[data-rail]');
+  const groupIO = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    railLinks.forEach(a => a.setAttribute('aria-current', a.dataset.rail === e.target.dataset.group ? 'true' : 'false'));
+  }), { rootMargin: '-45% 0px -54% 0px' });
+  document.querySelectorAll('[data-group]').forEach(el => groupIO.observe(el));
+
+  // Reveal on first intersection
+  if (!reduce) {
+    const rIO = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); rIO.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => rIO.observe(el));
+  } else {
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+  }
+
+  // Entrance hairline follows real scroll progress
+  const lines = [...document.querySelectorAll('.entrance')];
+  const onScroll = () => {
+    const vh = innerHeight;
+    lines.forEach(el => {
+      const r = el.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, (vh - r.top) / (vh + r.height * .5)));
+      el.querySelector('.entrance__line').style.setProperty('--p', reduce ? 0 : p.toFixed(3));
+    });
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Animations: pause control, reduced motion, pause offscreen
+  const anims = document.querySelectorAll('[data-anim]');
+  anims.forEach(fig => {
+    const btn = fig.querySelector('.anim-toggle');
+    const set = paused => {
+      fig.classList.toggle('is-paused', paused);
+      btn.setAttribute('aria-pressed', String(paused));
+      btn.textContent = paused ? 'Play animation' : 'Pause animation';
+    };
+    set(reduce);
+    btn.addEventListener('click', () => set(!fig.classList.contains('is-paused')));
+  });
+  const offIO = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('is-offscreen', !e.isIntersecting)));
+  anims.forEach(el => offIO.observe(el));
+
+  // Brew steps follow the 16 s cycle; clicking a step seeks the drawing
+  const brewFig = document.querySelector('[data-brew]');
+  const ref = brewFig && brewFig.querySelector('[data-brew-ref]');
+  const steps = [...document.querySelectorAll('.step')];
+  const LOOP = 16000;
+  if (!ref || !ref.getAnimations || !brewFig.getAnimations) { document.querySelector('.steps').classList.add('no-sync'); return; }
+  const mark = () => {
+    const a = ref.getAnimations()[0];
+    if (!a || a.currentTime == null) return;
+    const p = (a.currentTime % LOOP) / LOOP;
+    steps.forEach(s => s.toggleAttribute('data-on', p >= +s.dataset.from && p < +s.dataset.to));
+  };
+  const loop = () => { if (!brewFig.classList.contains('is-offscreen')) mark(); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  steps.forEach(s => s.addEventListener('click', () => {
+    const t = (+s.dataset.from + .02) * LOOP;
+    brewFig.getAnimations({ subtree: true }).forEach(a => {
+      const d = a.effect.getComputedTiming().duration;
+      a.currentTime = d === LOOP ? t : (a.currentTime ?? 0);
+    });
+    mark();
+  }));
+})();
+</script>
+</body>
+</html>

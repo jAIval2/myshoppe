@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import type { ProductPage } from "../src/lib/api";
 
 test("campaign, menu and department handoff", async ({ page }) => {
   await page.goto("/");
@@ -50,18 +51,35 @@ test("campaign, menu and department handoff", async ({ page }) => {
 });
 
 test("three views, exact SKU bag, development order", async ({ page }) => {
-  await page.goto("/women");
+  const catalogue = await page.request.get(
+    "/api/products?department=women&available=true&limit=100",
+  );
+  expect(catalogue.ok()).toBe(true);
+  const products: ProductPage = await catalogue.json();
+  const product = products.items.find((p) =>
+    p.variants.some((v) => v.active && v.available > 0),
+  );
+  expect(product, "An available development product is required").toBeTruthy();
+  const variant = product!.variants.find((v) => v.active && v.available > 0)!;
+  await page.goto("/women?available=true");
   await page.getByRole("button", { name: "View 2: Gallery" }).click();
   await expect(page.locator(".product-grid")).toHaveClass(/view-2/);
   await page.screenshot({ path: "test-results/catalogue-desktop.png" });
   await page.getByRole("button", { name: "View 3: Compact" }).click();
   await expect(page.locator(".product-grid")).toHaveClass(/view-3/);
-  await page.locator(".product-card .product-image").first().click();
+  await page.goto(`/products/${product!.slug}`);
   await expect(page.locator(".continuation-gallery img")).toHaveCount(4);
   await page.screenshot({ path: "test-results/product-desktop.png" });
   await page.getByRole("button", { name: "ADD", exact: true }).first().click();
   const dialog = page.getByRole("dialog", { name: "Choose your options" });
-  await dialog.getByRole("button", { name: "M", exact: true }).click();
+  await dialog
+    .getByRole("button", { name: variant.colour, exact: true })
+    .click();
+  await dialog
+    .locator(".sizes button")
+    .filter({ hasText: variant.size })
+    .first()
+    .click();
   await dialog.getByRole("button", { name: "ADD TO BAG", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.goto("/cart");

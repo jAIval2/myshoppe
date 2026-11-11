@@ -13,3 +13,5 @@ node_modules/
 test-results/
 playwright-report/
 web/public/uploads/
+SPRINT_PLAN.md
+STLING_GUIDE.md

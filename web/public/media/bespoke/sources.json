@@ -1,0 +1,226 @@
+{
+  "tool": "Built-in image_gen",
+  "purpose": "Illustrative studio references, not verified merchandise",
+  "assets": [
+    {
+      "name": "fabric-mocha",
+      "prompt": "Use case: product-mockup. Asset: bespoke studio material catalogue. Fabric macro photograph, mocha brown textile embroidered with delicate botanical vines in tonal thread. Premium realistic textile photography, daylight from the upper left, accurate muted colour, exquisite fiber detail, square composition filled with material, no text, no logos, no watermark. This is one individual image, not a collage.",
+      "original": "exec-7f416bb6-54aa-4591-8078-5dd514def04a.png",
+      "files": [
+        "fabric-mocha-360.webp",
+        "fabric-mocha-640.webp",
+        "fabric-mocha-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-pistachio",
+      "prompt": "Use case: product-mockup. Asset: bespoke studio material catalogue. Fabric macro photograph, muted pistachio green plain woven cloth, soft natural folds. Premium realistic textile photography, daylight from the upper left, accurate muted colour, exquisite fiber detail, square composition filled with material, no text, no logos, no watermark. This is one individual image, not a collage.",
+      "original": "exec-a5d14eb9-f90b-4078-9f35-255330cf009a.png",
+      "files": [
+        "fabric-pistachio-360.webp",
+        "fabric-pistachio-640.webp",
+        "fabric-pistachio-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-ivory",
+      "prompt": "Use case: product-mockup. Asset: bespoke studio material catalogue. Fabric macro photograph, warm ivory slub woven cloth, tactile fibers and soft folds. Premium realistic textile photography, daylight from the upper left, accurate muted colour, exquisite fiber detail, square composition filled with material, no text, no logos, no watermark. This is one individual image, not a collage.",
+      "original": "exec-6b25a841-9650-4521-aa8b-afdefa58a192.png",
+      "files": [
+        "fabric-ivory-360.webp",
+        "fabric-ivory-640.webp",
+        "fabric-ivory-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-rose",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, dusty rose matte crepe textile in gentle ripples. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-9663292e-afdd-44e3-a57f-6129efb174c1.png",
+      "files": [
+        "fabric-rose-360.webp",
+        "fabric-rose-640.webp",
+        "fabric-rose-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-midnight",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, midnight navy blue satin textile, restrained soft sheen. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-cd95c4be-76d7-45e8-bfdf-cbc7f10bbde5.png",
+      "files": [
+        "fabric-midnight-360.webp",
+        "fabric-midnight-640.webp",
+        "fabric-midnight-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-clay",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, clay terracotta plain woven textile with soft folds. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-87cdb836-86cb-4a12-a248-73ea5e3d8a24.png",
+      "files": [
+        "fabric-clay-360.webp",
+        "fabric-clay-640.webp",
+        "fabric-clay-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-sage",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, pale sage green sheer organza with delicate tonal floral embroidery. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-7047c437-2f78-4fcb-9a22-a322f888d2d9.png",
+      "files": [
+        "fabric-sage-360.webp",
+        "fabric-sage-640.webp",
+        "fabric-sage-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-champagne",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, champagne beige jacquard cloth, subtle woven floral pattern. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-b87ef3c6-a835-4dde-b0b3-274f5e7c2bd4.png",
+      "files": [
+        "fabric-champagne-360.webp",
+        "fabric-champagne-640.webp",
+        "fabric-champagne-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-charcoal",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, charcoal grey fine herringbone woven cloth in soft folds. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-245cc82e-aab9-4b5b-ad60-71ae2f1b4cd6.png",
+      "files": [
+        "fabric-charcoal-360.webp",
+        "fabric-charcoal-640.webp",
+        "fabric-charcoal-1280.webp"
+      ]
+    },
+    {
+      "name": "fabric-marigold",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Fabric macro photograph, muted marigold gold crinkled textile, soft tactile folds. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-a367fd7d-42d2-40ac-b12d-7980996305c9.png",
+      "files": [
+        "fabric-marigold-360.webp",
+        "fabric-marigold-640.webp",
+        "fabric-marigold-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-scallop",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of a wide ivory scalloped embroidered lace ribbon laid diagonally on warm off-white paper, clearly visible threadwork. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-4f437863-abac-4dcf-a95f-856e1161639e.png",
+      "files": [
+        "lace-scallop-360.webp",
+        "lace-scallop-640.webp",
+        "lace-scallop-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-fine",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of a narrow antique gold decorative lace trim with tiny repeated loops laid diagonally on warm off-white paper. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-4d580d88-2b1c-4b0a-b250-7027d429fd3d.png",
+      "files": [
+        "lace-fine-360.webp",
+        "lace-fine-640.webp",
+        "lace-fine-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-floral",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of a delicate ivory floral lace ribbon with open mesh and tiny flowers laid diagonally on warm off-white paper. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-606be1bc-79bc-4b2e-ba60-fc1a179e4cc5.png",
+      "files": [
+        "lace-floral-360.webp",
+        "lace-floral-640.webp",
+        "lace-floral-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-geometric",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of a sand beige geometric embroidered lace border with diamond motifs laid diagonally on warm off-white paper. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-a01bd58e-fa20-48c6-b7ca-f4e81c1e9ecf.png",
+      "files": [
+        "lace-geometric-360.webp",
+        "lace-geometric-640.webp",
+        "lace-geometric-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-pearl",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of an ivory decorative lace trim edged with tiny pearl-like beads laid diagonally on warm off-white paper. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-76b95fbc-11b0-44f7-9f43-331f99fd0b57.png",
+      "files": [
+        "lace-pearl-360.webp",
+        "lace-pearl-640.webp",
+        "lace-pearl-1280.webp"
+      ]
+    },
+    {
+      "name": "lace-leaf",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Product photograph of a muted sage embroidered leaf vine lace ribbon laid diagonally on warm off-white paper. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-8601e984-4f0f-4793-85cb-f8ccc20ab156.png",
+      "files": [
+        "lace-leaf-360.webp",
+        "lace-leaf-640.webp",
+        "lace-leaf-1280.webp"
+      ]
+    },
+    {
+      "name": "atelier-hero",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Editorial still life photograph of a bespoke Indian clothing atelier work table with mocha embroidered cloth, ivory and sage folded fabrics, delicate lace, dressmaking shears and measuring tape; warm natural light, quiet sophisticated composition, no people, landscape composition. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Landscape composition.",
+      "original": "exec-5bfc58af-5d2a-49bb-9c17-e01569b0e425.png",
+      "files": [
+        "atelier-hero-360.webp",
+        "atelier-hero-640.webp",
+        "atelier-hero-1280.webp"
+      ]
+    },
+    {
+      "name": "design-reference",
+      "prompt": "Use case: product-mockup. Asset for MyShoppe bespoke studio. Editorial product photograph of an unbranded warm ivory Indian kurta with round neckline, long sleeves, straight hem and matching dupatta on a simple dressmaker mannequin against off-white studio wall. Entire garment visible. Beautiful subtle tonal embroidery. Front view to use as a design annotation reference. Premium realistic textile photography, consistent soft natural daylight, muted accurate colours, exquisite material detail, no text, no logos, no watermark. Individual image, not collage. Square composition.",
+      "original": "exec-f3294820-7292-491f-a045-a36de13b6f3a.png",
+      "files": [
+        "design-reference-360.webp",
+        "design-reference-640.webp",
+        "design-reference-1280.webp"
+      ]
+    },
+    {
+      "name": "reference-neckline",
+      "prompt": "Use case: product-mockup. Asset: garment detail inspiration reference in a bespoke design studio. Close-up of a round neckline with a subtle V slit on a warm ivory Indian kurta on a mannequin. Delicate tone-on-tone botanical embroidery beside neckline, all of neckline visible. Realistic premium editorial textile photography, soft consistent natural daylight, neutral off-white background, muted natural colours, square image, no text or watermark. One individual reference photo, not a collage.",
+      "original": "exec-68ea959f-2f56-4597-8d56-a05d193e0a41.png",
+      "files": [
+        "reference-neckline-360.webp",
+        "reference-neckline-640.webp",
+        "reference-neckline-1280.webp"
+      ]
+    },
+    {
+      "name": "reference-sleeves",
+      "prompt": "Use case: product-mockup. Asset: garment detail inspiration reference in a bespoke design studio. Close-up of a full length sleeve and cuff of a muted sage Indian kurta on a dressmaker mannequin, slim ivory scalloped lace cuff trim, sleeve shape clearly visible. Realistic premium editorial textile photography, soft consistent natural daylight, neutral off-white background, muted natural colours, square image, no text or watermark. One individual reference photo, not a collage.",
+      "original": "exec-d0cf810c-2c60-4b61-ba3a-30f3d5334162.png",
+      "files": [
+        "reference-sleeves-360.webp",
+        "reference-sleeves-640.webp",
+        "reference-sleeves-1280.webp"
+      ]
+    },
+    {
+      "name": "reference-hem",
+      "prompt": "Use case: product-mockup. Asset: garment detail inspiration reference in a bespoke design studio. Close-up of the lower section of a straight mocha brown Indian kurta on a mannequin, showing straight hem and side slit, simple embroidered botanical motif near the edge. Realistic premium editorial textile photography, soft consistent natural daylight, neutral off-white background, muted natural colours, square image, no text or watermark. One individual reference photo, not a collage.",
+      "original": "exec-d0662c4e-b108-4b7b-9fc9-a38d3b829783.png",
+      "files": [
+        "reference-hem-360.webp",
+        "reference-hem-640.webp",
+        "reference-hem-1280.webp"
+      ]
+    },
+    {
+      "name": "reference-dupatta",
+      "prompt": "Use case: product-mockup. Asset: garment detail inspiration reference in a bespoke design studio. Product photograph of a warm ivory translucent dupatta draped on a plain neutral dressmaker stand, delicate antique gold narrow lace along the entire visible edge, softly falling folds. Realistic premium editorial textile photography, soft consistent natural daylight, neutral off-white background, muted natural colours, square image, no text or watermark. One individual reference photo, not a collage.",
+      "original": "exec-8b5d7ff2-6161-46d0-809d-2cc504abfbf3.png",
+      "files": [
+        "reference-dupatta-360.webp",
+        "reference-dupatta-640.webp",
+        "reference-dupatta-1280.webp"
+      ]
+    }
+  ]
+}

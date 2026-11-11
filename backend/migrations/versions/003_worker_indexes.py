@@ -23,7 +23,7 @@ def upgrade():
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS cart_items_variant_idx ON cart_items (variant_id)",
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS carts_activity_idx ON carts (updated_at)",
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS outbox_completed_idx ON outbox_jobs (completed_at) WHERE status = 'done'",
-            "CREATE INDEX CONCURRENTLY IF NOT EXISTS limits_window_idx ON rate_limits (window)",
+            'CREATE INDEX CONCURRENTLY IF NOT EXISTS limits_window_idx ON rate_limits ("window")',
         ):
             op.execute(statement)
 

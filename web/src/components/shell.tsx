@@ -108,6 +108,7 @@ export function Shell() {
               <Link href={`/${department}?sale=true`}>SPECIAL PRICES</Link>
             </div>
             <div className="menu-secondary">
+              <Link href="/bespoke">BESPOKE STUDIO</Link>
               <Link href="/account">ORDERS</Link>
               <Link href="/favourites">FAVOURITES</Link>
               <Link href="/help/delivery">DELIVERY & RETURNS</Link>

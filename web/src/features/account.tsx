@@ -80,6 +80,9 @@ export function Account() {
           ? `HELLO, ${shop.session.name.toUpperCase()}`
           : "WELCOME TO MYSHOPPE"}
       </h1>
+      <p>
+        <Link href="/bespoke">BESPOKE STUDIO / YOUR SAVED DESIGNS ↗</Link>
+      </p>
       <ErrorMessage error={error} />
       {!shop.session?.name ? (
         <div className="login-panel">

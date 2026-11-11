@@ -20,7 +20,9 @@ export function proxy(request: NextRequest) {
     "form-action 'self' https://api.razorpay.com",
     "base-uri 'self'",
     "object-src 'none'",
-    "frame-ancestors 'none'",
+    request.nextUrl.pathname === "/preview/campaign"
+      ? "frame-ancestors 'self'"
+      : "frame-ancestors 'none'",
   ].join("; ");
 
   const requestHeaders = new Headers(request.headers);
@@ -32,5 +34,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|uploads|media|fonts|_next/static|_next/image|favicon.ico|icon.svg|.*\\..*).*)"],
+  matcher: [
+    "/((?!api|uploads|media|fonts|_next/static|_next/image|favicon.ico|icon.svg|.*\\..*).*)",
+  ],
 };

@@ -9,6 +9,7 @@ from .features.orders.service import OrderService
 from .features.content.service import ContentService
 from .features.payments.service import PaymentService
 from .features.operations.service import OperationsService
+from .features.bespoke.service import BespokeService
 from .adapters.razorpay import RazorpayGateway
 
 identity = IdentityService(db.engine)
@@ -67,3 +68,10 @@ operations = OperationsService(db.engine)
 
 def get_operations():
     return operations
+
+
+bespoke = BespokeService(db.engine)
+
+
+def get_bespoke():
+    return bespoke
