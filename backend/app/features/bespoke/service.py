@@ -217,7 +217,7 @@ class BespokeService:
         require(0 < len(data) <= 5_000_000, "FILE_SIZE", "Use a file under 5 MB.", 422)
         if kind.startswith("image/"):
             try:
-                with Image.open(io.BytesIO(data)) as im:
+                with Image.open(io.BytesIO(data), formats=["JPEG", "PNG", "WEBP"]) as im:
                     require(
                         im.format in ("JPEG", "PNG", "WEBP") and im.width * im.height <= 25_000_000,
                         "IMAGE",

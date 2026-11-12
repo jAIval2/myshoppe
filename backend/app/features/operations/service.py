@@ -49,7 +49,7 @@ class OperationsService:
         require(size <= 10_000_000, "MEDIA_TOO_LARGE", "Images must be smaller than 10 MB.", 413)
         Image.MAX_IMAGE_PIXELS = 25_000_000
         try:
-            with Image.open(stream) as uploaded:
+            with Image.open(stream, formats=["JPEG", "PNG", "WEBP"]) as uploaded:
                 require(
                     uploaded.width * uploaded.height <= 25_000_000,
                     "IMAGE_DIMENSIONS",
