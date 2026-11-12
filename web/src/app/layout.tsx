@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import {connection} from "next/server";
 import { ShopProvider } from "@/components/shop-provider";
 import { Shell } from "@/components/shell";
 import "./globals.css";
@@ -24,11 +25,12 @@ export const metadata: Metadata = {
     "Discover a considered collection of women’s clothing and home textiles. A quieter perspective on everyday style.",
   metadataBase: new URL(process.env.PUBLIC_ORIGIN || "http://localhost:3000"),
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
   return (
     <html
       lang="en-IN"
