@@ -241,8 +241,8 @@ def cleanup_retention(batch_size=500):
         counts["rate_limits"] = c.execute(text("""
             DELETE FROM rate_limits WHERE key IN (
               SELECT key FROM rate_limits
-              WHERE window < floor(extract(epoch from now() - interval '24 hours') / 60)
-              ORDER BY window LIMIT :batch FOR UPDATE SKIP LOCKED
+              WHERE "window" < floor(extract(epoch from now() - interval '24 hours') / 60)
+              ORDER BY "window" LIMIT :batch FOR UPDATE SKIP LOCKED
             )
         """), {"batch": batch_size}).rowcount
         counts["jobs"] = c.execute(text("""

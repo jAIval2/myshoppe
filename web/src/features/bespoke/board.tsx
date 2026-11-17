@@ -344,7 +344,13 @@ export function DesignBoard({
                 setReferenceLibrary(false);
               }}
             >
-              <img src={asset(r.asset)} alt={r.name} width="640" height="640" />
+              <img
+                className={r.kind === "garment" ? "reference-garment-image" : undefined}
+                src={referenceSrc(r.id)}
+                alt={r.name}
+                width="640"
+                height="640"
+              />
               <span>{r.name}</span>
               <small>
                 {d.references.some((v) => v.asset_id === r.id)

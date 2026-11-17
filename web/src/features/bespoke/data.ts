@@ -108,7 +108,45 @@ export const material = (id: string) =>
   [...fabrics, ...laces].find((x) => x.id === id);
 export const asset = (id: string, width = 640) =>
   `/media/bespoke/${id}-${width}.webp`;
+export const garmentAsset = (id: string) =>
+  `/media/bespoke/reference-garments/${id}.webp`;
 export const studioReferences = [
+  {
+    id: "garment-rose-front",
+    src: garmentAsset("sharara-rose-front"),
+    kind: "garment",
+    name: "Dusty rose sharara / front",
+  },
+  {
+    id: "garment-mustard-front",
+    src: garmentAsset("anarkali-mustard-front"),
+    kind: "garment",
+    name: "Mustard anarkali / front",
+  },
+  {
+    id: "garment-charcoal-blouse",
+    src: garmentAsset("blouse-charcoal-front"),
+    kind: "garment",
+    name: "Charcoal blouse / keyhole back",
+  },
+  {
+    id: "garment-rose-model",
+    src: garmentAsset("sharara-rose-model"),
+    kind: "garment",
+    name: "Dusty rose sharara / model",
+  },
+  {
+    id: "garment-mustard-model",
+    src: garmentAsset("anarkali-mustard-model"),
+    kind: "garment",
+    name: "Mustard anarkali / model",
+  },
+  {
+    id: "garment-charcoal-back",
+    src: garmentAsset("blouse-charcoal-model-back"),
+    kind: "garment",
+    name: "Charcoal blouse / back drape",
+  },
   { id: "sample", asset: "design-reference", name: "The complete silhouette" },
   {
     id: "reference-neckline",
@@ -129,7 +167,8 @@ export const studioReferences = [
 ];
 export const referenceSrc = (id: string) => {
   const sample = studioReferences.find((r) => r.id === id);
-  return sample ? asset(sample.asset, 1280) : `/api/bespoke-assets/${id}`;
+  return sample?.src ||
+    (sample?.asset ? asset(sample.asset, 1280) : `/api/bespoke-assets/${id}`);
 };
 export type Pin = { part: string; note: string; x: number; y: number };
 export type Reference = { asset_id: string; name: string; pins: Pin[] };

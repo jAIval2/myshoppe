@@ -1272,6 +1272,11 @@
   aspect-ratio: 1;
   height: auto;
 }
+.studio-reference-library img.reference-garment-image {
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  background: var(--canvas);
+}
 .studio-reference-library span,
 .studio-reference-library small {
   display: block;

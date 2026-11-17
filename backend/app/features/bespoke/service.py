@@ -22,7 +22,19 @@ FABRICS = {
         "marigold",
     )
 }
-SAMPLES = {"sample", "reference-neckline", "reference-sleeves", "reference-hem", "reference-dupatta"}
+SAMPLES = {
+    "sample",
+    "reference-neckline",
+    "reference-sleeves",
+    "reference-hem",
+    "reference-dupatta",
+    "garment-rose-front",
+    "garment-mustard-front",
+    "garment-charcoal-blouse",
+    "garment-rose-model",
+    "garment-mustard-model",
+    "garment-charcoal-back",
+}
 LACES = {f"lace-{x}" for x in ("scallop", "fine", "floral", "geometric", "pearl", "leaf")}
 
 
