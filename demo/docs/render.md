@@ -383,6 +383,58 @@ python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabri
 5. Make the three close views (neckline, sleeve, hem) with the same pipeline.
 6. Add more swatches, and measure the load and draw time on a phone.
 
+### 2026-11-18: `sleeve-straight` plate (shoulder and sleeve view)
+
+- **Source:** `assets/plates/sleeve-straight/source.png` (2048 × 2048). Plate = crop x 512..2048 (the garment runs off the right border), × 0.78125 → 1200 × 1600. A sparkle mark on the garment (bottom right) is covered with a patch of garment from 190 px to the left.
+- **Script:** `tools/annotate_sleeve.py` (all points measured on `source.png` on gridded crops, `tools/gridcrop.py`; it also runs the checks of `annotate.md` §7.1). Then `tools/make_plate.py` (11 s).
+- **Scale:** shoulder → cuff-out = 470 mm → 0.3382 mm/px. Cross-check: neck-l → neck-r = 140.4 mm; the agreed 158 mm × cos 31° (the form is turned about 31°) = 135 mm.
+- **Zones:** `front` 32.4 × 49.9 cm (θ 40°), `sleeve-l` 12.3 × 49.5 cm (θ 70°). Trims: `neck` 12 mm, `cuff-l` 25 mm. Stitches: neck top-stitch (5.3 mm, measured), cuff top-stitch (18.5 mm, measured).
+- **Gaps outside every zone:** the wall wedge under the arm (underarm (1042, 977) to (1050, 1399) in source px), and the bare mannequin arm below the cuff, which is in front of the body (a notch in the `front` outline).
+- **Tool change:** `make_plate.py` reads an optional `"widthPx"` for a zone. The default (mean of top and bottom edge) gave this sleeve 7.8 cm instead of 12.3 cm, because the sleeve cap is only about 50 px wide, so the fabric was stretched 1.6 × across the sleeve. The sleeve uses area ÷ mean edge length. Torso and neck plates rebuild byte-identical.
+- **Checks:** block ratio 0.039, plate data 975 KB (budget 1.0 MB: tight), no crossings, all grid corners meet, outlines closed and simple, trim centres inside their zones.
+- **Known problems:**
+  - The front uses one symmetric cylinder, but the frame cuts the front near the centre line. The squares also narrow at the right border, where the body does not turn away.
+  - The front left edge between y 1399 and 1899 (source px) is hidden by the sleeve and was interpolated.
+  - The shoulder → neck check (107 mm) does not apply to a turned view: it measures 72 mm here.
+  - A 1–2 px strip of sleeve fabric shows along the lower edge of the cuff trim.
+  - The pale diagonal panel under the arm (about (1040–1380, 720–900) in source px) was treated as shading, not a seam.
+  - `testing.html` still loads only the torso plate.
+- **Review (same day): not accepted yet.** `tools/plate_checks.py` (new) fails two checks:
+  - The front grid's left edge bulges **10.7 %** from its chord (limit 5 %; torso 3.9 %, neck 2.6 %).
+  - The front grain tilts **18.4°** for 95 % of points (limit 10°; torso 10.0°, neck 8.7°).
+
+  Cause: that grid edge follows the armhole seam, which bulges 161 px in the turned view, so the checker columns make an S-curve across the chest. Correction: make the grid edge a smooth line under the sleeve, and keep the seam only in the outline (`annotate.md` §2, rule 9). The rebuild is byte-identical, and the sparkle patch is clean.
+
+### 2026-11-18: `hem-straight` plate (hemline and chaak)
+
+- **Source:** `assets/plates/hem-straight/source.png` (2048 × 2048). Plate = crop x 214..1750 (the garment is 1583 px wide, so the crop keeps the whole back panel and its hem tip, and cuts 47 px of the shaded left panel at the border), × 0.78125 → 1200 × 1600. The sparkle mark (x 1920–2010) is outside the crop: no patch.
+- **Intake:** garment highlights are clipped in the top right (about 120 × 1100 px samples at 252 and above, mostly along the slit and the side seam). Max luminance in the garment is 255, above the limit of 250. I did not reject the image: the clipped area is the lit side seam, about 1 % of the garment, and the folds on the front panel are intact. **Decision needed:** ask for a re-render, or accept.
+- **Script:** `tools/annotate_hem.py` (all points measured on `source.png` on gridded crops; silhouettes scanned, then confirmed on crops). Then `tools/make_plate.py` (11 s).
+- **Scale:** slit-top → hem-slit = 240 mm → 0.2221 mm/px. Cross-check: the hem top-stitch is 15 mm above the hem edge (67 px), which matches the 30 mm hem trim with its centre 15 mm up.
+- **Zones:** `front` 16.9 × 30.0 cm (θ 45°), `back` (panel right of the slit) 3.0 × 29.5 cm (θ 60°), `back-l` (shaded left panel, seen at a steep angle) 6.3 × 28.0 cm (θ 65°). The shaded left panel is a second front-facing zone, so `ZONE_ID` got `back` = 4 and `back-l` = 5.
+- **Trims:** `hem` 30 mm, `slit-l` 8 mm (front slit edge), `slit-r` 8 mm (back slit edge, on the `back` zone), cut at the slit apex. Stitches: slit facing (about 60–90 px inside the front edge), bar tack, hem top-stitch of the front and of the left panel.
+- **Outside every zone:** the dress form seen through the slit, the pale inside of the far wall below the form, the stand.
+- **Tool changes in `make_plate.py`:** `ZONE_ID` `back` = 4, `back-l` = 5, with checker colours; optional `uvRangeCm` in `zones.json`; `pack()` raises if a value is outside the range. This close view is 0.222 mm/px, so one pixel is 0.022 cm of fabric, but the default 128 cm range resolves only 0.031 cm. Neighbouring pixels shared a UV value (block ratio 0.227), and the quantisation also inflated the grain tilt (11.3°). `uvRangeCm` = 32 fixes both. The torso, neck and sleeve plates rebuild byte-identical.
+- **`plate_checks.py`:**
+  ```
+  PASS  grid bulge front.left              4 px = 0.3 %
+  PASS  grid bulge front.right             27 px = 2.0 %
+  PASS  UV rate back-l (x face-on)         U 1.06, V 1.00
+  PASS  UV rate back (x face-on)           U 1.04, V 1.01
+  PASS  grain tilt front (95 %)            9.7 deg (median 4.6)
+  PASS  UV rate front (x face-on)          U 1.06, V 1.00
+  PASS  block ratio                        0.038
+  PASS  plate data                         785 KB
+  ALL PASS
+  ```
+- **Known problems:**
+  - `testing.html` still loads only the torso plate, and the zone-id colours of the checker only know ids 1–3 (it shows zones 4 and 5 blue).
+  - Hairline gaps (1 px) in the hem trim where the hem polyline bends.
+  - The hem trim (30 mm, 135 px) is wider than the real hem band (about 80 px up to the top-stitch): it is the agreed trim width, so the lace would cover part of the garment above the stitch.
+  - The slit trims start about 5 mm below the apex, because the trim is clipped to the outline.
+  - The two edges of one slit use `slit-l` (front) and `slit-r` (back): `FLIP` in `testing.html` flips `slit-r` already, but the lace direction is not checked in the page.
+  - One cylinder for each zone: the `back` strip is only 3 cm wide, and its squares narrow towards the tip as a real turned panel would, but this is an approximation.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)

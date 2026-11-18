@@ -16,16 +16,23 @@ Z = json.load(open(os.path.join(DIR, "zones.json")))
 base = Image.open(os.path.join(DIR, Z["base"])).convert("RGB")
 W, H = base.size
 MMPX = Z["mmPerPx"]
-CM_RANGE = 128.0  # UV range in cm for 12-bit packing
+# UV range in cm for 12-bit packing. Optional zones.json "uvRangeCm": a close view (0.22 mm/px) needs a finer step than
+# 128 cm / 4095 = 0.031 cm, or neighbouring pixels share a UV value (block ratio). It must stay above the largest UV
+# value (zone width / height in cm, trim length in cm); pack() raises if it does not.
+CM_RANGE = float(Z.get("uvRangeCm", 128.0))
 STEP = 1.0  # quad size in px (one UV value per pixel)
 
-ZONE_ID = {"front": 1, "sleeve-l": 2, "sleeve-r": 3}
+ZONE_ID = {"front": 1, "sleeve-l": 2, "sleeve-r": 3, "back": 4, "back-l": 5}   # back: panel beside the slit; back-l: shaded side panel (hem view)
 TRIM_ID = {"neck": 1, "cuff-l": 2, "cuff-r": 3, "hem": 4, "slit-l": 5, "slit-r": 6}
-THETA = {"front": math.radians(60), "sleeve-l": math.radians(70), "sleeve-r": math.radians(70)}
+# Cylinder angle of each zone (half the visible arc). Per plate in zones.json "thetaDeg"; defaults below.
+THETA_DEG = {"front": 60, "sleeve-l": 70, "sleeve-r": 70, **Z.get("thetaDeg", {})}
+THETA = {k: math.radians(v) for k, v in THETA_DEG.items()}
 
 
 def pack(u, v):
     """u, v in 0..1 of the range -> 12-bit each -> RGB."""
+    if u > 1.0 or v > 1.0 or u < 0 or v < 0:
+        raise ValueError(f"UV outside the range of {CM_RANGE} cm: set a larger uvRangeCm in zones.json ({u:.3f}, {v:.3f})")
     a = max(0, min(4095, round(u * 4095)))
     b = max(0, min(4095, round(v * 4095)))
     return (a >> 4, b >> 4, ((a & 15) << 4) | (b & 15))
@@ -76,29 +83,30 @@ def coons(g, ns, nt):
     return P
 
 
-def tuck(p, cx=600, reach=40, y_full=880, y_zero=950):
+def tuck(p, t):
     """Push a front side point outward so the front goes UNDER the sleeves.
-    Full push down to the cuffs, then taper to 0 (below the cuffs the side is a real edge)."""
+    Settings come from zones.json "tuck" (per plate). No "tuck" key = no push.
+    Torso: 10 px at the shoulder tips, 40 px under the sleeves, then taper to 12 px below
+    the cuffs (the traced sides sit ~12 px inside the real edge there: fit error)."""
     x, y = p
-    if abs(x - cx) < 150:
+    if abs(x - t["cx"]) < t["centreBand"]:
         return [x, y]
-    # 10 px at the shoulder tips, 40 px under the sleeves, 12 px below the cuffs
-    # (the traced sides sit ~12 px inside the real edge there: fit error)
-    if y < 315:
-        d = 10.0
-    elif y <= y_full:
-        d = reach
-    elif y <= y_zero:
-        d = reach + (12.0 - reach) * (y - y_full) / (y_zero - y_full)
+    if y < t["tipY"]:
+        d = t["tip"]
+    elif y <= t["yFull"]:
+        d = t["reach"]
+    elif y <= t["yZero"]:
+        d = t["reach"] + (t["below"] - t["reach"]) * (y - t["yFull"]) / (t["yZero"] - t["yFull"])
     else:
-        d = 12.0
-    return [x + (d if x > cx else -d), y]
+        d = t["below"]
+    return [x + (d if x > t["cx"] else -d), y]
 
 
-fz = Z["zones"]["front"]
-for k in ("left", "right"):
-    fz["grid"][k] = [tuck(p) for p in fz["grid"][k]]
-fz["outline"] = [tuck(p) for p in fz["outline"]]
+if "tuck" in Z:
+    fz = Z["zones"]["front"]
+    for k in ("left", "right"):
+        fz["grid"][k] = [tuck(p, Z["tuck"]) for p in fz["grid"][k]]
+    fz["outline"] = [tuck(p, Z["tuck"]) for p in fz["outline"]]
 
 id_img = Image.new("RGB", (W, H), (0, 0, 0))
 uv_img = Image.new("RGB", (W, H), (0, 0, 0))
@@ -108,7 +116,9 @@ plate = {"viewBox": [W, H], "mmPerPx": MMPX, "uvRangeCm": CM_RANGE, "zones": {},
 # ---- fabric zones, back to front
 for name, zone in sorted(Z["zones"].items(), key=lambda kv: kv[1]["order"]):
     g = zone["grid"]
-    w_px = (length(g["top"]) + length(g["bottom"])) / 2
+    # mean width of the patch. Optional zones.json "widthPx" overrides it for zones whose top edge is
+    # much shorter than the body (sleeve cap): mean of top and bottom would under-count the fabric width.
+    w_px = zone.get("widthPx") or (length(g["top"]) + length(g["bottom"])) / 2
     h_px = (length(g["left"]) + length(g["right"])) / 2
     ns, nt = max(8, round(w_px / STEP)), max(8, round(h_px / STEP))
     P = coons(g, ns, nt)
@@ -193,7 +203,8 @@ uvp, uvtp, idp, shp, bp = uv_img.load(), uvt_img.load(), id_img.load(), shade.lo
 out = base.copy()
 op = out.load()
 COL = {1: ((214, 72, 64), (245, 225, 210)), 2: ((44, 92, 190), (215, 228, 250)),
-       3: ((44, 92, 190), (215, 228, 250))}
+       3: ((44, 92, 190), (215, 228, 250)), 4: ((38, 150, 96), (215, 240, 222)),
+       5: ((140, 80, 170), (232, 222, 244))}
 
 
 def unpack(p):

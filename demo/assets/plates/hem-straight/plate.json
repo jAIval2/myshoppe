@@ -1,0 +1,43 @@
+{
+ "viewBox": [
+  1200,
+  1600
+ ],
+ "mmPerPx": 0.2221,
+ "uvRangeCm": 32.0,
+ "zones": {
+  "back-l": {
+   "id": 5,
+   "widthCm": 6.3,
+   "heightCm": 28.0
+  },
+  "back": {
+   "id": 4,
+   "widthCm": 3.0,
+   "heightCm": 29.5
+  },
+  "front": {
+   "id": 1,
+   "widthCm": 16.9,
+   "heightCm": 30.0
+  }
+ },
+ "trims": {
+  "hem": {
+   "id": 4,
+   "lengthCm": 14.6,
+   "widthMm": 30
+  },
+  "slit-l": {
+   "id": 5,
+   "lengthCm": 23.5,
+   "widthMm": 8
+  },
+  "slit-r": {
+   "id": 6,
+   "lengthCm": 22.8,
+   "widthMm": 8
+  }
+ },
+ "shadeMedian": 220
+}

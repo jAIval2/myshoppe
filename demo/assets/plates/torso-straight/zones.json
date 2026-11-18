@@ -12359,5 +12359,16 @@
     ]
    ]
   }
+ },
+ "tuck": {
+  "cx": 600,
+  "centreBand": 150,
+  "tipY": 315,
+  "tip": 10,
+  "yFull": 880,
+  "reach": 40,
+  "yZero": 950,
+  "below": 12,
+  "note": "front goes under the sleeves: 10 px at the shoulder tips, 40 px to the cuffs, 12 px below (fit error)"
  }
 }

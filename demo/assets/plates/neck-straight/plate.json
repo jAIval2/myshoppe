@@ -1,0 +1,33 @@
+{
+ "viewBox": [
+  1200,
+  1600
+ ],
+ "mmPerPx": 0.3046,
+ "uvRangeCm": 128.0,
+ "zones": {
+  "front": {
+   "id": 1,
+   "widthCm": 39.8,
+   "heightCm": 33.6
+  },
+  "sleeve-l": {
+   "id": 2,
+   "widthCm": 3.2,
+   "heightCm": 33.2
+  },
+  "sleeve-r": {
+   "id": 3,
+   "widthCm": 2.8,
+   "heightCm": 33.1
+  }
+ },
+ "trims": {
+  "neck": {
+   "id": 1,
+   "lengthCm": 20.7,
+   "widthMm": 12
+  }
+ },
+ "shadeMedian": 222
+}
