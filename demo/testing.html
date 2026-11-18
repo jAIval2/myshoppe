@@ -265,15 +265,17 @@
   const FS = `#version 300 es
   precision highp float;
   precision highp int;
-  uniform sampler2D uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace;
+  uniform sampler2D uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace, uShadeL;
   uniform vec2  uCanvas;        // canvas size in device px
   uniform vec2  uPlate;         // plate size (1200, 1600)
   uniform float uCmPerPx;       // plate px → cm
   uniform float uRange;         // UV range in cm (128)
-  uniform float uFabricOn, uFabricCm, uFabricTex;
-  uniform float uLaceTexH, uLaceAspect;
+  uniform float uFabricOn, uFabricCm;
+  uniform float uLaceAspect;
   uniform float uTrimOn[7], uTrimWcm[7], uTrimFlip[7];
   uniform float uChecker, uPhotoOnly;
+  uniform float uMipBias;       // log2 bias on the texture footprint (negative = sharper)
+  uniform float uAniso;         // 1 = use plate UV gradients, 0 = round footprint
   out vec4 outColor;
 
   vec2 decode(vec4 t) {                       // 12-bit packed → cm
@@ -281,6 +283,41 @@
     float u = c.r * 16.0 + floor(c.b / 16.0);
     float v = c.g * 16.0 + mod(c.b, 16.0);
     return vec2(u, v) / 4095.0 * uRange;
+  }
+
+  // UV step per canvas px, from the plate itself (central difference over +-R plate px).
+  // Used only when both neighbours are in the same zone / trim: no derivatives across zone edges.
+  const int R = 4;
+  void gradFabric(ivec2 p, int zone, float k, out vec2 gx, out vec2 gy) {
+    ivec2 mx = ivec2(uPlate) - 1;
+    ivec2 a = clamp(p + ivec2(R, 0), ivec2(0), mx), b = clamp(p - ivec2(R, 0), ivec2(0), mx);
+    ivec2 c = clamp(p + ivec2(0, R), ivec2(0), mx), d = clamp(p - ivec2(0, R), ivec2(0), mx);
+    float iso = uCmPerPx * k / uFabricCm;                              // round footprint (cm per canvas px)
+    gx = vec2(iso, 0.0); gy = vec2(0.0, iso);
+    if (uAniso < 0.5) return;
+    bool okx = int(texelFetch(uId, a, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, b, 0).r * 255.0 + 0.5) == zone
+            && texelFetch(uId, a, 0).g == 0.0 && texelFetch(uId, b, 0).g == 0.0;
+    bool oky = int(texelFetch(uId, c, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, d, 0).r * 255.0 + 0.5) == zone
+            && texelFetch(uId, c, 0).g == 0.0 && texelFetch(uId, d, 0).g == 0.0;
+    if (okx && oky) {
+      gx = (decode(texelFetch(uUV, a, 0)) - decode(texelFetch(uUV, b, 0))) / float(a.x - b.x) * k / uFabricCm;
+      gy = (decode(texelFetch(uUV, c, 0)) - decode(texelFetch(uUV, d, 0))) / float(c.y - d.y) * k / uFabricCm;
+    }
+  }
+  void gradTrim(ivec2 p, int trim, float k, float w, out vec2 gx, out vec2 gy) {
+    ivec2 mx = ivec2(uPlate) - 1;
+    ivec2 a = clamp(p + ivec2(R, 0), ivec2(0), mx), b = clamp(p - ivec2(R, 0), ivec2(0), mx);
+    ivec2 c = clamp(p + ivec2(0, R), ivec2(0), mx), d = clamp(p - ivec2(0, R), ivec2(0), mx);
+    float iso = uCmPerPx * k / w;                                       // lace height is 1 in texture T
+    gx = vec2(iso / uLaceAspect, 0.0); gy = vec2(0.0, iso);
+    if (uAniso < 0.5) return;
+    bool ok = int(texelFetch(uId, a, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, b, 0).g * 255.0 + 0.5) == trim
+           && int(texelFetch(uId, c, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, d, 0).g * 255.0 + 0.5) == trim;
+    if (!ok) return;
+    vec2 sx = (decode(texelFetch(uUVT, a, 0)) - decode(texelFetch(uUVT, b, 0))) / float(a.x - b.x) * k;
+    vec2 sy = (decode(texelFetch(uUVT, c, 0)) - decode(texelFetch(uUVT, d, 0))) / float(c.y - d.y) * k;
+    gx = vec2(sx.x / (w * uLaceAspect), sx.y / uRange);                 // across (V) is 0..1 over the strip
+    gy = vec2(sy.x / (w * uLaceAspect), sy.y / uRange);
   }
 
   void main() {
@@ -296,15 +333,36 @@
     int trim = int(idt.g * 255.0 + 0.5);
     if (zone == 0) { outColor = photo; return; }
 
-    // soft edge: share of garment pixels in a 3x3 block
-    float cov = 0.0;
-    for (int dy = -1; dy <= 1; dy++)
-      for (int dx = -1; dx <= 1; dx++)
-        cov += texelFetch(uId, clamp(p + ivec2(dx, dy), ivec2(0), ivec2(uPlate) - 1), 0).r > 0.0 ? 1.0 : 0.0;
-    cov /= 9.0;
+    // Canvas bigger than the plate (k < 1): interpolate between the 4 nearest plate texels,
+    // but only when they are all in the same zone (or trim). Otherwise: nearest texel, so
+    // zone edges stay sharp and no UV is mixed across a jump.
+    bool up = k < 0.999;
+    ivec2 mx = ivec2(uPlate) - 1;
+    vec2 fp = frag * k - 0.5;
+    ivec2 q0 = ivec2(floor(fp));
+    vec2 fr = fp - vec2(q0);
+    ivec2 q00 = clamp(q0, ivec2(0), mx), q10 = clamp(q0 + ivec2(1, 0), ivec2(0), mx);
+    ivec2 q01 = clamp(q0 + ivec2(0, 1), ivec2(0), mx), q11 = clamp(q0 + ivec2(1, 1), ivec2(0), mx);
+    vec4 i00 = texelFetch(uId, q00, 0), i10 = texelFetch(uId, q10, 0);
+    vec4 i01 = texelFetch(uId, q01, 0), i11 = texelFetch(uId, q11, 0);
+    vec4 wq = vec4((1.0 - fr.x) * (1.0 - fr.y), fr.x * (1.0 - fr.y), (1.0 - fr.x) * fr.y, fr.x * fr.y);
 
-    float s = texelFetch(uShade, p, 0).r * 2.0;                       // 1.0 = normal light
+    // soft edge
+    float cov = 0.0;
+    if (up) {
+      cov = dot(wq, vec4(i00.r > 0.0 ? 1.0 : 0.0, i10.r > 0.0 ? 1.0 : 0.0, i01.r > 0.0 ? 1.0 : 0.0, i11.r > 0.0 ? 1.0 : 0.0));
+    } else {                                                          // share of garment px in a 3x3 block
+      for (int dy = -1; dy <= 1; dy++)
+        for (int dx = -1; dx <= 1; dx++)
+          cov += texelFetch(uId, clamp(p + ivec2(dx, dy), ivec2(0), mx), 0).r > 0.0 ? 1.0 : 0.0;
+      cov /= 9.0;
+    }
+
+    float s = (up ? texture(uShadeL, st).r : texelFetch(uShade, p, 0).r) * 2.0;   // 1.0 = normal light
     vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
+    if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
+      uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
+         + wq.z * decode(texelFetch(uUV, q01, 0)) + wq.w * decode(texelFetch(uUV, q11, 0));
 
     vec3 col = photo.rgb;
     if (uChecker > 0.5) {
@@ -312,20 +370,27 @@
       vec3 a = zone == 1 ? vec3(0.84, 0.28, 0.25) : vec3(0.17, 0.36, 0.75);
       col = mix(a, vec3(0.96, 0.92, 0.86), c) * s;
     } else if (uFabricOn > 0.5) {
-      // fixed mip level from the known scale: no seams where UVs jump between zones
-      float texPerPx = uFabricTex / uFabricCm * uCmPerPx * k;
-      vec3 f = textureLod(uFabric, uv / uFabricCm, log2(max(texPerPx, 1.0))).rgb;
+      // explicit gradients (from the plate, not from screen derivatives): no seams where UVs jump
+      vec2 gx, gy;
+      gradFabric(p, zone, k, gx, gy);
+      float bias = exp2(uMipBias);
+      vec3 f = textureGrad(uFabric, uv / uFabricCm, gx * bias, gy * bias).rgb;
       col = f * s + max(s - 1.0, 0.0) * 0.15;                       // folds, soft highlights
     }
 
     if (trim > 0 && uTrimOn[trim] > 0.5) {
       vec2 t = decode(texelFetch(uUVT, p, 0));
+      if (up && i00.g == idt.g && i10.g == idt.g && i01.g == idt.g && i11.g == idt.g)
+        t = wq.x * decode(texelFetch(uUVT, q00, 0)) + wq.y * decode(texelFetch(uUVT, q10, 0))
+          + wq.z * decode(texelFetch(uUVT, q01, 0)) + wq.w * decode(texelFetch(uUVT, q11, 0));
       float across = t.y / uRange;
       if (uTrimFlip[trim] > 0.5) across = 1.0 - across;
       float w = uTrimWcm[trim];
       vec2 lc = vec2(t.x / (w * uLaceAspect), across);
-      float texPerPx = uLaceTexH / w * uCmPerPx * k;
-      vec4 lace = textureLod(uLace, lc, log2(max(texPerPx, 1.0)));
+      vec2 gx, gy;
+      gradTrim(p, trim, k, w, gx, gy);
+      float bias = exp2(uMipBias);
+      vec4 lace = textureGrad(uLace, lc, gx * bias, gy * bias);
       col = mix(col, lace.rgb * min(s * 1.05, 1.15), lace.a);
     }
 
@@ -349,6 +414,15 @@
   const U = (n) => gl.getUniformLocation(prog, n);
 
   // ---------- textures
+  const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0
+  const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
+  if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
+    const st = document.createElement("style");
+    st.textContent = `.studio-shell{max-width:none;grid-template-columns:${parseInt(params.get("stage"))}px 360px}`;
+    document.head.appendChild(st);
+  }
+  const USE_PLATE_GRAD = params.get("aniso") === "0" ? 0 : 1;
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
   async function bitmap(url, data) {
@@ -359,7 +433,7 @@
       ? { colorSpaceConversion: "none", premultiplyAlpha: "none" }
       : { premultiplyAlpha: "none" });
   }
-  function texture(unit, img, { data = false, wrap = gl.CLAMP_TO_EDGE } = {}) {
+  function texture(unit, img, { data = false, linear = false, wrap = gl.CLAMP_TO_EDGE } = {}) {
     const t = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, t);
@@ -370,10 +444,12 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap === gl.MIRRORED_REPEAT ? wrap : gl.CLAMP_TO_EDGE);
     if (data) {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      const f = linear ? gl.LINEAR : gl.NEAREST;                      // linear only for smooth data (shade)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
     } else {
       gl.generateMipmap(gl.TEXTURE_2D);
+      if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     }
@@ -405,14 +481,15 @@
     // lace: repeat along the trim (S), clamp across (T)
     texture(6, lace, { wrap: gl.MIRRORED_REPEAT });
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace"].forEach((n, i) => gl.uniform1i(U(n), i));
+    texture(7, shade, { data: true, linear: true });    // second copy of shade.png, smooth
+    ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uShadeL"].forEach((n, i) => gl.uniform1i(U(n), i));
 
+    gl.uniform1f(U("uMipBias"), MIP_BIAS);
+    gl.uniform1f(U("uAniso"), USE_PLATE_GRAD);
     gl.uniform2f(U("uPlate"), plate.viewBox[0], plate.viewBox[1]);
     gl.uniform1f(U("uCmPerPx"), plate.mmPerPx / 10);
     gl.uniform1f(U("uRange"), plate.uvRangeCm);
     gl.uniform1f(U("uFabricCm"), FABRIC.repeatCm);
-    gl.uniform1f(U("uFabricTex"), fabric.width);
-    gl.uniform1f(U("uLaceTexH"), lace.height);
     gl.uniform1f(U("uLaceAspect"), lace.width / lace.height);
     const w = new Float32Array(7), flip = new Float32Array(7);
     for (const [name, id] of Object.entries(TRIMS)) {
@@ -446,7 +523,7 @@
   function resize() {
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.min(plate.viewBox[0], Math.round(r.width * dpr));
+    const w = Math.min(plate.viewBox[0] * 2, Math.round(r.width * dpr));   // up to 2x the plate
     const h = Math.round(w * plate.viewBox[1] / plate.viewBox[0]);
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w; canvas.height = h;

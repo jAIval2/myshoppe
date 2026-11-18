@@ -28,19 +28,65 @@ for c in f.split():
     ).convert("L"))
 flat = Image.merge("RGB", chans).resize((1024, 1024), Image.LANCZOS)
 
-# seamless: blend with a half-offset copy. The copy is continuous across the
-# tile border, so it takes over near the edges; the original keeps the centre.
+# seamless: the half-offset copy is continuous across the tile border (its own
+# border is the original's centre). Near each edge we cut over to that copy along a
+# minimum-error seam, found by dynamic programming inside a narrow band (BAND px).
+# The cut follows places where both copies already agree, so it needs no wide blend.
+BAND, MIN_OFF = 64, 8
 N = flat.size[0]
 shifted = ImageChops.offset(flat, N // 2, N // 2)
-ramp = Image.new("L", (N, N))
-rp = ramp.load()
-for y in range(N):
-    for x in range(N):
-        d = min(x, N - 1 - x, y, N - 1 - y) / (N / 2)  # 0 at the border, 1 at the centre
-        rp[x, y] = int(255 * min(1.0, d * 2.2))
-flat = Image.composite(flat, shifted, ramp)
+pre_blend = flat
+
+
+def seam_mask_top(a, b):
+    """L mask, 255 above the seam (use b there). Seam row per column in [MIN_OFF, BAND]."""
+    n = a.size[0]
+    d = ImageChops.difference(a, b).convert("L")
+    dp_ = d.load()
+    rows = BAND - MIN_OFF + 1
+    cost = [[(dp_[x, MIN_OFF + r] ** 2) for r in range(rows)] for x in range(n)]
+    acc = [cost[0][:]]
+    back = [[0] * rows]
+    for x in range(1, n):
+        prev, cur, bk = acc[-1], [0] * rows, [0] * rows
+        for r in range(rows):
+            best, bi = prev[r], r
+            if r > 0 and prev[r - 1] < best: best, bi = prev[r - 1], r - 1
+            if r < rows - 1 and prev[r + 1] < best: best, bi = prev[r + 1], r + 1
+            cur[r], bk[r] = best + cost[x][r], bi
+        acc.append(cur); back.append(bk)
+    r = min(range(rows), key=lambda i: acc[-1][i])
+    path = [0] * n
+    for x in range(n - 1, -1, -1):
+        path[x] = r
+        r = back[x][r]
+    m = Image.new("L", (n, n), 0)
+    ImageDraw.Draw(m).polygon([(0, 0), (n - 1, 0)] + [(x, MIN_OFF + path[x]) for x in range(n - 1, -1, -1)], fill=255)
+    return m
+
+
+mask = Image.new("L", (N, N), 0)
+for k in range(4):  # top, left, bottom, right: rotate so each edge is "top"
+    ang = 90 * k
+    m = seam_mask_top(flat.rotate(ang), shifted.rotate(ang))
+    mask = ImageChops.lighter(mask, m.rotate(-ang))
+mask = mask.filter(ImageFilter.GaussianBlur(1.5))
+flat = Image.composite(shifted, flat, mask)
 flat.save(f"{out_dir}/fabric-sage-1024.jpg", quality=92)
 flat.resize((256, 256)).save(f"{dbg}/fabric-flat-preview.png")
+tile3 = Image.new("RGB", (N * 3, N * 3))
+for i in range(3):
+    for j in range(3):
+        tile3.paste(flat, (i * N, j * N))
+tile3.resize((1536, 1536), Image.LANCZOS).save(f"{dbg}/fabric-tile3x3.png")
+tile3.crop((N - 400, N - 400, N + 400, N + 400)).save(f"{dbg}/fabric-tile-corner.png")  # a tile corner, full res
+band_px = sum(1 for v in mask.getdata() if v > 8)
+print(f"swatch band area {band_px / N / N:.1%} of tile")
+import statistics
+def sharp(im): return statistics.pvariance(list(im.convert("L").filter(ImageFilter.FIND_EDGES).getdata()))
+print("sharpness pre-blend", round(sharp(pre_blend), 1), "post", round(sharp(flat), 1))
+if len(sys.argv) > 4 and sys.argv[4] == "fabric":
+    sys.exit(0)
 
 # ---- lace
 lace = Image.open(f"{src_dir}/lace-pearl-640.png").convert("RGB")

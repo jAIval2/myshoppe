@@ -17,7 +17,7 @@ base = Image.open(os.path.join(DIR, Z["base"])).convert("RGB")
 W, H = base.size
 MMPX = Z["mmPerPx"]
 CM_RANGE = 128.0  # UV range in cm for 12-bit packing
-STEP = 2.0  # quad size in px
+STEP = 1.0  # quad size in px (one UV value per pixel)
 
 ZONE_ID = {"front": 1, "sleeve-l": 2, "sleeve-r": 3}
 TRIM_ID = {"neck": 1, "cuff-l": 2, "cuff-r": 3, "hem": 4, "slit-l": 5, "slit-r": 6}
@@ -147,7 +147,7 @@ for name, trim in Z["trims"].items():
     n = max(4, round(length(c) / STEP))
     C = resample(c, n)
     len_cm = length(c) * MMPX / 10
-    across = 12
+    across = max(8, math.ceil(2 * half))  # one step per px across the trim
     layer = Image.new("RGB", (W, H), (0, 0, 0))
     m = Image.new("L", (W, H), 0)
     dl, dm = ImageDraw.Draw(layer), ImageDraw.Draw(m)
