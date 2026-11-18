@@ -55,3 +55,26 @@ Join discontinuity of the lace images themselves (wrap difference ÷ neighbour-c
 ### Draw time
 
 Not measurable here (headless Chrome reports virtual time). The ≤ 5 ms budget is to be checked by hand in a normal browser at the end.
+
+## Step 1: shadow of the lace on the fabric (accepted)
+
+`testing.html`: where a trim is on, the lace alpha is read a second time, shifted by `uShadowMm` = (0.6, 0.9) mm to the right and down, 1.5 mip levels softer (gradients × 2.83), and the fabric is darkened by `uShadowStrength` (0.35) × shadow alpha × (1 − lace alpha). The lace itself is not darkened. Test switch: `?shadow=0` (off), `?shadow=<n>` (strength). Backup: `testing@1.html` (untracked, deleted in step 5).
+
+**Deviation from the plan:** the offset is not fixed in lace coordinates. Along the neckline the trim direction turns through about 180°, so a lace-coordinate offset would put the shadow on the wrong side on half of the neck. The shader turns the screen offset into lace coordinates with the UV gradients it already has (`gradTrim`), so the shadow stays lower-right on every trim. Without the plate gradients (`?aniso=0`) it assumes U to the right and V down.
+
+| Check | Result |
+|---|---|
+| Pixels changed outside the trims (trims grown by 4 mm), all 8 queries | **0** |
+| Bodice crops against step 0 (crops 2, 3, 4) | identical, mean difference 0.0 (also proves the default render did not change with the `?shade=0` switch of step 0) |
+| Maximum darkening of any pixel (L new ÷ L old), 8 queries | 16.9 % to 34.7 % (≤ 35 % ✔) |
+| Soft dark rim, lower-right, in crops 2, 3, 5 | seen: `docs/plan/img/polish-step1-before-after.png` (before left, after right). My own look, not a person's. |
+| Draw time ≤ 5 ms | **not measured** (headless reports virtual time). The shader adds one texture read per lace pixel. |
+
+"No darkening where the lace alpha is 0 within 1.5 mm" is not tested numerically: the soft read (about 1.5 mip levels) plus the 1.08 mm offset spreads the shadow up to about 2 mm from a lace edge on the lower-right side, so a strict 1.5 mm limit would not hold exactly. By construction, nothing is darkened more than 35 %.
+
+Crops: `after-polish-1/`.
+
+### Harness changes made during this step
+
+- `tools/shoot_views.sh`: `JOBS` (processes at a time), `TMO` (timeout), waits for its own Chrome processes only; use `PORT=<free port>` when another run is active (two runs on one port kill each other's server).
+- `tools/shoot_set.py`: runs a query list two at a time, rejects a shot that is only the fallback photo (the page had not drawn yet) and retries it. Four parallel software-rendered Chromes timed out on this machine; use this for review sets.

@@ -4,6 +4,7 @@ usage:
   python3 tools/polish_metrics.py fd   [plate ...]            fine detail of shade.png (step 0, 3)
   python3 tools/polish_metrics.py crops <shot-dir> <out-dir>  cut the fixed review crops from a shoot_views.sh run (DPR=2)
   python3 tools/polish_metrics.py fcr  <shot-dir> [flat-dir]  fold contrast retention for queries 2, 3, 4 (step 0, 2); flat-dir = run of FLAT_QUERIES
+  python3 tools/polish_metrics.py shadow <old-dir> <new-dir>   step 1: what changed, and how dark
   python3 tools/polish_metrics.py joins                       lace repeat: mirror joins and join discontinuity (step 0, 4)
 
 FD  (fine detail): variance of shade in the band below 1.5 mm = shade - G(1.5 mm), and in the fold band 2..30 mm =
@@ -166,6 +167,39 @@ def cmd_fcr(shots, flat=None):
         print(json.dumps(row))
 
 
+def trim_mask(view, ids, grow_mm):
+    """Stage-sized 0/255 mask of the trims (G channel ids), grown by grow_mm. For 'did anything change outside the trims'."""
+    pj = plate_json(PLATE_OF[view])
+    g = Image.open(os.path.join(PLATES, PLATE_OF[view], "id.png")).convert("RGB").split()[1]
+    m = g.point(lambda v: 255 if v in ids else 0)
+    k = CANVAS_W / 1200
+    m = m.resize((CANVAS_W, round(1600 * k)), Image.NEAREST)
+    d = max(1, round(grow_mm / pj["mmPerPx"] * k))
+    return m.filter(ImageFilter.MaxFilter(2 * d + 1))
+
+
+def cmd_shadow(old, new):
+    """Step 1: stage of the new run against the old run (same queries). Darkening = L_new / L_old."""
+    box = (CANVAS_X, CANVAS_Y, CANVAS_X + CANVAS_W, CANVAS_Y + round(1600 * CANVAS_W / 1200) - 90)   # above the caption pill
+    for qi, q in enumerate(QUERIES):
+        view = q.split("view=")[1].split("&")[0]
+        if "fabric=off" in q:
+            ids = {1, 2, 3, 4}
+        else:
+            ids = {1, 2, 3, 4}
+        a = Image.open(os.path.join(old, f"shot-{qi}.png")).convert("L").crop(box)
+        b = Image.open(os.path.join(new, f"shot-{qi}.png")).convert("L").crop(box)
+        m = trim_mask(view, ids, 4.0).crop((0, 0, box[2] - box[0], box[3] - box[1]))
+        diff = ImageChops.difference(a, b)
+        outside = ImageChops.multiply(diff.point(lambda v: 255 if v > 0 else 0), m.point(lambda v: 0 if v else 255))
+        n_out = ImageStat.Stat(outside).sum[0] / 255
+        ratio = ImageMath.lambda_eval(lambda x: x["n"] / (x["o"] + 1.0), n=b.convert("F"), o=a.convert("F"))
+        lo = ratio.getextrema()[0]
+        changed = ImageStat.Stat(diff.point(lambda v: 255 if v > 1 else 0)).sum[0] / 255
+        print(json.dumps({"query": q, "changed_px(>1 level)": round(changed), "changed_outside_trims_px": round(n_out),
+                          "min_ratio_L_new/L_old": round(lo, 3), "max_darkening_%": round((1 - lo) * 100, 1)}))
+
+
 def lace_info(name):
     im = Image.open(os.path.join(SWATCHES, f"lace-{name}-2048.webp")).convert("RGBA")
     meta_path = os.path.join(SWATCHES, f"lace-{name}.json")
@@ -213,4 +247,4 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if not a: sys.exit(__doc__)
     {"fd": lambda: cmd_fd(a[1:]), "crops": lambda: cmd_crops(a[1], a[2]), "fcr": lambda: cmd_fcr(a[1], a[2] if len(a) > 2 else None),
-     "joins": cmd_joins}[a[0]]()
+     "joins": cmd_joins, "shadow": lambda: cmd_shadow(a[1], a[2])}[a[0]]()

@@ -324,6 +324,8 @@
   uniform float uMipBias;       // log2 bias on the texture footprint (negative = sharper)
   uniform float uAniso;         // 1 = use plate UV gradients, 0 = round footprint
   uniform float uShadeOn;       // test: 0 = flat light (no folds), to measure the fold contrast of the render
+  uniform float uShadowStrength; // darkening of the fabric under the lace (0 = off), polish.md step 1
+  uniform vec2  uShadowMm;       // shadow offset on the stage in mm: right, down (key light at the upper left)
   out vec4 outColor;
 
   vec2 decode(vec4 t) {                       // 12-bit packed → cm
@@ -441,6 +443,15 @@
       gradTrim(p, trim, k, w, gx, gy);
       float bias = exp2(uMipBias);
       vec4 lace = textureGrad(uLace, lc, gx * bias, gy * bias);
+      if (uShadowStrength > 0.0) {
+        // Shadow of the lace on the fabric: the lace alpha read again, shifted right and down on the stage,
+        // 1.5 mip levels softer. The shift is a fixed direction on the screen, so it stays lower-right along the
+        // curve of the neckline: gx, gy are the lace coordinates per canvas px, from the plate UV.
+        vec2 o = uShadowMm / (uCmPerPx * 10.0) / k;                    // mm -> plate px -> canvas px
+        vec2 off = gx * o.x + gy * o.y;
+        float sh = textureGrad(uLace, lc - off, gx * bias * 2.8284, gy * bias * 2.8284).a;
+        col *= 1.0 - uShadowStrength * sh * (1.0 - lace.a);           // the lace itself is not darkened
+      }
       col = mix(col, lace.rgb * min(s * 1.05, 1.15), lace.a);
     }
 
@@ -465,7 +476,7 @@
 
   // ---------- textures
   const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0
   const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
   if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
     const st = document.createElement("style");
@@ -474,6 +485,7 @@
   }
   const USE_PLATE_GRAD = params.get("aniso") === "0" ? 0 : 1;
   const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
+  const SHADOW = params.has("shadow") ? parseFloat(params.get("shadow")) : 0.35;   // test: ?shadow=0 off, ?shadow=0.5 stronger
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
   async function bitmap(url, data) {
@@ -556,6 +568,8 @@
     gl.uniform1f(U("uMipBias"), MIP_BIAS);
     gl.uniform1f(U("uAniso"), USE_PLATE_GRAD);
     gl.uniform1f(U("uShadeOn"), SHADE_ON);
+    gl.uniform1f(U("uShadowStrength"), SHADOW);
+    gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
   }
 
