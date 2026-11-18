@@ -323,6 +323,7 @@
   uniform float uChecker, uPhotoOnly;
   uniform float uMipBias;       // log2 bias on the texture footprint (negative = sharper)
   uniform float uAniso;         // 1 = use plate UV gradients, 0 = round footprint
+  uniform float uShadeOn;       // test: 0 = flat light (no folds), to measure the fold contrast of the render
   out vec4 outColor;
 
   vec2 decode(vec4 t) {                       // 12-bit packed → cm
@@ -406,6 +407,7 @@
     }
 
     float s = (up ? texture(uShadeL, st).r : texelFetch(uShade, p, 0).r) * 2.0;   // 1.0 = normal light
+    if (uShadeOn < 0.5) s = 1.0;
     vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
     if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
       uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
@@ -471,6 +473,7 @@
     document.head.appendChild(st);
   }
   const USE_PLATE_GRAD = params.get("aniso") === "0" ? 0 : 1;
+  const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
   async function bitmap(url, data) {
@@ -552,6 +555,7 @@
     ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uShadeL"].forEach((n, i) => gl.uniform1i(U(n), i));
     gl.uniform1f(U("uMipBias"), MIP_BIAS);
     gl.uniform1f(U("uAniso"), USE_PLATE_GRAD);
+    gl.uniform1f(U("uShadeOn"), SHADE_ON);
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
   }
 
