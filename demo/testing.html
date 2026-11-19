@@ -411,7 +411,7 @@
   const params0 = new URLSearchParams(location.search);    // test switches: ?view=neck|sleeve|hem  ?fabric=mocha  ?lace=leaf
   const state = { view: VIEWS[params0.get("view")] ? params0.get("view") : "torso",
                   fabric: FABRICS[params0.get("fabric")] || params0.get("fabric") === "off" ? params0.get("fabric") : "sage",
-                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", trims: { neck: true, cuffs: true, hem: true, slits: false }, checker: false, photo: false };
+                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", trims: { neck: true, cuffs: true, hem: true, slits: false }, checker: params0.get("checker") === "1", photo: false };   // test: ?checker=1  the grain checker (2 cm squares from the uv: no fabric texture, so no texel noise)
   const stageImg = document.querySelector(".stage-frame img");
 
   const canvas = document.getElementById("stage");
@@ -950,8 +950,9 @@
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
   // numeric.md: ?geom=mesh builds the maps of the MESH_VIEWS on the GPU from the curves (plate.js, maps.js); default and ?geom=maps: the PNG maps
   const GEOM = params0.get("geom") === "mesh" ? "mesh" : "maps";
-  const MESH_VIEWS = { torso: 1 };                     // views ported so far (numeric.md step 5 adds the others)
+  const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1 };   // views ported so far (numeric.md step 5 adds the others); test: ?meshviews=torso,neck,sleeve,hem
   const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
+  const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");   // the shade is built on the GPU only with float render targets (else shade.png)
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
   const decoded = new Set();
   async function blobOf(url, tries = 2) {            // one retry: a busy local server sometimes drops a connection
@@ -1016,7 +1017,8 @@
   }
 
   const MAPS = [["photo", "base.jpg", false], ["id", "id.png", true], ["uv", "uv.png", true], ["uvt", "uv_trim.png", true], ["shade", "shade.png", true]];
-  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k === "photo" || k === "shade") : MAPS);   // the mesh makes id, uv and uv_trim itself (steps 2-3)
+  const MESH_SHADE = FLOAT_OK && params0.get("gpushade") !== "0";   // test: ?gpushade=0  the shade from shade.png even with ?geom=mesh
+  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k === "photo" || (k === "shade" && !MESH_SHADE)) : MAPS);   // the mesh makes id, uv, uv_trim (steps 2-3) and the shade (step 4) itself
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
       const P = VIEWS[view].plate, maps = mapsOf(view);
@@ -1478,7 +1480,7 @@
     if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
     setUnit(0, bm.photo);
     if (meshOn(view)) {                                // the maps from the curves (numeric.md): id R / B and uv; G, uvt, shade still PNG
-      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), cell: MESH_CELL, ...MESH_OFF });
+      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), photo: MESH_SHADE ? bm.photo : null, cell: MESH_CELL, ...MESH_OFF });
       setUnitTex(1, built.id);
       setUnitTex(2, built.uv);
       stat.dataset.build = built.ms.toFixed(1);
@@ -1490,7 +1492,7 @@
       builtMaps = null;
     }
     if (builtMapsFor(view)) setUnitTex(3, builtMaps.uvt); else setUnit(3, bm.uvt, { data: true });
-    setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
+    if (builtMaps && builtMaps.shade) setUnitTex(4, builtMaps.shade); else setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
     Object.values(bm).forEach(release);                // on the GPU now: free the decoded images
     plate = v.plate;
     note.classList.remove("show");
@@ -1786,7 +1788,7 @@
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
     buildMs: () => (stat.dataset.build ? +stat.dataset.build : null),
-    readMaps: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readPNG(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
+    readMaps: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt", "shade"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readPNG(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
     setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
     timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step }),
   };

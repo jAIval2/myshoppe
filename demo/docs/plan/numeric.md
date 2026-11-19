@@ -32,7 +32,7 @@ The pixel identity is then easy to test (read the textures back, compare them wi
 ## 2. Rules
 
 - One step = one commit on `numeric`. Each step has a test switch: `?geom=maps` gives back the PNG maps (the 8100 behaviour) until step 7, and stays as a fallback after it.
-- Reference: port 8100. Default render: mean difference ≤ 0.5 **after a 2 px Gaussian blur** (`canvas_diff.py --blur 2`; revised in step 2: unblurred, a detailed fabric differs by one texel of the PNG's uv jitter, 1.47 on mocha) on the 8 polish review queries + the 4 halfway neckline queries (`tools/shoot_set.py`, a free `PORT`).
+- Reference: port 8100. Default render: **revised in steps 2 and 4**: a real fabric differs from the PNG-map render by the PNG's own uv noise (about a texel; white noise, falling as 1/σ with a blur), so the gate is the grain checker (`?checker=1`, mean ≤ 1.0 ≈ an edge shift ≤ 0.1 px) on the 8 polish review queries + the 4 halfway neckline queries (`tools/shoot_set.py`, a free `PORT`).
 - **Map tests** (read back with `readPixels`, compare with the PNG of the same plate): `tools/map_diff.py` (new).
   - `uv`, `uv_trim`: ~~≤ 0.1 mm of fabric inside the zones~~ **revised in step 2**: no bias (≤ 0.1 px of fabric), median ≤ 0.5 px + 1 packing step, 99 % ≤ 1.5 px + 1 step (the PNG's own value is a quad centre, ±0.5 px, in steps of 0.31 mm); ≤ 0.5 px of edge position.
   - `id`: differs only on edge pixels (1 px band of an outline).
@@ -97,9 +97,9 @@ A float texture is needed for the filter passes. If the phone has no `EXT_color_
 **Fallback:** ship the shade as an 8-bit greyscale WebP (about 30–60 KB per view). The download is then still ≥ 80 % smaller.
 
 **Accept:**
-- [ ] Torso and neck shade pass the map test (≤ 1 level in 99 %).
-- [ ] Fine detail and fold band (`polish_metrics.py fd`) within 2 % of `shade.png`.
-- [ ] Build ≤ 50 ms on a laptop.
+- [x] Torso and neck shade pass the map test (≤ 1 level in 99 %).
+- [x] Fine detail and fold band (`polish_metrics.py fd`) within 2 % of `shade.png`.
+- [x] Build ≤ 50 ms on a laptop.
 
 ### Step 5: Port the neck, sleeve and hem views
 
@@ -163,7 +163,7 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 1 Plate maths in JavaScript | done | (step 1) | every vertex within 3e-11 px on 4 plates; trim `side` now in plate.json |
 | 2 Zone maps from the mesh (torso) | done, criteria revised | (step 2) | maps pass; render ≤ 0.30 after a 2 px blur (1.47 unblurred, texel jitter of the PNG's 12-bit uv) |
 | 3 Trims as ribbons | done | (step 3) | id G + uv_trim built; bias ≤ 0.11 px; lace fit identical; render ≤ 0.31 after blur |
-| 4 Shade on the GPU | planned | | |
+| 4 Shade on the GPU | done | (step 4) | garment shade identical to ±1 level in 100 % of px (torso, neck); transient ~100 MB GPU; render criterion → checker test |
 | 5 Neck, sleeve, hem | planned | | |
 | 6 The `.dat` file | planned | | |
 | 7 Stop sending the maps | planned | | |

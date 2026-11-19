@@ -84,16 +84,191 @@
     return { vb, count: poly.length };
   }
 
+  // ---------------------------------------------------------------------------------------------------------------
+  // Step 4: the shade (folds) from the photo. tools/make_plate.py does, in this order:
+  //   Lum = base.convert("L") (Pillow: (299 R + 587 G + 114 B) with 16 bit fixed point and rounding), shade = Lum / median (the median
+  //   is a number from plate.json: decided offline), the guided filter of each zone (box windows of radius r, eps, masked by the
+  //   zone; off when plate.json has no shadeSmoothPx), the linear light encoding stored = sqrt(shade_lin / 2) * 255 (truncated),
+  //   the value 180 (shade 1.0) outside the garment, and in the neck area the garment's shade carried 8 px outward (the dip).
+  // Float textures are needed for the filter (var = s2 / n - mean^2): EXT_color_buffer_float. shadePasses() returns null without it.
+  const FULL_VS = `#version 300 es
+  void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+  const SH_COMMON = `#version 300 es
+  precision highp float;
+  precision highp int;
+  uniform sampler2D uPhotoRaw, uI, uId, uA, uB, uSrc;
+  uniform ivec2 uSize;
+  uniform int uZone, uR;
+  uniform float uInvMed, uEps, uM255, uLinMed;
+  uniform ivec4 uRect;      // neck area rectangle x0 y0 x1 y1 (x1, y1 exclusive); x0 = x1 when there is none
+  out vec4 o;
+  int zoneAt(ivec2 q) { return int(texelFetch(uId, q, 0).r * 255.0 + 0.5); }
+  bool inside(ivec2 q) { return q.x >= 0 && q.y >= 0 && q.x < uSize.x && q.y < uSize.y; }
+  bool inRect(ivec2 q) { return q.x >= uRect.x && q.x < uRect.z && q.y >= uRect.y && q.y < uRect.w; }
+  `;
+  const SH_FS = {
+    lum: `void main() {
+      ivec3 c = ivec3(texelFetch(uPhotoRaw, ivec2(gl_FragCoord.xy), 0).rgb * 255.0 + 0.5);
+      int L = (c.r * 19595 + c.g * 38470 + c.b * 7471 + 32768) >> 16;
+      o = vec4(float(L) * uInvMed, 0.0, 0.0, 1.0);
+    }`,
+    copy: `void main() { o = texelFetch(uSrc, ivec2(gl_FragCoord.xy), 0); }`,
+    // (n, s1, s2) of the zone's pixels summed along x
+    sumsH: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy); vec3 a = vec3(0.0);
+      for (int d = -uR; d <= uR; d++) {
+        ivec2 q = p + ivec2(d, 0);
+        if (inside(q) && zoneAt(q) == uZone) { float v = texelFetch(uI, q, 0).r; a += vec3(1.0, v, v * v); }
+      }
+      o = vec4(a, 0.0);
+    }`,
+    // + vertically: the 2D sums; then a, b of the guided filter, times the zone mask; n is kept
+    ab: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy); vec3 a = vec3(0.0);
+      for (int d = -uR; d <= uR; d++) { ivec2 q = p + ivec2(0, d); if (inside(q)) a += texelFetch(uA, q, 0).rgb; }
+      float n = a.x, A = 0.0, B = 0.0;
+      if (zoneAt(p) == uZone && n > 0.0) {
+        float I = texelFetch(uI, p, 0).r, mean = a.y / n, v = a.z / n - mean * mean;
+        A = v > 0.0 ? v / (v + uEps) : 0.0;
+        B = mean - A * mean;
+      }
+      o = vec4(A, B, n, 0.0);
+    }`,
+    sumsH2: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy); vec2 a = vec2(0.0);
+      for (int d = -uR; d <= uR; d++) { ivec2 q = p + ivec2(d, 0); if (inside(q)) a += texelFetch(uB, q, 0).rg; }
+      o = vec4(a, texelFetch(uB, p, 0).b, 0.0);
+    }`,
+    // + vertically, then q = (SA * I + SB) / n inside the zone (discard elsewhere: the other zones keep their own)
+    guided: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy);
+      if (zoneAt(p) != uZone) discard;
+      vec2 a = vec2(0.0);
+      for (int d = -uR; d <= uR; d++) { ivec2 q = p + ivec2(0, d); if (inside(q)) a += texelFetch(uA, q, 0).rg; }
+      float n = texelFetch(uA, p, 0).b, I = texelFetch(uI, p, 0).r;
+      o = vec4(n > 0.0 ? (a.x * I + a.y) / n : I, 0.0, 0.0, 1.0);
+    }`,
+    // the stored byte (R) and, in G, "known" for the dip fill: a garment pixel inside the neck rectangle
+    enc: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy);
+      float s = texelFetch(uI, p, 0).r;
+      bool garment = zoneAt(p) > 0;
+      float v = sqrt(pow((s * uM255 + 0.055) / 1.055, 2.4) / uLinMed / 2.0) * 255.0;
+      float code = garment ? floor(clamp(v, 0.0, 255.0)) : 180.0;
+      o = vec4(code / 255.0, (garment && inRect(p)) ? 1.0 : 0.0, 0.0, 1.0);
+    }`,
+    fill: `void main() {
+      ivec2 p = ivec2(gl_FragCoord.xy); vec4 c = texelFetch(uSrc, p, 0);
+      if (c.g > 0.5 || !inRect(p) || texelFetch(uId, p, 0).b == 0.0) { o = c; return; }
+      float sum = 0.0, cnt = 0.0;
+      for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        ivec2 q = p + ivec2(dx, dy);
+        if (inRect(q)) { vec4 k = texelFetch(uSrc, q, 0); if (k.g > 0.5) { sum += floor(k.r * 255.0 + 0.5); cnt += 1.0; } }
+      }
+      o = cnt > 0.0 ? vec4(floor(sum / cnt + 0.5) / 255.0, 1.0, 0.0, 1.0) : c;
+    }`,
+  };
+
+  function shadePasses(gl, { W, H, plate, Z, photo, idTex, rb }) {
+    if (!gl.getExtension("EXT_color_buffer_float") || !photo) return null;
+    const progs = {};
+    const prog = (k) => {
+      if (progs[k]) return progs[k];
+      const p = gl.createProgram();
+      gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, FULL_VS));
+      gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, SH_COMMON + SH_FS[k]));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error("maps.js shade " + k + ": " + gl.getProgramInfoLog(p));
+      return (progs[k] = p);
+    };
+    const tex = (internal, format, type, filter) => {
+      const t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, internal, W, H, 0, format, type, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    const f32 = () => tex(gl.R32F, gl.RED, gl.FLOAT, gl.NEAREST), f32x4 = () => tex(gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
+    const u8 = () => tex(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
+    const fb = (t) => { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); return f; };
+    const fbs = [], texs = [];
+    const mk = (t) => { texs.push(t); const f = fb(t); fbs.push(f); return { t, f }; };
+
+    // the photo as bytes (not sRGB-decoded): the plate maker works on the bytes
+    gl.activeTexture(gl.TEXTURE0 + 8);
+    const raw = gl.createTexture(); texs.push(raw);
+    gl.bindTexture(gl.TEXTURE_2D, raw);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, photo);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, idTex);
+
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    gl.viewport(0, 0, W, H);
+    gl.disable(gl.STENCIL_TEST); gl.disable(gl.SCISSOR_TEST); gl.colorMask(true, true, true, true);
+    const SLOT = { uPhotoRaw: 8, uId: 9, uI: 10, uA: 11, uB: 12, uSrc: 13 };
+    const run = (k, target, bind, ints = {}, floats = {}) => {     // bind: { sampler: texture }
+      const p = prog(k); gl.useProgram(p);
+      const loc = (n) => gl.getUniformLocation(p, n);
+      for (const [n, u] of Object.entries(SLOT)) { const l = loc(n); if (l) gl.uniform1i(l, u); }
+      for (const [n, t] of Object.entries(bind)) { gl.activeTexture(gl.TEXTURE0 + SLOT[n]); gl.bindTexture(gl.TEXTURE_2D, t); }
+      gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, idTex);
+      if (loc("uSize")) gl.uniform2i(loc("uSize"), W, H);
+      if (loc("uRect")) gl.uniform4i(loc("uRect"), ...rect);
+      for (const [n, v] of Object.entries(ints)) if (loc(n)) gl.uniform1i(loc(n), v);
+      for (const [n, v] of Object.entries(floats)) if (loc(n)) gl.uniform1f(loc(n), v);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.f);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+    const nk = plate.neck, rect = nk && nk.rect ? nk.rect : [0, 0, 0, 0];
+    const med = plate.shadeMedian, m255 = med / 255;
+    const sRGBtoLin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const linMed = sRGBtoLin(m255);
+
+    const I = mk(f32());                                      // shade as a ratio, 1.0 = the median light
+    run("lum", I, { uPhotoRaw: raw }, {}, { uInvMed: 1 / med });
+    let S = I;
+    const r = plate.shadeSmoothPx || 0;
+    if (r > 0) {                                              // the guided filter, zone by zone
+      const eps = Z.shadeSmoothEps !== undefined ? Z.shadeSmoothEps : 0.006;
+      const Q = mk(f32()), A = mk(f32x4()), B = mk(f32x4());
+      run("copy", Q, { uSrc: I.t });
+      for (const zid of Object.values(plate.zones).map((z) => z.id)) {
+        const ints = { uZone: zid, uR: r }, floats = { uEps: eps };
+        run("sumsH", A, { uI: I.t }, ints);
+        run("ab", B, { uA: A.t, uI: I.t }, ints, floats);
+        run("sumsH2", A, { uB: B.t }, ints);
+        run("guided", Q, { uA: A.t, uI: I.t }, ints);
+      }
+      S = Q;
+    }
+    const E0 = mk(u8()), E1 = mk(u8());                         // the bytes, ping-pong for the dip fill
+    run("enc", E0, { uI: S.t }, {}, { uM255: m255, uLinMed: linMed });
+    let cur = E0, nxt = E1;
+    if (nk && nk.rect) for (let i = 0; i < 8; i++) { run("fill", nxt, { uSrc: cur.t }, {}); [cur, nxt] = [nxt, cur]; }
+    gl.finish();
+    // keep the result texture, free the rest. The page reads the shade with LINEAR filtering (texture()) and texelFetch.
+    gl.bindTexture(gl.TEXTURE_2D, cur.t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    for (const f of fbs) gl.deleteFramebuffer(f);
+    for (const t of texs) if (t !== cur.t) gl.deleteTexture(t);
+    for (const p of Object.values(progs)) gl.deleteProgram(p);
+    gl.deleteVertexArray(vao);
+    return cur.t;
+  }
+
   /*
-    build(gl, { plate, Z, idImage, cell }) -> { id, uv, uvt, ms }
+    build(gl, { plate, Z, idImage, photo, cell }) -> { id, uv, uvt, shade, ms }
       plate   plate.json (viewBox, uvRangeCm, neck{rect, edge})
       Z       zones.json, prepared by Plate.prepare (tuck applied)
+      photo   optional: the decoded base.jpg (an ImageBitmap): with it, and with EXT_color_buffer_float, the shade is built too (step 4)
       idImage optional: the PNG of id.png (an ImageBitmap). With it the trims (G) are the PNG's and uvt is not built
       cell    px per grid cell of the meshes (default 4)
       idOff   [x, y] px added to the positions of the id and the coverage of every map (default 0, 0: found by tools/map_diff.py
               against id.png, 0 px of its 1 px edge band is missed)
-      grow    px: the plate maker paints each quad with an outline, so a zone is about 0.4 px larger than its exact shape on every
-              side (tools/map_diff.py: 1401 px of 583127 on the torso plate). The zone is drawn 5 times, shifted by +-grow in x and y.
+      grow    px: the plate maker paints each quad with an outline, so a zone is about 0.4-0.5 px larger than its exact shape on every
+              side (tools/map_diff.py: 1401 px of 583127 on the torso plate). The zone is drawn 5 times, shifted by +-grow in x and y (0.5: 0.4 leaves a few single-pixel gaps on seams: neck plate, 17 px).
       uvOff   the same for the VALUES of uv: the plate maker paints each 1 px quad with its value after the later quads have
               overwritten the earlier ones, so a pixel shows the surface about 1 px further on in u and in v. Found by tools/
               map_diff.py: the signed mean of PNG - built is 0 at (-0.5, -0.5). The uv is drawn twice: first at idOff (so that
@@ -101,7 +276,7 @@
     id: the id texture (R zone, G trim, B neck area); uv: the packed fabric coordinates; uvt: the packed trim coordinates (u cm along,
     v 0..1 over vMax). All RGBA8, NEAREST.
   */
-  function build(gl, { plate, Z, idImage = null, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.4 }) {
+  function build(gl, { plate, Z, idImage = null, photo = null, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.5 }) {
     const t0 = performance.now();
     const [W, H] = plate.viewBox;
     // ---- keep the state of the page: the program, the vertex array, the bound buffers, the viewport, the texture unit
@@ -284,6 +459,15 @@
     }
     gl.finish();
 
+    // ---- shade (step 4), from the photo
+    let shadeTex = null;
+    if (photo && !idImage && plate.shadeMedian) {
+      shadeTex = shadePasses(gl, { W, H, plate, Z, photo, idTex, rb });
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.bindVertexArray(vao);
+      gl.activeTexture(gl.TEXTURE0 + 15);
+    }
+
     // ---- release the scratch objects and give the state back
     for (const b of buffers) gl.deleteBuffer(b);
     gl.deleteFramebuffer(idFbo); gl.deleteFramebuffer(uvFbo); if (uvtFbo) gl.deleteFramebuffer(uvtFbo); gl.deleteRenderbuffer(rb);
@@ -297,7 +481,7 @@
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(gl.TEXTURE0 + 14); gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(saved.active);
-    return { id: idTex, uv: uvTex, uvt: uvtTex, ms: performance.now() - t0 };
+    return { id: idTex, uv: uvTex, uvt: uvtTex, shade: shadeTex, ms: performance.now() - t0 };
   }
 
   // read a texture back as an RGBA8 PNG data URL (tests only: tools/map_diff.py)
