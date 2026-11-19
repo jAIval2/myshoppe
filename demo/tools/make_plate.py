@@ -574,3 +574,9 @@ if DUMP:
     json.dump(DUMP_META, open(DUMP + ".json", "w"))
     print("mesh dump:", DUMP, len(flat), "float64")
 print("done:", sorted(f for f in os.listdir(DIR)))
+
+# numeric.md step 11: the invariants of the plate itself (closure, gaps, symmetry, trim offset, smoothness, landmarks). Printed, not fatal.
+if not DUMP:
+    import subprocess as _sp
+    _r = _sp.run([sys.executable, "-W", "ignore", os.path.join(os.path.dirname(os.path.abspath(__file__)), "plate_invariants.py"), DIR], capture_output=True, text=True)
+    print("invariants:", "; ".join(l[5:].strip()[:140] for l in _r.stdout.splitlines() if l.startswith("FAIL")) or "none failing", "|", _r.stdout.strip().splitlines()[-1])

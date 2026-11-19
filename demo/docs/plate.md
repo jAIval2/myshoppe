@@ -51,6 +51,7 @@ The plate is **done** only when step 6 passes completely, **and** a person has l
 | `tools/extract_zones.py` | 4 | Only for an **aligned** colour annotation (Path B in `annotate.md`) |
 | `tools/make_plate.py` | 5 | The plate maps and `check.png` |
 | `tools/plate_checks.py` | 6 | Acceptance numbers, PASS / FAIL |
+| `tools/plate_invariants.py` | 6 | What the plate itself must hold (numeric step 11): closure of the garment, no hairline gaps, symmetry, trim offset and smoothness, landmarks; also runs `plate_checks.py`. `make_plate.py` prints its summary at the end. |
 | `tools/fit_zones.py` | — | Legacy: the torso only. Do not use for new plates. |
 
 ---
@@ -120,6 +121,7 @@ If you changed `make_plate.py`, rebuild **every other plate** into a scratch cop
 
 ```sh
 python3 tools/plate_checks.py assets/plates/<plate>
+python3 tools/plate_invariants.py assets/plates/<plate> [--debug uncovered.png]   # closure: magenta = garment that no zone covers
 ```
 
 | Check (`plate_checks.py`) | Pass | Values of the good plates (torso / neck) |

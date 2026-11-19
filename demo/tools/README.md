@@ -12,6 +12,7 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 | `fit_zones.py` | — | Legacy, torso only |
 | `make_plate.py` | 5 | `id`, `uv`, `uv_trim`, `shade` maps, `plate.json`, `check.png` |
 | `plate_checks.py` | 6 | Acceptance numbers, PASS / FAIL |
+| `plate_invariants.py <plate> [--debug png]` | numeric step 11: the plate's own invariants, PASS / FAIL (closure of the garment against the photo, hairline gaps, symmetry, trim offset and smoothness, landmarks, `plate_checks.py`). Run by `make_plate.py`. zones.json `invariants`: `openings`, `skipTrimOffset` |
 | `snap_outline.py <plate> shoulders [--dry] [--preview png]` | numeric step 9: the front's shoulder run (and the grid's top edge) snapped to the photo's garment edge; writes `tuck.exempt` and a measured `tuck.profile` into `zones.json`. Run once; it refuses a second run |
 | `snap_outline.py <plate> trim-order` / `edge-trim <zone> <name> <x0> <x1> [--extend-start px] [--extend-end px]` / `hem [--dry]` | numeric step 10: hem trims drawn after the slit trims; a new edging trim along another zone's bottom edge (the side pieces of the hem view); `hem --dry` measures a trim's wobble and its offset to the hem edge against a derived centre line |
 

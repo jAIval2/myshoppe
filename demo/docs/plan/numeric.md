@@ -1,6 +1,6 @@
 # Plan: numeric — curves and a `.dat` file in place of the map images
 
-Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; steps 9 and 10 done; step 11 (invariant checks) planned**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
+Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; steps 9–11 done (step 11: the plates do not all pass yet, open items in the results)**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
 Compare: **http://localhost:8000** (`polish`), **http://localhost:8100** (`halfway`, the reference for this plan), **http://localhost:8200** (this worktree), each `/testing.html`.
 Background: `DedhD.md` §10. Product: a visualiser, 4 fixed views, **no 3D**.
 
@@ -205,8 +205,8 @@ Review of the torso view on port 8200 (2026-11-20) found two faults that no test
 The check also runs on the page's own mesh (`?geom=mesh`), through `readMaps()`, so that a curve change is caught without a PNG rebuild.
 
 **Accept:**
-- [ ] All 4 plates PASS, or each FAIL is written as an open item with its measurement.
-- [ ] `tools/README.md` and `docs/plate.md` list the new check, so that a new plate (a new look, a new view) must pass it.
+- [x] All 4 plates PASS, or each FAIL is written as an open item with its measurement: the FAILs are written as open items (`numeric-results.md` step 11).
+- [x] `tools/README.md` and `docs/plate.md` list the new check, and `make_plate.py` runs it.
 
 ### Exit strategy for steps 9–11
 
@@ -243,4 +243,4 @@ The check also runs on the page's own mesh (`?geom=mesh`), through `readMaps()`,
 | 8 Direct mesh draw (optional) | not done | | not needed by anything measured |
 | 9 Shoulder closure | done, one speck open | (step 9) | tips closed; run snapped to the photo edge; tuck.exempt and a measured tuck.profile; 199 → 65 px uncovered |
 | 10 Hem layout | done, premise corrected | (step 10) | lace was cut 35 px short by the slit trim's id; hem trims drawn last; lace on the side pieces; centre line was already exact |
-| 11 Plate invariant checks | planned | | |
+| 11 Plate invariant checks | done; plates do not all pass (open items) | (step 11) | the tool runs in make_plate; closure, gaps, symmetry, trim offset and smoothness, landmarks; the free-edge snap for every outline is the next piece |

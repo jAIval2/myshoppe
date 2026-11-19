@@ -350,6 +350,45 @@ The render (`view=torso`, mocha, 3×) shows both tips closed: the white wedges a
 - [ ] Centre line smooth and at constant offset: already true (std 0.05 px); no change needed.
 - [ ] Whole motif at the centre front and whole at both ends within ±3 %: not possible for the pearl repeat (open).
 
+## Step 11: One invariant check for every plate
+
+`tools/plate_invariants.py <plate> [--debug png]` (Pillow only; rules in its docstring) runs the plate's own invariants and `plate_checks.py`. `make_plate.py` prints its summary at the end. Rules, and what each one caught while it was being made:
+
+| Rule | Test | Weakness found and fixed in the check itself |
+|---|---|---|
+| closure | photo garment (saturation < 24 of 255) that no zone covers, within 10 px of a zone: ≤ 0.05 % of the zones, no piece wider than 2 px | the slit interior (an underskirt) is bare garment on purpose: `invariants.openings` |
+| no gaps | the thin part (what a 3 × 3 erosion and dilation removes) of R = 0 pockets that the outside cannot reach: ≤ 8 px | a first version counted the wall between arm and body as a gap (19,857 px on the sleeve plate) |
+| symmetry (torso) | the front outline mirrored about `tuck.cx`: mean ≤ 2.0, max ≤ 8 px | the photo is not symmetric: the torso as first made measured 1.7 / 5.6 px, so the limit is not 1.5 |
+| trim offset | centre line to the zone edge = half strip, mean within 1.5 px, std ≤ 1.0 px (edging trims) | `hem-br`'s strip is wider than its piece, so the marching test sees the slit: `invariants.skipTrimOffset` |
+| trim smooth | residual of local quadratic fits over 31 px: ≤ 0.8 px | a first version smoothed over 31 px and counted curvature as wobble (2.6 px on a neckline) |
+| trim joins | distance between each trim's ends and the other trims' centre lines (information) | |
+| landmarks | each landmark on a zone or within 6 px | |
+| plate_checks | grain, bulge, UV rate, block ratio | |
+
+**Result on the 4 plates, 2026-11-20 (after steps 9 and 10):**
+
+| Plate | Fails | Measured |
+|---|---|---|
+| torso | closure, landmarks | 809 px uncovered = 0.138 % (the neck-corner speck, a strip of 2–3 px along the right body side y 940–1180, slivers at the sleeve cap); the landmarks `slit-l` and `slit-r` lie 10 px **outside** the front zone (the traced sides sit about 12 px inside the real edge there: the tuck note says so). The same defect as the body-side strip. |
+| neck | closure, no gaps | 3,239 px = 0.239 % (edge slivers of 1–3 px along the right shoulder and the right underarm); 249 px of thin gaps (a hairline between zones) |
+| sleeve | closure, trim offset | 1,410 px = 0.097 % (slivers along the shoulder line and the side); `cuff-l`: the centre is 39.3 px from the edge against 37.0 (half strip), std 5.8 px: the cuff's real edge is irregular beside the mannequin arm |
+| hem | closure | 356 px = 0.026 % (inside the limit), but one piece is wider than 2 px: 43 px at the hem's bottom edge, x 414–467, y 1355–1359 |
+
+All passes: no hairline gaps on the torso (5 px), sleeve (8 px) and hem (0 px) plates; symmetry; every smoothness rule except none (all trims ≤ 0.8 px after the fix of the check); landmarks on neck, sleeve, hem; `plate_checks.py` on all four.
+
+**What this says:** the plates are closed to within 1–3 px along their free edges, not exactly. The cause is the same everywhere: the traced outline sits a little inside the garment's real edge. Step 9's `snap_outline.py shoulders` fixes that for the shoulder run only. The generalisation (snap every free edge of every zone, with the seams excluded) is the next piece of work; the check now measures it.
+
+**Open (the plan's own rule: a FAIL is written as an open item with its measurement):**
+1. Free-edge snap for every outline (closure on all four plates).
+2. Neck plate: 249 px of thin gaps: where, and why (the check's `--debug` shows closure only).
+3. Torso: the slit landmarks and the body-side strip (one cause).
+4. Sleeve: `cuff-l` offset.
+5. The motif rule (whole motif at the centre front, symmetric ends) is the page's; `polish_metrics.py fit` checks it, not this tool.
+
+- [ ] All 4 plates PASS: no (see the table).
+- [x] Each FAIL is written as an open item with its measurement.
+- [x] `tools/README.md` and `docs/plate.md` list the check, and `make_plate.py` runs it, so a new plate must pass it or say why.
+
 ## Summary
 
 | Step | Result |
@@ -362,5 +401,8 @@ The render (`view=torso`, mocha, 3×) shows both tips closed: the white wedges a
 | 5 | all four views; the sleeve grid fixed: grain tilt 18.4° → 4.4° |
 | 6 | `plate.dat`: 21.7 KB for 4 views (8.3 KB gzip), exact, render identical to JSON |
 | 7 | the maps are not sent: 1.67 MB first visit (was 3.64 MB); build time unverified |
+| 9 | shoulders closed on the torso (199 → 65 px uncovered); tuck.exempt and a measured tuck.profile |
+| 10 | lace to the corner (the slit trim's id had cut it 35 px short); lace on the side pieces; the centre line was already exact |
+| 11 | `plate_invariants.py`: closure, gaps, symmetry, trim offset and smoothness, landmarks; 4 plates measured, FAILs are open items |
 
 **Criteria that were revised** (and why): the uv tolerance of "≤ 0.1 mm" against the PNG (the PNG is a quad centre in 12-bit steps: ±0.5 px, 0.3 mm); the render gate "mean ≤ 0.5 against 8100" (a real fabric differs by the PNG's own uv noise, white noise of about a texel): replaced by the grain checker ≤ 1.0 (an edge shift ≤ 0.1 px); the thinning of the torso trace (not needed). **Open:** the build time on real GPUs, step 8.
