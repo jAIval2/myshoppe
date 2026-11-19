@@ -1,6 +1,8 @@
 """Snap plate curves to the photographed garment edge (numeric.md steps 9-10).
 
 usage: python3 tools/snap_outline.py <plate-dir> shoulders [--dry] [--preview out.png]
+       python3 tools/snap_outline.py <plate-dir> hem [--dry]
+       python3 tools/snap_outline.py <plate-dir> edge-trim <zone> <name> <x0> <x1> [--min-y 1250] [--extend-start px] [--extend-end px] [--dry]
 
 shoulders (torso plate): the front's shoulder run (sleeve top, over the rounded cap, along the slope, to the neck corner)
   was a straight line inside the real slope, with a gap to the sleeve zone at the tip. For each side:
@@ -12,7 +14,13 @@ shoulders (torso plate): the front's shoulder run (sleeve top, over the rounded 
   4. the new run replaces the front outline's run AND the front grid's top edge (the grid limits what the outline can show);
      the grid's side corners are the run's ends.
   zones.json "tuck".outlineExemptY keeps the tuck (a 10 px push, made for the side seam) off the run.
-Run it once on a zones.json that has not been snapped; it refuses to run twice ("snapped" key).
+hem (numeric.md step 10): the hem trim's centre line is derived from the front's hem edge (the grid's bottom edge): the edge
+  moved inward by half the trim's width, smoothed, and cut at the inner edges of the two slit trims. The traced list wobbled
+  by +-4 px around the hem's real undulation. Prints the wobble and the offset spread before and after.
+edge-trim (numeric.md step 10): a new trim along the bottom edge of ANOTHER zone (the side pieces of the hem view, so that the lace
+  goes round the whole visible hem): the zone outline's points below --min-y between x0 and x1, ordered by x, moved inward by half the
+  strip's width (the widthMm of the hem trim) and smoothed. A strip that ends at the frame ends there (x0 = 0, x1 = 1200).
+Run each once on a zones.json that has not been snapped; it refuses to run twice ("snapped" key).
 """
 import json, math, sys
 from PIL import Image, ImageFilter
@@ -212,7 +220,131 @@ def shoulders(plate, dry):
     print("wrote", zj)
 
 
+# ---- hem (step 10) ----
+def resample_arc(pts, step=1.0):
+    s = [0.0]
+    for a, b in zip(pts, pts[1:]): s.append(s[-1] + math.dist(a, b))
+    n = max(2, int(s[-1] / step)); out = []; j = 0
+    for i in range(n + 1):
+        t = s[-1] * i / n
+        while j < len(s) - 2 and s[j + 1] < t: j += 1
+        f = (t - s[j]) / ((s[j + 1] - s[j]) or 1.0)
+        out.append([pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f, pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f])
+    return out
+
+
+def smooth_arc(pts, window, passes=2, keep_ends=True):
+    """Moving average over `window` samples of a 1 px resampled curve; the end points stay."""
+    h = max(1, window // 2); P = [list(p) for p in pts]
+    for _ in range(passes):
+        Q = []
+        for i in range(len(P)):
+            lo, hi = max(0, i - h), min(len(P), i + h + 1); k = min(i - lo, hi - 1 - i)    # symmetric window near the ends
+            lo, hi = i - k, i + k + 1
+            Q.append([sum(p[0] for p in P[lo:hi]) / (hi - lo), sum(p[1] for p in P[lo:hi]) / (hi - lo)])
+        P = Q
+    return P
+
+
+def point_dist(p, poly):
+    best = 1e9
+    for a, b in zip(poly, poly[1:]):
+        dx, dy = b[0] - a[0], b[1] - a[1]; L2 = dx * dx + dy * dy or 1.0
+        t = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2))
+        best = min(best, math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy))
+    return best
+
+
+def trim_stats(centre, edge, r, skip=60.0):
+    """(wobble, offset std, offset mean): wobble = largest distance of a point from the same curve smoothed over 31 px;
+    offset = distance centre -> hem edge, the corners (x within `skip` px of an end) left out."""
+    c = resample_arc(centre, 1.0); sm = smooth_arc(c, 31)
+    wob = max(math.dist(a, b) for a, b in zip(c[20:-20], sm[20:-20]))
+    x0, x1 = centre[0][0] + skip, centre[-1][0] - skip
+    ds = [point_dist(p, edge) for p in c if x0 <= p[0] <= x1]
+    m = sum(ds) / len(ds); sd = math.sqrt(sum((d - m) ** 2 for d in ds) / len(ds))
+    return wob, sd, m
+
+
+def hem(plate, dry):
+    zj = plate + "/zones.json"; Z = json.load(open(zj))
+    if Z.get("snapped", {}).get("hem"): sys.exit("hem: already derived")
+    mm = Z["mmPerPx"]; T = Z["trims"]; H = Z["zones"]["front"]["grid"]["bottom"]
+    r = T["hem"]["widthMm"] / mm / 2.0                                      # half the strip: the strip's outer edge is the hem edge
+    wob0, sd0, m0 = trim_stats(T["hem"]["centre"], H, r)
+    print(f"traced   : {len(T['hem']['centre'])} points, wobble {wob0:.2f} px, offset to the hem edge mean {m0:.1f} px (half strip {r:.1f}), std {sd0:.2f} px")
+    E = resample_arc(H, 1.0)
+    # normals from the edge smoothed over 24 px; the inward side is up (smaller y)
+    Es = smooth_arc(E, 24)
+    out = []
+    for i, p in enumerate(E):
+        a = Es[max(0, i - 3)]; b = Es[min(len(Es) - 1, i + 3)]
+        tx, ty = b[0] - a[0], b[1] - a[1]; L = math.hypot(tx, ty) or 1.0
+        nx, ny = ty / L, -tx / L
+        if ny > 0: nx, ny = -nx, -ny                                        # towards smaller y: into the garment
+        out.append([Es[i][0] + nx * r, Es[i][1] + ny * r])
+    cen = smooth_arc(out, 24)
+    # cut at the inner edges of the slit trims: slit centre x at the hem + half its width
+    sl, sr = T["slit-l"]["centre"][-1], T["slit-r"]["centre"][-1]
+    xl = sl[0] + T["slit-l"]["widthMm"] / mm / 2.0; xr = sr[0] - T["slit-r"]["widthMm"] / mm / 2.0
+    cen = [p for p in cen if xl <= p[0] <= xr]
+    # thin to a few points: Douglas-Peucker 0.1 px, then the plate's own 1 px resampling reproduces the curve
+    cen = dp(cen, 0.1)
+    cen = [[round(x, 1), round(y, 1)] for x, y in cen]
+    wob1, sd1, m1 = trim_stats(cen, H, r)
+    print(f"derived  : {len(cen)} points, wobble {wob1:.2f} px, offset mean {m1:.1f} px, std {sd1:.2f} px; from x {cen[0][0]} to {cen[-1][0]} (slit inner edges {xl:.1f}, {xr:.1f})")
+    if dry: return
+    T["hem"]["centre"] = cen
+    T["hem"]["derived"] = {"from": "front.grid.bottom", "offsetPx": round(r, 2), "smoothPx": 24, "tool": "tools/snap_outline.py hem"}
+    Z.setdefault("snapped", {})["hem"] = "tools/snap_outline.py hem"
+    json.dump(Z, open(zj, "w"), separators=(",", ":")); print("wrote", zj)
+
+
+def dp(pts, tol):
+    """Douglas-Peucker."""
+    if len(pts) < 3: return pts
+    a, b = pts[0], pts[-1]; dx, dy = b[0] - a[0], b[1] - a[1]; L = math.hypot(dx, dy) or 1.0
+    k, dmax = 0, 0.0
+    for i in range(1, len(pts) - 1):
+        d = abs((pts[i][0] - a[0]) * dy - (pts[i][1] - a[1]) * dx) / L
+        if d > dmax: k, dmax = i, d
+    if dmax <= tol: return [a, b]
+    return dp(pts[:k + 1], tol)[:-1] + dp(pts[k:], tol)
+
+
+def edge_trim(plate, a, dry):
+    zone, name, x0, x1 = a[2], a[3], float(a[4]), float(a[5])
+    ymin = float(a[a.index("--min-y") + 1]) if "--min-y" in a else 1250.0
+    zj = plate + "/zones.json"; Z = json.load(open(zj)); T = Z["trims"]
+    if name in T: sys.exit(f"edge-trim: {name} exists")
+    mm = Z["mmPerPx"]; w = T["hem"]["widthMm"]; r = w / mm / 2.0
+    E = sorted([p for p in Z["zones"][zone]["outline"] if p[1] > ymin and x0 <= p[0] <= x1], key=lambda p: p[0])
+    # the corners where the outline turns up (a side edge) are not hem: keep the points in order of x and drop vertical runs
+    E = [p for i, p in enumerate(E) if i == 0 or abs(p[0] - E[i - 1][0]) > 0.5]
+    def ext(a):                                                            # a strip that runs out of the frame: the edge is extended along its end tangent
+        return float(a[a.index(f_)+1]) if f_ in a else 0.0
+    f_ = "--extend-start"; e0 = ext(a); f_ = "--extend-end"; e1 = ext(a)
+    def along(p, q, d):
+        L = math.dist(p, q) or 1.0; return [q[0] + (q[0] - p[0]) / L * d, q[1] + (q[1] - p[1]) / L * d]
+    if e0: E = [along(E[1], E[0], e0)] + E
+    if e1: E = E + [along(E[-2], E[-1], e1)]
+    Er = resample_arc(E, 1.0); Es = smooth_arc(Er, 24)
+    out = []
+    for i, p in enumerate(Er):
+        a_ = Es[max(0, i - 3)]; b_ = Es[min(len(Es) - 1, i + 3)]
+        tx, ty = b_[0] - a_[0], b_[1] - a_[1]; L = math.hypot(tx, ty) or 1.0
+        nx, ny = ty / L, -tx / L
+        if ny > 0: nx, ny = -nx, -ny
+        out.append([Es[i][0] + nx * r, Es[i][1] + ny * r])
+    cen = [[round(x, 1), round(y, 1)] for x, y in dp(smooth_arc(out, 24), 0.1)]
+    print(f"{name}: {len(E)} edge points -> centre {len(cen)} points from {cen[0]} to {cen[-1]} (half strip {r:.1f} px, strip {2 * r:.0f} px)")
+    if dry: return
+    T[name] = {"order": T["hem"]["order"], "widthMm": w, "type": T["hem"].get("type", "edging"), "centre": cen, "derived": {"from": f"{zone}.outline bottom", "offsetPx": round(r, 2), "tool": "tools/snap_outline.py edge-trim"}}
+    json.dump(Z, open(zj, "w"), separators=(",", ":")); print("wrote", zj)
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if len(a) < 2 or a[1] != "shoulders": sys.exit(__doc__)
-    shoulders(a[0], "--dry" in a)
+    if len(a) < 2 or a[1] not in ("shoulders", "hem", "edge-trim"): sys.exit(__doc__)
+    if a[1] == "edge-trim": edge_trim(a[0], a, "--dry" in a)
+    else: (shoulders if a[1] == "shoulders" else hem)(a[0], "--dry" in a)

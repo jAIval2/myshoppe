@@ -159,3 +159,86 @@ Decide with the atelier before photography.
 3. Shoulder variations: yes or no, and which.
 4. "Worn with": (a), (b) or (c).
 5. Anarkali lengths as cuts: acceptable or not.
+6. Numeric plates (§10): build the mesh from the curves, beside the current renderer, before polish step 5 (edging lace) starts.
+
+## 10. Numeric plates: curves in place of coordinate images
+
+Date: 2026-11-19. Status: analysis, not started. Scope: the 4 fixed views only. **No 3D.**
+
+### 10.1 Idea
+
+Each view has parts that never change when the customer changes the fabric or the lace: its outlines, seams, zone grids, trim lines and folds. Today they are shipped as images. They are all **calculated** from two inputs, so the page can calculate them itself:
+
+| Image now | Calculated from | Numeric replacement |
+|---|---|---|
+| `uv.png` (fabric coordinates, cm) | Coons patch of the zone curves in `zones.json` | Zone grid evaluated in JavaScript, drawn as triangles with (x, y) and (u, v) on each point |
+| `uv_trim.png` (lace coordinates) | Trim centre lines + widths | Ribbon of triangles along each line: u = cm along, v = 0–1 across |
+| `id.png` (zone, trim) | Zone outlines | The outlines themselves (stencil); draw order for layers |
+| `shade.png` (folds) | The base photo: luminance ÷ median | Calculated on the GPU from `base.jpg`, once per view |
+
+Each view then ships **`base.jpg` + its curves** (a few KB). Fabrics and laces stay the shared swatches.
+
+### 10.2 Coordinate frames
+
+- **Screen frame:** 2D Cartesian, 1200 × 1600 plate px, origin top left, x right, y down. All curves are in this frame (as now).
+- **Fabric frame:** u, v in **centimetres** along the cloth (as now).
+- **The map:** the Coons patch takes a grid point (s, t) ∈ [0, 1]² to both (x, y) and (u, v).
+- The page needs screen → fabric. Do **not** invert the patch per pixel in the shader (slow, fragile). Evaluate the patch at a grid every 6–8 px in JavaScript and let the GPU's triangle interpolation do the screen → fabric lookup.
+
+### 10.3 Measured savings (the 4 plates of 2026-11-19)
+
+| View | Maps now (id + uv + uv_trim + shade) | Curves (`zones.json`, gzip) |
+|---|---|---|
+| Torso | 436 KB | 18 KB (dense trace; ≈ 3 KB after thinning) |
+| Neckline | 381 KB | 1 KB |
+| Sleeve | 725 KB | 3 KB |
+| Hem | 480 KB | 3 KB |
+| **All 4 views** | **2.0 MB** | **≈ 25 KB (−99 %)** |
+
+| Cost per view | Now | Numeric |
+|---|---|---|
+| Download | photo + maps (≈ 0.7–1.1 MB) | photo only (≈ 0.3–0.45 MB) |
+| GPU memory | ≈ 41 MB (photo with mipmaps + 4 RGBA8 data textures of 7.68 MB) | ≈ 10 MB photo + < 1 MB vertices |
+| Data reads per pixel | ≈ 20 texels (zone checks, 4-texel smoothing, neighbour gradients) | none for coordinates; only fabric, lace, photo |
+
+### 10.4 What improves besides size
+
+| Now | Numeric |
+|---|---|
+| Stair-stepped garment edge (binary 1200 px mask) | Triangle edges with antialiasing |
+| 12-bit UV | Floating-point UV |
+| Zone-edge workarounds in the shader (`gradFabric`, `gradTrim`) | Not needed: each zone drawn alone, so the GPU's own gradients are correct |
+| Edging lace past the edge needs a plate rebuild | Wider ribbon, no rebuild |
+| A curve change needs new PNG maps | Change `zones.json` and reload |
+
+### 10.5 Risks and controls
+
+1. **Cut-outs** (neck dip, gaps under the arms, mannequin-arm notch): draw each outline into the stencil buffer, then the zone grid where the stencil allows.
+2. **Two copies of the maths** (Python `make_plate.py`, JavaScript page): keep `make_plate.py` as the reference. Test: render the JavaScript mesh UV into an image and compare with `uv.png`, `uv_trim.png`, `id.png` on all 4 plates. **Pass: ≤ 0.5 px, ≤ 0.1 mm of fabric.**
+3. **Plate rules move to JavaScript:** `tuck`, `thetaDeg`, `widthPx` (≈ 150 lines with Coons and resampling).
+4. **Shade from the photo** must match `shade.png`: pass ≤ 1 level of 255. The weave removal (polish step 3) runs once per view on the GPU.
+5. **Click hit-testing** becomes point-in-polygon on the outlines.
+6. **Polish plan:** steps 2–4 carry over; step 5 (edging) becomes simpler. Decide before step 5.
+
+### 10.6 Memory problem found on the way (independent of §10)
+
+`testing.html` keeps the **decoded** images of all 4 views (`fetchView` cache) and preloads all of them: 4 views × 5 images × 7.68 MB ≈ **150 MB** of CPU memory, besides the GPU copies. Risk of a tab crash on phones. Fix without §10: keep the compressed files, decode only the current view (or at most 2). With §10 the problem mostly goes away (one photo per view).
+
+Also: RGB8 does not save memory on most GPUs (stored as RGBA). R8 (shade) and RG8 (id) do.
+
+### 10.7 What was considered and rejected
+
+A 3D garment model with cloth physics (XPBD) rendered from 4 cameras ("PGF v2"). Rejected:
+- Our 4 base images are separate photographs, not 4 cameras on one scene: no single 3D state matches all of them.
+- Computed light replaces the photo's light: the cloth looks CG, and photo realism is the product.
+- The brief is fixed views, no motion.
+- It rebuilds CLO3D, which was already judged too large.
+
+Kept from it: separate textile coordinates (u, v in cm) from screen position, and the split into surface / parameter / topology changes (the same as `render.md` §5).
+
+### 10.8 Order
+
+1. Mesh from curves beside the current renderer (`?geom=mesh`), torso first; compare with the maps (≤ 0.5 px), no seam gaps.
+2. Shade from the photo; compare with `shade.png`.
+3. Port neckline, sleeve, hem; same comparisons.
+4. Stop shipping the 4 maps. Keep `make_plate.py` as the offline reference and the test.

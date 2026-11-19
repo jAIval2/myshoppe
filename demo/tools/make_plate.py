@@ -28,7 +28,7 @@ CM_RANGE = float(Z.get("uvRangeCm", 128.0))
 STEP = 1.0  # quad size in px (one UV value per pixel)
 
 ZONE_ID = {"front": 1, "sleeve-l": 2, "sleeve-r": 3, "back": 4, "back-l": 5}   # back: panel beside the slit; back-l: shaded side panel (hem view)
-TRIM_ID = {"neck": 1, "cuff-l": 2, "cuff-r": 3, "hem": 4, "slit-l": 5, "slit-r": 6}
+TRIM_ID = {"neck": 1, "cuff-l": 2, "cuff-r": 3, "hem": 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8}
 # Cylinder angle of each zone (half the visible arc). Per plate in zones.json "thetaDeg"; defaults below.
 THETA_DEG = {"front": 60, "sleeve-l": 70, "sleeve-r": 70, **Z.get("thetaDeg", {})}
 THETA = {k: math.radians(v) for k, v in THETA_DEG.items()}

@@ -49,6 +49,15 @@
    "outerV": 1,
    "vMax": 1.0,
    "side": 1
+  },
+  "hem-bl": {
+   "id": 7,
+   "lengthCm": 4.9,
+   "widthMm": 30,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5,
+   "side": 1
   }
  },
  "shadeSmoothMm": 1.2,

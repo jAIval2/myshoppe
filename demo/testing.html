@@ -407,10 +407,10 @@
     brocade:   { src: "assets/swatches/lace-brocade-2048.webp", meta: "assets/swatches/lace-brocade.json", name: "Navy & Gold Brocade Border" },
   };
   // trim id in id.png (G channel) → button group; flip = pearls on the other side of the strip
-  const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6 };
+  const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8 };   // hem-bl / hem-br: the hem of the side pieces of the hem view
   const FLIP = { "slit-r": 1 };
   const VIEW_FLIP = {};                                // per-view override of FLIP (set after checking the pearls)
-  const GROUP = { neck: ["neck"], cuffs: ["cuff-l", "cuff-r"], hem: ["hem"], slits: ["slit-l", "slit-r"] };
+  const GROUP = { neck: ["neck"], cuffs: ["cuff-l", "cuff-r"], hem: ["hem", "hem-bl", "hem-br"], slits: ["slit-l", "slit-r"] };
 
   const params0 = new URLSearchParams(location.search);    // test switches: ?view=neck|sleeve|hem  ?fabric=mocha  ?lace=leaf
   const state = { view: VIEWS[params0.get("view")] ? params0.get("view") : "torso",
@@ -447,9 +447,9 @@
   uniform float uRange;         // UV range in cm (128)
   uniform float uFabricOn, uFabricCm;
   uniform float uLaceAspect;
-  uniform float uTrimOn[7], uTrimWcm[7], uTrimFlip[7];
-  uniform float uTrimFit[7], uTrimU0[7];
-  uniform float uTrimVMax[7], uTrimEdging[7];   // stored V range of each strip (1.5 = edging strip); 1 = lace hangs past the edge
+  uniform float uTrimOn[9], uTrimWcm[9], uTrimFlip[9];
+  uniform float uTrimFit[9], uTrimU0[9];
+  uniform float uTrimVMax[9], uTrimEdging[9];   // stored V range of each strip (1.5 = edging strip); 1 = lace hangs past the edge
   uniform float uDisplaceMm;    // fabric shifted along the shade gradient in folds, mm at a strong fold slope (0 = off), step 7
   uniform float uSheen, uSheenWidth, uSheenOld;   // directional sheen of the fabric; uSheenOld = the old fixed 0.15 highlight (?sheen=0)
   uniform float uAntiTile;      // 1 = hex tiling of the fabric (irregular fabrics only), step 7
@@ -478,7 +478,7 @@
   uniform vec4  uFormPatch;     // a clean square of the dress form in the photo (x0, y0, x1, y1 plate px): its fine detail
   uniform vec2  uCfX;           // x of the centre front (plate px), and 1 / mm per plate px
   uniform float uGlow;          // step 7: the selected part glows softly (0..1, animated over about 1 s)
-  uniform float uGlowTrim[7];   // which trims glow (a placement was selected)
+  uniform float uGlowTrim[9];   // which trims glow (a placement was selected)
   uniform float uGlowNeck;      // 1 = the band along the live neck edge glows (a pivot was selected)
   out vec4 outColor;
   const float HL_LIN = 0.05;
@@ -1099,12 +1099,12 @@
   // Whole repeats on each trim, and a defined start (polish.md step 4). s = u / (tile length * fit) + u0, in lace images.
   // The tile starts at a gap between motifs, so motif boundaries are at multiples of p = 1 / periods, centres in between.
   const CENTRED = { neck: 1, hem: 1 };                 // a motif centred at the middle of the trim (centre front, middle of the hem)
-  const END = { "slit-l": 1, "slit-r": 1 };            // a whole motif at the END of the trim (the hem end of a slit); others: at the start
+  const END = { "slit-l": 1, "slit-r": 1, "hem-bl": 1 };            // a whole motif at the END of the trim (the hem end of a slit); others: at the start
   const fitLog = {};
   function laceFit() {
     if (!plate || !lace) return;
-    const fit = new Float32Array(7).fill(1), u0 = new Float32Array(7);
-    const vmax = new Float32Array(7).fill(1), edging = new Float32Array(7);
+    const fit = new Float32Array(9).fill(1), u0 = new Float32Array(9);
+    const vmax = new Float32Array(9).fill(1), edging = new Float32Array(9);
     const edgeDepth = lace.meta?.edgeDepth ?? 0.35;
     for (const [name, id] of Object.entries(TRIMS)) {
       const t = plate.trims[name];
@@ -1447,7 +1447,7 @@
       state.neck = clampNeck({ depthMm: params0.get("neckDepth") ?? L.depthMm.default, widthMm: params0.get("neckWidth") ?? L.widthMm.default });
     }
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
-    gl.uniform1fv(U("uTrimFit"), new Float32Array(7).fill(1));
+    gl.uniform1fv(U("uTrimFit"), new Float32Array(9).fill(1));
   }
 
   const builtMapsFor = (view) => meshOn(view) && builtMaps && builtMaps.uvt;
@@ -1511,7 +1511,7 @@
     gl.uniform1f(U("uRange"), plate.uvRangeCm);
     gl.uniform1f(U("uShadeSqrt"), plate.shadeEncoding === "sqrt" ? 1 : 0);
     gl.uniform1f(U("uShadeMed"), (plate.shadeMedian || 213) / 255);
-    const w = new Float32Array(7), flip = new Float32Array(7);
+    const w = new Float32Array(9), flip = new Float32Array(9);
     const viewFlip = VIEW_FLIP[view] || FLIP;
     for (const [name, id] of Object.entries(TRIMS)) {
       w[id] = (plate.trims[name]?.widthMm ?? 20) / 10;
@@ -1555,7 +1555,7 @@
 
   // ---------- draw (only on change)
   function render() {
-    const on = new Float32Array(7);
+    const on = new Float32Array(9);
     for (const [group, names] of Object.entries(GROUP))
       for (const n of names) on[TRIMS[n]] = state.trims[group] ? 1 : 0;
     gl.uniform1fv(U("uTrimOn"), on);
@@ -1647,7 +1647,7 @@
   let glowRaf = 0;
   function glow({ trims = [], neck = false }) {
     if (!plate) return;
-    const on = new Float32Array(7);
+    const on = new Float32Array(9);
     trims.forEach((n) => { if (TRIMS[n]) on[TRIMS[n]] = 1; });
     gl.uniform1fv(U("uGlowTrim"), on);
     gl.uniform1f(U("uGlowNeck"), neck ? 1 : 0);
