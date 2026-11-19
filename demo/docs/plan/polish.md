@@ -1,7 +1,8 @@
-# Plan: polish of the fabric and lace overlay (steps 1–4)
+# Plan: polish of the fabric and lace overlay (steps 1–7)
 
-Status: **planned**, not started.
-Scope: `demo/` only: `testing.html`, `tools/make_plate.py`, `tools/prep_lace.py`, the plates in `assets/plates/`, the swatches in `assets/swatches/`.
+Status: **in progress**: steps 0 and 1 done (see `polish-results.md`); steps 5–7 added on 2026-11-19.
+**Numbering note:** the close step was step 5 before 2026-11-19, and is now **step 8**. In `polish-results.md`, "deleted in step 5" means the close step.
+Scope: `demo/` only: `testing.html`, `tools/make_plate.py`, `tools/prep_lace.py`, `tools/prep_fabric.py`, the plates in `assets/plates/`, the swatches in `assets/swatches/`.
 Background: the review of 2026-11-19 (lace looks like a sticker, mirrored seams, motifs cut at the ends, a second weave in the fabric, shadows too dark on dark fabrics). Earlier quality work: `upscale.md`.
 
 ## 1. Problem and scope
@@ -12,16 +13,19 @@ Background: the review of 2026-11-19 (lace looks like a sticker, mirrored seams,
 | D2 | Shadows too dark; dark fabrics (mocha) lose their folds | Light maths in sRGB, not in linear light | 2 |
 | D3 | A faint second weave in every new fabric | `shade.png` keeps the weave of the white cotton of the base photo | 3 |
 | D4 | Symmetric seams along the lace; motifs cut at the ends and at centre front | `MIRRORED_REPEAT`; lace length not matched to the trim length; no start point | 4 |
+| D5 | Scallops, loops and pearls stop at the garment edge; they never hang past the hem or cuff | Every trim strip is clipped to the garment outline; no lace over the background | 5 |
+| D6 | Lace has no relief; zari and pearls look like flat beige paint | One light model for all lace; no height, metal or pearl information in the lace asset | 6 |
+| D7 | Fabric motifs ignore small folds; satin and silk have no sheen along the grain; the tile repeat of irregular embroidery is visible | UV follows only the annotated curves; fixed 0.15 highlight; plain `REPEAT` | 7 |
 
-**Not in this plan:** edging lace that hangs past the garment edge, lace relief, metal and pearl masks, fabric displacement in folds, directional sheen, anti-tiling, new photography. They are steps 5–8 of the review and need their own plan.
+**Not in this plan:** new lace and swatch photography (review step 8), measured `repeatCm` and lace widths, soft alpha at the garment silhouette, print placement controls (centre a motif, mirror the bodice).
 
 ## 2. Rules for all steps
 
 - **One step at a time.** Each step is its own commit and can be reverted alone.
 - **Measure before and after** with the same harness (step 0). A step is not accepted on visual judgement alone.
-- **Keep a copy** of every file that a step changes, as `<name>@<step>`, until step 6. Delete the copies at the end.
-- **Plates:** if a step changes `make_plate.py`, run `tools/rebuild_check.sh`. Only the files that the step is meant to change may differ. Step 2 and step 3 change `shade.png`, and nothing else.
-- **Test switch for each step**, so that before and after can be compared in the same page: `?shadow=0`, `?linear=0`, `?lacefit=0`. The old behaviour stays available until step 6.
+- **Keep a copy** of every file that a step changes, as `<name>@<step>`, until step 8. Delete the copies at the end.
+- **Plates:** if a step changes `make_plate.py`, run `tools/rebuild_check.sh`. Only the files that the step is meant to change may differ. Step 2 and step 3 change `shade.png`, and nothing else. Step 5 changes `id.png`, `uv_trim.png` and `plate.json`, and nothing else.
+- **Test switch for each step**, so that before and after can be compared in the same page: `?shadow=0`, `?linear=0`, `?lacefit=0`, `?edging=0`, `?relief=0`, `?displace=0`, `?sheen=0`, `?antitile=0`. The old behaviour stays available until step 8.
 - **Budgets:**
 
 | Budget | Limit |
@@ -29,7 +33,8 @@ Background: the review of 2026-11-19 (lace looks like a sticker, mirrored seams,
 | Plate data for each view | ≤ 1.0 MB |
 | Each lace asset (`.webp` + `.json`) | ≤ 600 KB |
 | Draw time for one frame, desktop GPU | ≤ 5 ms (measure in a normal browser; headless Chrome reports virtual time) |
-| Shader texture units | ≤ 8 (now 8 are in use: do not add a texture unit without removing one) |
+| Shader texture units | ≤ 8. All 8 are in use now, but units 4 and 7 both hold `shade.png`. `texelFetch` ignores the filter mode, so **one LINEAR shade texture can serve both**: step 6 frees unit 7 this way, and uses it for the lace material map. |
+| Texture reads for each fabric pixel (step 7) | ≤ 3 extra (anti-tiling) |
 
 ## 3. Steps
 
@@ -130,7 +135,75 @@ Background: the review of 2026-11-19 (lace looks like a sticker, mirrored seams,
 - [ ] Scale change on each trim ≤ 5 %. Trims outside that range are listed in the results.
 - [ ] Each lace asset ≤ 600 KB.
 
-### Step 5: Close and record
+### Step 5: Edging lace past the garment edge (D5)
+
+**Do:**
+1. **Trim type** in `zones.json`, for each trim: `"type": "edging"` (the decorative edge hangs past the garment edge) or `"insertion"` (fully inside, as now). Defaults: `hem`, `cuff-*` = edging; `neck`, `slit-*` = insertion.
+2. **Lace sidecar** (from step 4, `lace-<name>.json`): add `"edgeDepth"`, the share of the band height that is the decorative edge (loops, scallops, pearls). `prep_lace.py` measures it: the rows below the last row where the lace alpha covers ≥ 80 % of the width.
+3. **Plate maker** (`make_plate.py`):
+   - For an edging trim, place the strip so that its inner `1 − edgeDepth` sits inside the garment, and its outer part hangs past the edge. With no sidecar value, use an overhang of 35 % of the trim width.
+   - Write the trim id (`id.png` G) and `uv_trim.png` **also outside the garment** for the overhang. `id.png` R stays 0 there (no fabric).
+   - Clip the overhang against objects in front: the mannequin arm, the stand. They stay photo.
+   - Write `"outerV": 0 | 1` for each trim in `plate.json`: the side of the strip that points away from the garment. The shader uses it in place of the manual `FLIP` table.
+4. **Shader:** where `zone == 0` and `trim > 0`, draw the lace over the **photo** (wall, form, stand). Its shadow falls on the photo too, softer and with a larger offset (×1.5), because the background is farther behind the lace than the fabric is.
+5. Rebuild all plates. `rebuild_check.sh`: only `id.png`, `uv_trim.png` and `plate.json` may differ.
+6. Test switch `?edging=0`: edging trims are clipped as before.
+
+**Acceptance:**
+- [ ] In the torso, sleeve and hem views, the scallops and loops of the geometric and fine laces hang past the hem and cuff edges by their decorative depth (± 1 mm).
+- [ ] Inside the lace holes in the overhang, the photo (wall, stand) shows, not fabric.
+- [ ] The overhang never covers the mannequin arm in the sleeve view, or the stand where it is in front of the hem.
+- [ ] Every trim's decorative edge points outward with **no manual `FLIP`** entries (check all 4 laces × all trims).
+- [ ] `fabric=off` with all lace off: pixel-identical to step 4.
+- [ ] Plate data ≤ 1.0 MB.
+
+### Step 6: Lace relief, metal and pearl masks (D6)
+
+**Do:**
+1. **Free texture unit 7:** one shade texture with LINEAR filtering. Keep `texelFetch` for exact reads and `texture()` for the smooth read. Check that the render is pixel-identical before you go on.
+2. **Lace material map**, made by `prep_lace.py`, the same size as the lace band: `lace-<name>-mat.webp`, lossless:
+   - **R = height:** the luminance of the lace, high-pass filtered (radius ≈ 2 mm in lace scale) and weighted by alpha, normalized to 0–255.
+   - **G = metal:** zari and metallic thread. Hue between gold and brass, and strong local brightness variation. Only the fine lace is expected to have a metal mask.
+   - **B = pearl:** small, bright, round blobs (difference-of-Gaussians blob detector at the pearl size). Only the pearl lace is expected to have one.
+3. **Shader**, on lace pixels:
+   - Normal from the height gradient (two extra reads of the material map), and diffuse light from the upper left: a lighter side towards the light and a darker side away from it, ± 15 % at most.
+   - Metal: a specular highlight tinted with the lace colour, stronger where the garment shade is above 1 (where the photo was lit), and stretched along the thread.
+   - Pearl: a small round highlight at the upper left of each pearl, and a little darker rim at the lower right.
+4. Test switch `?relief=0`.
+
+**Acceptance:**
+- [ ] Unit 7 freed with no change to the render (mean pixel difference 0.0 on all 8 queries).
+- [ ] Relief visible on all 4 laces at 2× (person check), with no change to the mean colour of the lace by more than 5 %.
+- [ ] Metal highlights only where the metal mask is set: no highlight on the geometric or leaf lace.
+- [ ] Pearl highlights only on the pearls of the pearl lace. The number of detected pearls in one repeat matches a count by a person within ± 10 %.
+- [ ] No change outside the trims (as in step 1).
+- [ ] Each lace asset (band + material + sidecar) ≤ 600 KB. The pearl lace must first get under the budget (it is 730 KB now).
+
+### Step 7: Fabric: displacement in folds, directional sheen, anti-tiling (D7)
+
+**Do:**
+1. **Displacement in folds:**
+   - Shift the fabric UV along the gradient of the shade: `uv += k · ∇shade`, with `k` in millimetres, clamped to ≤ 1.5 mm.
+   - Compute the gradient only from neighbours in the same zone (like `gradFabric`), so no tear appears at a zone edge.
+   - Start with `k` = 1.0 mm. One value for all fabrics.
+2. **Directional sheen** for each fabric, in the `FABRICS` table: `sheen` (strength, 0 = matte) and `sheenWidth`.
+   - The highlight follows the shade above 1 (lit areas of the photo), and is stretched **along the grain**: the warp direction is the V gradient of the UV, which the shader already has.
+   - Sage, mocha and mustard are matte (`sheen` = 0) until a satin or silk swatch is added. Test the effect with a temporary sheen on sage.
+   - The fixed 0.15 highlight is removed. Matte fabrics then have no extra highlight.
+3. **Anti-tiling** for each fabric, `antiTile: true | false`:
+   - Hex tiling (three offset reads blended over a hexagonal grid, with contrast-preserving blending). **Offsets only, no rotation**, so the grain direction stays correct.
+   - Use it only for irregular fabrics (mocha embroidery, crinkled gauze). A regular print or a woven check keeps an exact repeat (`antiTile: false`).
+   - 3 extra reads for each fabric pixel, with the same gradients as now.
+4. Test switches `?displace=0`, `?sheen=0`, `?antitile=0`.
+
+**Acceptance:**
+- [ ] Displacement: on the checker (`?checker` test button), column lines bend into the large folds by ≤ 1.5 mm, with no tear at zone edges and no change in the average square size (± 2 %).
+- [ ] Sheen: with `sheen` = 0, the render of matte fabrics changes only by the removed 0.15 highlight. With a test sheen, the highlight runs along the grain on the front and along the arm on the sleeve.
+- [ ] Anti-tiling on mocha: the autocorrelation peak of the bodice crop at the tile period drops by **≥ 50 %**; sharpness of the crop ≥ 90 % of step 6; no visible blending blur in the motifs (person check at 2×).
+- [ ] FCR (exact) stays ≥ 0.8 on queries 2, 3, 4.
+- [ ] Draw time ≤ 5 ms (normal browser): this step adds the most reads.
+
+### Step 8: Close and record
 
 **Do:**
 1. Run the step 0 harness again. Record all numbers in `plan/polish-results.md`, with before and after crops.
@@ -152,7 +225,10 @@ Revert the step (restore its `@<step>` copies, revert its commit) if **one** of 
 - It breaks a budget in §2, and no simple change fixes it.
 - It changes a file that it must not change (`rebuild_check.sh`), or it changes `fabric=off`.
 
-Write the reason in `polish-results.md`, then continue. The steps do not depend on each other, with one exception: if step 2 is reverted, run step 3 with the sRGB shade.
+Write the reason in `polish-results.md`, then continue. Dependencies:
+- If step 2 is reverted, run step 3 with the sRGB shade.
+- Step 5 uses the `edgeDepth` and the sidecar of step 4. Without step 4, use the 35 % default overhang.
+- Step 6 needs unit 7 freed (its first task). If that fails, step 6 stops; steps 5 and 7 do not depend on it.
 
 ### Fallbacks
 
@@ -164,10 +240,16 @@ Write the reason in `polish-results.md`, then continue. The steps do not depend 
 | Step 3: folds become soft before the weave is gone | Smaller radius, or keep the weave on the torso plate (1 px radius) and smooth only the close views |
 | Step 4: a lace has no clear period (hand-made, irregular) | Keep the mirror for that lace, and hide the joins at the trim ends: start the mirror at the centre front |
 | Step 4: the fit is outside 0.95–1.05 on short trims (cuffs) | Allow up to ±10 % on trims shorter than 3 repeats |
+| Step 5: the overhang shows paper colour or shadow at the lace edge | Use edging only on the laces with a clean key (geometric, fine); keep the others as insertion until they are photographed again |
+| Step 5: the overhang meets the photo badly (wrong light on the wall) | Lower the lace's light on the background to the wall's luminance, and keep the shadow on the wall soft |
+| Step 6: the relief looks noisy on the keyed laces | Smooth the height map more, or use relief only on the metal and pearl masks |
+| Step 6: no texture unit can be freed | Pack the height into the lace's alpha-weighted luminance (no new texture): relief only, no metal or pearl |
+| Step 7: hex tiling blurs the motifs | Larger hex cells (fewer blends), or use anti-tiling only on the crinkled gauze |
+| Step 7: draw time above 5 ms | Anti-tiling off on phones (`devicePixelRatio` > 1.5 and a small screen); keep displacement and sheen |
 
 ### Stop the plan
 
-Stop if steps 1–4 take more than **3 working days**, or if steps 1 and 4 both fail. Then the lace needs real photography (review step 8) before more shader work.
+Stop if steps 1–4 take more than **3 working days**, or steps 5–7 take more than **4 more working days**, or if steps 1 and 4 both fail. Then the lace needs real photography (review step 8) before more shader work.
 
 ### Always safe
 
@@ -177,9 +259,12 @@ Each step has a test switch for the old behaviour, so the demo works after every
 
 | Step | Status | Commit | Result (`polish-results.md`) |
 |---|---|---|---|
-| 0 Baseline | not started | | |
-| 1 Lace shadow | not started | | |
+| 0 Baseline | done | 09c78b4 | Step 0 |
+| 1 Lace shadow | done | 3946728 | Step 1 |
 | 2 Linear light | not started | | |
 | 3 Shade without the weave | not started | | |
 | 4 Lace repeat and placement | not started | | |
-| 5 Close and record | not started | | |
+| 5 Edging lace past the edge | not started | | |
+| 6 Lace relief, metal and pearl | not started | | |
+| 7 Fabric displacement, sheen, anti-tiling | not started | | |
+| 8 Close and record | not started | | |
