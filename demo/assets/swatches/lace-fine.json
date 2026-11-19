@@ -1,0 +1,23 @@
+{
+ "source": "lace-fine-2048.webp",
+ "bandPx": [
+  4172,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 15.0,
+ "widthMmNote": "assumption: the real band width is not measured yet",
+ "edgeDepth": 0.0,
+ "bottomOpen": 0.0,
+ "edging": false,
+ "edgingNote": "bottom 5 % of the band is mostly opaque (paper or ground not keyed): insertion only, until the lace is photographed and keyed again",
+ "periodPx": 183.0,
+ "periods": 6,
+ "periodRatio": 0.41031,
+ "motifCentrePx": 91.5,
+ "corr": 0.877,
+ "cutFromPx": 168,
+ "blendPx": 44,
+ "mirror": false,
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+}

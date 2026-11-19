@@ -124,10 +124,103 @@ Step 2 was tried first. Its square-root encoding made `shade.png` 17–19 % larg
 |---|---|
 | `rebuild_check.sh` | only `shade.png` and `plate.json` differ (plus the review image `check.png`) ✔ |
 | Plate data | torso 430, neck 382, **sleeve 723**, hem 470 KB (≤ 1.0 MB ✔; without step 3 first the sleeve was 1064 KB) |
-| Mean luminance of the render, against step 3 | torso sage +0.4 %, torso mocha +0.8 % (≤ 8 % ✔). Measured on the two queries rendered before the screenshot runs were stopped. |
+| Mean luminance of the render, against step 3 | torso sage +0.15 %, torso mocha +0.87 % (≤ 8 % ✔). Measured on the two queries rendered before the screenshot runs were stopped. |
 | FCR (exact) | **not measured** at this step (the flat-light renders were stopped). The maths says it cannot fall: a multiply by the shade ratio is the same in sRGB and in linear light under a power-law gamma (step 0 finding), and the two torso renders above differ by < 1 % in mean. |
 | `fabric=off` ≤ 1 level | **not measured** (stopped). The photo is decoded by the GPU and encoded again with the exact curve, which round-trips 8-bit values to within 1 level. |
 | No banding in dark shadows | **not checked** in a render. The square-root code gives 0.4–2 % steps in linear light (finer than 8-bit linear, close to the old sRGB file). |
 | `?linear=0` same as step 3 | **not checked** in a render. |
 
 **Screenshot runs stopped here, at the owner's request**: each render set took 25–30 min on this machine (software rendering, a second session competing for the CPU). From step 2 on, steps are checked offline (plates, assets, computed numbers, code review); the items that need a real browser are listed for each step and collected under step 8.
+
+## Step 4: real lace repeat, whole repeats, defined start (accepted with 2 recorded exceptions)
+
+**`prep_lace.py --repeat`** (new mode, works on the existing bands; no lace source photos are in the repo):
+1. Period = Pearson autocorrelation of the alpha along the band (columns, 1/4 size, refined at 1/2 size with a parabola).
+   **Refinement of the plan's rule:** lags shorter than 0.3 × the band height are skipped (they are the mesh of the lace: the geometric lace peaks at 72 px = its net, not its motif), and the period is the first peak ≥ 0.6 **and** ≥ 0.9 × the best peak (the fine lace has peaks of 0.88–0.91 at 184, 256, 300, 360 px; the first is taken).
+2. A whole number of periods, starting at a gap between motifs (least alpha), resampled to an exact integer width; the last 4 % cross-fades to the band just **before** the start, so the wrap is continuous by construction.
+3. Sidecar `lace-<name>.json`: `periodPx`, `periods`, `periodRatio`, `motifCentrePx`, `corr`, `cutFromPx`, `blendPx`, `edge`, `widthMm` (assumption), and for step 5 `edgeDepth`, `bottomOpen`, `edging`, `flipped`.
+
+| Lace | Period | corr | Tile | Asset (webp + json) | Wrap ratio (old → new) |
+|---|---|---|---|---|---|
+| pearl | 632.0 px = 1.417 × height | 0.69 | 2 periods, 1264 × 446 | **434 KB** (was 730: now within the 600 KB budget) | 5.1 → **1.04** |
+| geometric | 177.7 px = 0.398 × height | 0.61 | 3 periods, 533 × 446 (the band is too short for 1024 px) | 158 KB | 3.9 → **1.18** |
+| fine | 183.0 px = 0.410 × height | 0.88 | 6 periods, 1098 × 446 | 68 KB | 15.6 → **1.49** |
+| leaf | **none** (best peak 0.27) | — | band kept, mirror kept | 326 KB | (mirror) |
+
+Wrap ratio = premultiplied difference between the last and first column ÷ median neighbour-column difference (1 = no visible join). The metric now ignores the colour under fully transparent pixels (lossy WebP stores noise there; that had made the pearl read 3.1). Wrap previews: `docs/plan/img/polish-step4-wraps.png`.
+
+**Exceptions:**
+- **leaf:** no repeat (hand-made or irregular; the best autocorrelation peak is 0.27). Plan fallback: the mirror is kept, and on neck and hem the mirror axis is put at the **middle of the trim** (centre front), so the reflection is symmetric about the centre instead of at a random place.
+- **geometric:** the diamonds repeat every 177.7 px, but the scallop edge repeats every **80 px** (measured on the scallop rows alone: corr 0.84). The two pitches have no common multiple inside the 875 px band (the nearest is ~716 px, which with the blend does not fit). The diamonds wrap seamlessly; the scallop row has a small soft jog at each wrap (every 3 diamonds). Better than the mirror (a reflection every 2.4–5.9 cm), but not seam-free. A longer photo of this lace would fix it.
+- The geometric band was **turned 180°** (`--flip`): its clean, keyed scallops were at the top and its bottom was cut through the pattern; the convention is the decorative edge at the bottom (step 5 needs it).
+
+**Page** (`testing.html`): `REPEAT` along the lace for laces with a period, `MIRRORED_REPEAT` for laces without one (or `?lacefit=0`). `laceFit()` computes, for every trim of the current view and lace, the number of whole repeats and the scale (`uTrimFit[7]`) and the start (`uTrimU0[7]`):
+- `n = round(L / r)`, `fit = L / (n·r)`, kept only within ±5 % (±10 % on trims shorter than 3 repeats: plan fallback); otherwise the scale stays and the trim is listed.
+- `neck`, `hem`: an **odd** `n` when that fits within the limit: then a motif is centred at the middle **and** both ends are motif boundaries (an even `n` can have only one of the two). The motif centre is put at the middle of the trim.
+- `cuff-*`: a motif boundary at the start of the trim; `slit-*`: at the hem end. With whole repeats the other end is a boundary too.
+- The result is written to `<html data-lacefit>` for inspection.
+
+**Fit on every trim** (`polish_metrics.py fit`, the same rules as the page): 35 of 36 trims with a period fit within their limit; scale changes −5.0 % to +3.4 %.
+
+| Exception | Why |
+|---|---|
+| hem view, `hem`, **pearl** | L / r = 3.43: 3 repeats need +14.5 %, 4 need −14 %. Scale kept; a motif is cut at one end. |
+| neck view `neck` and sleeve view `neck`, **pearl** | Odd counts need ±6–10 %, so even n (12, 10) are used: whole motifs at both ends, but a **gap** (not a motif) at the centre front. |
+| torso `cuff-l`, pearl | −5.0 %: inside the ±10 % limit of a short trim (2.85 repeats). |
+
+Full table: below.
+
+```
+pearl     period 632.0 px = 1.417 x band height, 2 periods per image
+   torso  neck    L  18.2 cm  repeat  1.70 cm  L/r  10.70  n  11  scale  0.973 ( -2.7 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  cuff-l  L  10.1 cm  repeat  3.54 cm  L/r   2.85  n   3  scale  0.950 ( -5.0 %, limit 10 %)  whole motifs at both ends
+   torso  cuff-r  L  10.3 cm  repeat  3.54 cm  L/r   2.91  n   3  scale  0.969 ( -3.1 %, limit 10 %)  whole motifs at both ends
+   torso  hem     L  37.6 cm  repeat  4.25 cm  L/r   8.84  n   9  scale  0.983 ( -1.7 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  slit-l  L  24.1 cm  repeat  1.13 cm  L/r  21.26  n  21  scale  1.012 ( +1.2 %, limit 5 %)  whole motifs at both ends
+   torso  slit-r  L  23.4 cm  repeat  1.13 cm  L/r  20.64  n  21  scale  0.983 ( -1.7 %, limit 5 %)  whole motifs at both ends
+   neck   neck    L  20.7 cm  repeat  1.70 cm  L/r  12.17  n  12  scale  1.014 ( +1.4 %, limit 5 %)  whole motifs at both ends
+   sleeve neck    L  17.2 cm  repeat  1.70 cm  L/r  10.11  n  10  scale  1.011 ( +1.1 %, limit 5 %)  whole motifs at both ends
+   sleeve cuff-l  L  10.6 cm  repeat  3.54 cm  L/r   2.99  n   3  scale  0.997 ( -0.3 %, limit 10 %)  whole motifs at both ends
+   hem    hem     L  14.6 cm  repeat  4.25 cm  L/r   3.43  n   3  scale  1.145 (+14.5 %, limit 5 %)  NOT FITTED: scale kept, motif cut at one end
+   hem    slit-l  L  23.5 cm  repeat  1.13 cm  L/r  20.73  n  21  scale  0.987 ( -1.3 %, limit 5 %)  whole motifs at both ends
+   hem    slit-r  L  22.8 cm  repeat  1.13 cm  L/r  20.11  n  20  scale  1.006 ( +0.6 %, limit 5 %)  whole motifs at both ends
+geometric period 177.667 px = 0.398 x band height, 3 periods per image
+   torso  neck    L  18.2 cm  repeat  0.48 cm  L/r  38.07  n  39  scale  0.976 ( -2.4 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  cuff-l  L  10.1 cm  repeat  1.00 cm  L/r  10.14  n  10  scale  1.014 ( +1.4 %, limit 5 %)  whole motifs at both ends
+   torso  cuff-r  L  10.3 cm  repeat  1.00 cm  L/r  10.34  n  10  scale  1.034 ( +3.4 %, limit 5 %)  whole motifs at both ends
+   torso  hem     L  37.6 cm  repeat  1.20 cm  L/r  31.46  n  31  scale  1.015 ( +1.5 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  slit-l  L  24.1 cm  repeat  0.32 cm  L/r  75.62  n  76  scale  0.995 ( -0.5 %, limit 5 %)  whole motifs at both ends
+   torso  slit-r  L  23.4 cm  repeat  0.32 cm  L/r  73.43  n  73  scale  1.006 ( +0.6 %, limit 5 %)  whole motifs at both ends
+   neck   neck    L  20.7 cm  repeat  0.48 cm  L/r  43.30  n  43  scale  1.007 ( +0.7 %, limit 5 %)  centred motif, whole motifs at both ends
+   sleeve neck    L  17.2 cm  repeat  0.48 cm  L/r  35.98  n  35  scale  1.028 ( +2.8 %, limit 5 %)  centred motif, whole motifs at both ends
+   sleeve cuff-l  L  10.6 cm  repeat  1.00 cm  L/r  10.64  n  11  scale  0.968 ( -3.2 %, limit 5 %)  whole motifs at both ends
+   hem    hem     L  14.6 cm  repeat  1.20 cm  L/r  12.22  n  12  scale  1.018 ( +1.8 %, limit 5 %)  whole motifs at both ends
+   hem    slit-l  L  23.5 cm  repeat  0.32 cm  L/r  73.74  n  74  scale  0.996 ( -0.4 %, limit 5 %)  whole motifs at both ends
+   hem    slit-r  L  22.8 cm  repeat  0.32 cm  L/r  71.54  n  72  scale  0.994 ( -0.6 %, limit 5 %)  whole motifs at both ends
+leaf      no repeat: mirror kept, mirror axis at the middle of neck and hem
+fine      period 183.0 px = 0.410 x band height, 6 periods per image
+   torso  neck    L  18.2 cm  repeat  0.49 cm  L/r  36.96  n  37  scale  0.999 ( -0.1 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  cuff-l  L  10.1 cm  repeat  1.03 cm  L/r   9.85  n  10  scale  0.985 ( -1.5 %, limit 5 %)  whole motifs at both ends
+   torso  cuff-r  L  10.3 cm  repeat  1.03 cm  L/r  10.04  n  10  scale  1.004 ( +0.4 %, limit 5 %)  whole motifs at both ends
+   torso  hem     L  37.6 cm  repeat  1.23 cm  L/r  30.55  n  31  scale  0.985 ( -1.5 %, limit 5 %)  centred motif, whole motifs at both ends
+   torso  slit-l  L  24.1 cm  repeat  0.33 cm  L/r  73.42  n  73  scale  1.006 ( +0.6 %, limit 5 %)  whole motifs at both ends
+   torso  slit-r  L  23.4 cm  repeat  0.33 cm  L/r  71.29  n  71  scale  1.004 ( +0.4 %, limit 5 %)  whole motifs at both ends
+   neck   neck    L  20.7 cm  repeat  0.49 cm  L/r  42.04  n  43  scale  0.978 ( -2.2 %, limit 5 %)  centred motif, whole motifs at both ends
+   sleeve neck    L  17.2 cm  repeat  0.49 cm  L/r  34.93  n  35  scale  0.998 ( -0.2 %, limit 5 %)  centred motif, whole motifs at both ends
+   sleeve cuff-l  L  10.6 cm  repeat  1.03 cm  L/r  10.33  n  10  scale  1.033 ( +3.3 %, limit 5 %)  whole motifs at both ends
+   hem    hem     L  14.6 cm  repeat  1.23 cm  L/r  11.86  n  12  scale  0.988 ( -1.2 %, limit 5 %)  whole motifs at both ends
+   hem    slit-l  L  23.5 cm  repeat  0.33 cm  L/r  71.59  n  72  scale  0.994 ( -0.6 %, limit 5 %)  whole motifs at both ends
+   hem    slit-r  L  22.8 cm  repeat  0.33 cm  L/r  69.46  n  69  scale  1.007 ( +0.7 %, limit 5 %)  whole motifs at both ends
+```
+
+**Acceptance:**
+
+| Check | Result |
+|---|---|
+| A measured period for each lace, or a recorded reason | ✔ (leaf: reason recorded) |
+| Lace seam count in crops 2, 3, 5 = 0 | **Not met.** Crops 2 and 5 (geometric): 0 mirror joins (were 6 and 2), but a soft scallop jog at each wrap. Crop 3 (leaf): mirror kept by the fallback (8 reflections, axis at centre front). Not counted by a person. |
+| Whole motifs at both ends, motif centred at centre front within ±5 % of a repeat (torso neck and hem) | ✔ by construction for every fitted trim with odd n (all torso necks and hems: n = 11/9 pearl, 39/31 geometric, 37/31 fine); pearl on the neck and sleeve views: gap at centre front (listed above). **Not checked in a render.** |
+| Scale change ≤ 5 % (or listed) | ✔ (1 trim listed) |
+| Each lace asset ≤ 600 KB | ✔ (434 / 158 / 326 / 68 KB) |
+
+Backups: `lace-*-2048@4.webp`, `testing@4.html` (untracked).

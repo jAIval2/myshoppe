@@ -1,0 +1,17 @@
+{
+ "source": "lace-leaf-2048.webp",
+ "bandPx": [
+  949,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 25.0,
+ "widthMmNote": "assumption: the real band width is not measured yet",
+ "edgeDepth": 0.0,
+ "bottomOpen": 0.039,
+ "edging": false,
+ "edgingNote": "bottom 5 % of the band is mostly opaque (paper or ground not keyed): insertion only, until the lace is photographed and keyed again",
+ "periodPx": null,
+ "mirror": true,
+ "reason": "no repeat found: best autocorrelation peak 0.27 (< 0.6). Hand-made or irregular lace: keep the mirrored repeat, with a mirror axis at the middle of neck and hem trims."
+}

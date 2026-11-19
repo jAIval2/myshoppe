@@ -5,6 +5,7 @@ usage:
   python3 tools/polish_metrics.py crops <shot-dir> <out-dir>  cut the fixed review crops from a shoot_views.sh run (DPR=2)
   python3 tools/polish_metrics.py fcr  <shot-dir> [flat-dir]  fold contrast retention for queries 2, 3, 4 (step 0, 2); flat-dir = run of FLAT_QUERIES
   python3 tools/polish_metrics.py shadow <old-dir> <new-dir>   step 1: what changed, and how dark
+  python3 tools/polish_metrics.py fit [swatch-dir]           step 4: whole repeats on every trim (same rules as the page)
   python3 tools/polish_metrics.py joins                       lace repeat: mirror joins and join discontinuity (step 0, 4)
 
 FD  (fine detail): variance of shade in the band below 1.5 mm = shade - G(1.5 mm), and in the fold band 2..30 mm =
@@ -200,6 +201,38 @@ def cmd_shadow(old, new):
                           "min_ratio_L_new/L_old": round(lo, 3), "max_darkening_%": round((1 - lo) * 100, 1)}))
 
 
+def cmd_fit(sw_dir=None):
+    """Step 4: the fit of whole repeats on every trim of every plate, with the same rules as laceFit() in testing.html."""
+    sw = sw_dir or SWATCHES
+    CENTRED, END = {"neck", "hem"}, {"slit-l", "slit-r"}
+    for lace in ("pearl", "geometric", "leaf", "fine"):
+        mp = os.path.join(sw, f"lace-{lace}.json")
+        meta = json.load(open(mp)) if os.path.exists(mp) else None
+        im = Image.open(os.path.join(sw, f"lace-{lace}-2048.webp"))
+        aspect = im.width / im.height
+        if not meta or meta.get("mirror"):
+            print(f"{lace:9} no repeat: mirror kept, mirror axis at the middle of neck and hem")
+            continue
+        print(f"{lace:9} period {meta['periodPx']} px = {meta['periodRatio']:.3f} x band height, {meta['periods']} periods per image")
+        for view in ("torso", "neck", "sleeve", "hem"):
+            pj = plate_json(PLATE_OF[view])
+            for name, t in pj["trims"].items():
+                L, w = t["lengthCm"], t["widthMm"] / 10
+                r = meta["periodRatio"] * w
+                lim = 0.10 if L < 3 * r else 0.05
+                n = max(1, round(L / r))
+                if name in CENTRED:
+                    odd = max(1, 2 * round((L / r - 1) / 2) + 1)
+                    if abs(L / (odd * r) - 1) <= lim:
+                        n = odd
+                f = L / (n * r)
+                ok = abs(f - 1) <= lim
+                where = "centred motif, whole motifs at both ends" if name in CENTRED and n % 2 and ok else \
+                        ("whole motifs at both ends" if ok else "NOT FITTED: scale kept, motif cut at one end")
+                print(f"   {view:6} {name:7} L {L:5.1f} cm  repeat {r:5.2f} cm  L/r {L / r:6.2f}  n {n:3d}  scale {f:6.3f} "
+                      f"({(f - 1) * 100:+5.1f} %, limit {lim * 100:.0f} %)  {where}")
+
+
 def lace_info(name):
     im = Image.open(os.path.join(SWATCHES, f"lace-{name}-2048.webp")).convert("RGBA")
     meta_path = os.path.join(SWATCHES, f"lace-{name}.json")
@@ -213,7 +246,9 @@ def join_jump(im):
     w, h = im.size
     px = im.load()
     def col(x): return [px[x, y] for y in range(h)]
-    def diff(a, b): return sum(abs(p[i] - q[i]) for p, q in zip(a, b) for i in range(4)) / (4 * h)
+    # premultiplied: the colour under a fully transparent pixel is arbitrary in a lossy WebP and must not count
+    def pm(p): return (p[0] * p[3] / 255, p[1] * p[3] / 255, p[2] * p[3] / 255, p[3])
+    def diff(a, b): return sum(abs(x - y) for p, q in zip(a, b) for x, y in zip(pm(p), pm(q))) / (4 * h)
     wrap = diff(col(w - 1), col(0))
     neigh = sorted(diff(col(x), col(x + 1)) for x in range(0, w - 1, max(1, w // 200)))
     return wrap, neigh[len(neigh) // 2]
@@ -238,7 +273,7 @@ def cmd_joins():
                 L, wmm = pj["trims"][t]["lengthCm"], pj["trims"][t]["widthMm"]
                 tile_cm = wmm / 10 * w / h                         # one image of the lace along this trim
                 mirror_joins = int(L // tile_cm)                   # MIRRORED_REPEAT: one mirror join at every multiple of the tile
-                rep = (meta["periodRatio"] * wmm / 10) if meta else None
+                rep = (meta["periodRatio"] * wmm / 10) if meta and meta.get("periodRatio") else None
                 print(f"   {view:6} {t:7} length {L:5.1f} cm  width {wmm:2d} mm  tile {tile_cm:5.1f} cm  "
                       f"mirror joins (computed) {mirror_joins}" + (f"  repeat {rep:.2f} cm  n={L / rep:.2f}" if rep else ""))
 
@@ -247,4 +282,4 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if not a: sys.exit(__doc__)
     {"fd": lambda: cmd_fd(a[1:]), "crops": lambda: cmd_crops(a[1], a[2]), "fcr": lambda: cmd_fcr(a[1], a[2] if len(a) > 2 else None),
-     "joins": cmd_joins, "shadow": lambda: cmd_shadow(a[1], a[2])}[a[0]]()
+     "joins": cmd_joins, "fit": lambda: cmd_fit(a[1] if len(a) > 1 else None), "shadow": lambda: cmd_shadow(a[1], a[2])}[a[0]]()

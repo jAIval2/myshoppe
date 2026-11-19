@@ -1,0 +1,23 @@
+{
+ "source": "lace-geometric-2048.webp",
+ "bandPx": [
+  875,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 40.0,
+ "widthMmNote": "assumption: the real band width is not measured yet",
+ "edgeDepth": 0.112,
+ "flipped": true,
+ "bottomOpen": 0.752,
+ "edging": true,
+ "periodPx": 177.667,
+ "periods": 3,
+ "periodRatio": 0.39836,
+ "motifCentrePx": 88.83,
+ "corr": 0.611,
+ "cutFromPx": 169,
+ "blendPx": 21,
+ "mirror": false,
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+}

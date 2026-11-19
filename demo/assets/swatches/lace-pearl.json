@@ -1,0 +1,22 @@
+{
+ "source": "lace-pearl-2048.webp",
+ "bandPx": [
+  2048,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 30.0,
+ "widthMmNote": "assumption: the real band width is not measured yet",
+ "edgeDepth": 0.096,
+ "bottomOpen": 0.766,
+ "edging": true,
+ "periodPx": 632.0,
+ "periods": 2,
+ "periodRatio": 1.41704,
+ "motifCentrePx": 316.0,
+ "corr": 0.691,
+ "cutFromPx": 107,
+ "blendPx": 51,
+ "mirror": false,
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+}

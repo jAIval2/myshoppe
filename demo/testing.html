@@ -273,10 +273,10 @@
   };
   // laces: horizontal band, decorative edge at the bottom (tools/prep_lace.py)
   const LACES = {
-    pearl:     { src: "assets/swatches/lace-pearl-2048.webp",     name: "Pearl Guipure Lace" },
-    geometric: { src: "assets/swatches/lace-geometric-2048.webp", name: "Woven Diamond Border" },
-    leaf:      { src: "assets/swatches/lace-leaf-2048.webp",      name: "Resham Bel Lace" },
-    fine:      { src: "assets/swatches/lace-fine-2048.webp",      name: "Kiran Zari Edge" },
+    pearl:     { src: "assets/swatches/lace-pearl-2048.webp", meta: "assets/swatches/lace-pearl.json",     name: "Pearl Guipure Lace" },
+    geometric: { src: "assets/swatches/lace-geometric-2048.webp", meta: "assets/swatches/lace-geometric.json", name: "Woven Diamond Border" },
+    leaf:      { src: "assets/swatches/lace-leaf-2048.webp", meta: "assets/swatches/lace-leaf.json",      name: "Resham Bel Lace" },
+    fine:      { src: "assets/swatches/lace-fine-2048.webp", meta: "assets/swatches/lace-fine.json",      name: "Kiran Zari Edge" },
   };
   // trim id in id.png (G channel) → button group; flip = pearls on the other side of the strip
   const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6 };
@@ -320,6 +320,7 @@
   uniform float uFabricOn, uFabricCm;
   uniform float uLaceAspect;
   uniform float uTrimOn[7], uTrimWcm[7], uTrimFlip[7];
+  uniform float uTrimFit[7], uTrimU0[7];   // lace scale along each trim (whole repeats), and its start (lace image units)
   uniform float uChecker, uPhotoOnly;
   uniform float uMipBias;       // log2 bias on the texture footprint (negative = sharper)
   uniform float uAniso;         // 1 = use plate UV gradients, 0 = round footprint
@@ -376,20 +377,20 @@
       gy = (decode(texelFetch(uUV, c, 0)) - decode(texelFetch(uUV, d, 0))) / float(c.y - d.y) * k / uFabricCm;
     }
   }
-  void gradTrim(ivec2 p, int trim, float k, float w, out vec2 gx, out vec2 gy) {
+  void gradTrim(ivec2 p, int trim, float k, float w, float fit, out vec2 gx, out vec2 gy) {
     ivec2 mx = ivec2(uPlate) - 1;
     ivec2 a = clamp(p + ivec2(R, 0), ivec2(0), mx), b = clamp(p - ivec2(R, 0), ivec2(0), mx);
     ivec2 c = clamp(p + ivec2(0, R), ivec2(0), mx), d = clamp(p - ivec2(0, R), ivec2(0), mx);
     float iso = uCmPerPx * k / w;                                       // lace height is 1 in texture T
-    gx = vec2(iso / uLaceAspect, 0.0); gy = vec2(0.0, iso);
+    gx = vec2(iso / (uLaceAspect * fit), 0.0); gy = vec2(0.0, iso);
     if (uAniso < 0.5) return;
     bool ok = int(texelFetch(uId, a, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, b, 0).g * 255.0 + 0.5) == trim
            && int(texelFetch(uId, c, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, d, 0).g * 255.0 + 0.5) == trim;
     if (!ok) return;
     vec2 sx = (decode(texelFetch(uUVT, a, 0)) - decode(texelFetch(uUVT, b, 0))) / float(a.x - b.x) * k;
     vec2 sy = (decode(texelFetch(uUVT, c, 0)) - decode(texelFetch(uUVT, d, 0))) / float(c.y - d.y) * k;
-    gx = vec2(sx.x / (w * uLaceAspect), sx.y / uRange);                 // across (V) is 0..1 over the strip
-    gy = vec2(sy.x / (w * uLaceAspect), sy.y / uRange);
+    gx = vec2(sx.x / (w * uLaceAspect * fit), sx.y / uRange);           // across (V) is 0..1 over the strip
+    gy = vec2(sy.x / (w * uLaceAspect * fit), sy.y / uRange);
   }
 
   void main() {
@@ -462,9 +463,10 @@
       float across = t.y / uRange;
       if (uTrimFlip[trim] > 0.5) across = 1.0 - across;
       float w = uTrimWcm[trim];
-      vec2 lc = vec2(t.x / (w * uLaceAspect), across);
+      float fit = uTrimFit[trim];
+      vec2 lc = vec2(t.x / (w * uLaceAspect * fit) + uTrimU0[trim], across);
       vec2 gx, gy;
-      gradTrim(p, trim, k, w, gx, gy);
+      gradTrim(p, trim, k, w, fit, gx, gy);
       float bias = exp2(uMipBias);
       vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
       if (uShadowStrength > 0.0) {
@@ -501,7 +503,7 @@
 
   // ---------- textures
   const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0  ?lacefit=0
   const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
   if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
     const st = document.createElement("style");
@@ -512,6 +514,7 @@
   const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
   const LINEAR = params.get("linear") === "0" ? 0 : 1;            // test: ?linear=0  the old sRGB maths
   let SRGB_TEX = LINEAR;                                         // SRGB8_ALPHA8 colour textures (falls back to shader decode)
+  const LACEFIT = params.get("lacefit") === "0" ? 0 : 1;          // test: ?lacefit=0  the old mirrored lace, no fit, no start point
   const SHADOW = params.has("shadow") ? parseFloat(params.get("shadow")) : 0.35;   // test: ?shadow=0 off, ?shadow=0.5 stronger
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
@@ -588,12 +591,59 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.uniform1f(U("uFabricCm"), f.repeatCm);
   }
+  const metaCache = {};                                // url -> Promise of the lace sidecar (tools/prep_lace.py --repeat)
+  const laceMetaOf = (url) => (metaCache[url] ||= fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  let lace = null;                                     // { meta, aspect } of the lace on unit 6
+
   async function setLace(key) {                        // lace on unit 6
-    const img = await swatch(LACES[key].src);
+    const [img, meta] = await Promise.all([swatch(LACES[key].src), laceMetaOf(LACES[key].meta)]);
     if (state.lace !== key) return;
-    setUnit(6, img, { wrap: gl.MIRRORED_REPEAT });     // lace: repeat along the trim (S), clamp across (T)
+    // a lace with a measured repeat tiles with REPEAT; a lace without one (or ?lacefit=0) keeps the mirror
+    const mirror = !LACEFIT || !meta || meta.mirror;
+    setUnit(6, img, { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.uniform1f(U("uLaceAspect"), img.width / img.height);
+    lace = { meta: mirror ? null : meta, aspect: img.width / img.height, mirror };
+    gl.uniform1f(U("uLaceAspect"), lace.aspect);
+    laceFit();
+  }
+
+  // Whole repeats on each trim, and a defined start (polish.md step 4). s = u / (tile length * fit) + u0, in lace images.
+  // The tile starts at a gap between motifs, so motif boundaries are at multiples of p = 1 / periods, centres in between.
+  const CENTRED = { neck: 1, hem: 1 };                 // a motif centred at the middle of the trim (centre front, middle of the hem)
+  const END = { "slit-l": 1, "slit-r": 1 };            // a whole motif at the END of the trim (the hem end of a slit); others: at the start
+  const fitLog = {};
+  function laceFit() {
+    if (!plate || !lace) return;
+    const fit = new Float32Array(7).fill(1), u0 = new Float32Array(7);
+    for (const [name, id] of Object.entries(TRIMS)) {
+      const t = plate.trims[name];
+      if (!t) continue;
+      const L = t.lengthCm, w = t.widthMm / 10, tile = w * lace.aspect;   // cm
+      if (!LACEFIT) { fitLog[name] = "off"; continue; }
+      if (lace.mirror) {                               // no repeat: a mirror axis at the middle of neck and hem
+        if (CENTRED[name]) u0[id] = -L / (2 * tile);
+        fitLog[name] = "mirror";
+        continue;
+      }
+      const m = lace.meta, p = 1 / m.periods, r = m.periodRatio * w;     // repeat length in cm at this trim width
+      const lim = L < 3 * r ? 0.10 : 0.05;              // plan fallback: +-10 % on trims shorter than 3 repeats
+      let n = Math.max(1, Math.round(L / r));
+      if (CENTRED[name]) {                             // odd n: a centred motif AND whole motifs at both ends
+        const odd = Math.max(1, 2 * Math.round((L / r - 1) / 2) + 1);
+        if (Math.abs(L / (odd * r) - 1) <= lim) n = odd;
+      }
+      let f = L / (n * r);
+      if (Math.abs(f - 1) > lim) f = 1;                 // keep the scale; recorded in fitLog
+      fit[id] = f;
+      const S = (u) => u / (tile * f);                 // trim cm -> lace images
+      if (CENTRED[name]) u0[id] = 0.5 * p - S(L / 2);
+      else if (END[name]) u0[id] = -S(L);
+      else u0[id] = 0;
+      fitLog[name] = { n, fit: +f.toFixed(4), repeatCm: +r.toFixed(3) };
+    }
+    gl.uniform1fv(U("uTrimFit"), fit);
+    gl.uniform1fv(U("uTrimU0"), u0);
+    document.documentElement.dataset.lacefit = JSON.stringify(fitLog);   // for the harness (--dump-dom)
   }
 
   async function loadShared() {                        // samplers and swatches: once for all views
@@ -606,6 +656,7 @@
     gl.uniform1f(U("uSrgbTex"), SRGB_TEX);
     gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
+    gl.uniform1fv(U("uTrimFit"), new Float32Array(7).fill(1));
   }
 
   let switchToken = 0;
@@ -635,6 +686,7 @@
     }
     gl.uniform1fv(U("uTrimWcm"), w);
     gl.uniform1fv(U("uTrimFlip"), flip);
+    laceFit();
     // trim pills: only the trims this view shows
     document.querySelectorAll("[data-trim]").forEach((b) => {
       b.hidden = !GROUP[b.dataset.trim].some((n) => plate.trims[n]);
