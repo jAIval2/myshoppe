@@ -179,7 +179,7 @@ Add an entry to `render.md` §11: source and crop, script, scale and its cross-c
 
 ### Sleeve plate: what must change
 
-`plate_checks.py`: front side-edge bulge **10.7 %**, grain tilt **18.4°**. The columns of the checker make an S-curve across the chest.
+`plate_checks.py`: front side-edge bulge **10.7 %**, grain tilt **18.4°**. (Fixed in numeric step 5: `annotate_sleeve.py` `smooth_under`; 0.0 % and 4.4°.) The columns of the checker make an S-curve across the chest.
 
 **Cause:** the front grid's left edge follows the armhole seam, and that seam bulges 161 px from its chord in the turned view. The Coons patch carries the bulge into the whole bodice.
 

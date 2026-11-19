@@ -401,7 +401,7 @@ python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabri
   - `testing.html` still loads only the torso plate.
 - **Review (same day): not accepted yet.** `tools/plate_checks.py` (new) fails two checks:
   - The front grid's left edge bulges **10.7 %** from its chord (limit 5 %; torso 3.9 %, neck 2.6 %).
-  - The front grain tilts **18.4°** for 95 % of points (limit 10°; torso 10.0°, neck 8.7°).
+  - The front grain tilts **18.4°** for 95 % of points (limit 10°; torso 10.0°, neck 8.7°). **Fixed 2026-11-19 (numeric step 5):** the grid edge is now a straight chord under the sleeve; 0.0 % bulge, 4.4° tilt.
 
   Cause: that grid edge follows the armhole seam, which bulges 161 px in the turned view, so the checker columns make an S-curve across the chest. Correction: make the grid edge a smooth line under the sleeve, and keep the seam only in the outline (`annotate.md` §2, rule 9). The rebuild is byte-identical, and the sparkle patch is clean.
 

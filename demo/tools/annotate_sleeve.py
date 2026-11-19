@@ -114,6 +114,26 @@ stitch_src = [p for p in neck_edge if p[0] <= 1600]
 neck_stitch = offset(T(stitch_src), 20 * K, opening)
 
 front_left = [S] + seam + body_gap + body_hidden + body_low
+
+
+def smooth_under(pts, k=0.0):
+    """The grid edge of a seam that bulges (the armhole of a turned view: 161 px = 10.7 % from its chord, limit 5 %): every point
+    is pulled toward the chord, at the same arc-length fraction, to k of its distance, so the edge runs smoothly UNDER the sleeve
+    and the outline (which keeps the seam) cuts it (docs/annotate.md rule 9). The seam bulges into the front, so the chord is on
+    the sleeve side: the grid stays wider than the outline. plate_checks.py, front grain tilt (95 %) for k = 1 / 0.3 / 0.15 / 0:
+    18.4 / 8.1 / 7.1 / 4.4 deg; bulge 10.7 / 3.2 / 1.6 / 0.0 %. k = 0: a straight edge (the checker's S-curve is gone; the garment
+    area changes by 7 px)."""
+    seg = [math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)]
+    tot, acc, out = sum(seg), 0.0, []
+    for i, p in enumerate(pts):
+        t = acc / tot
+        c = (pts[0][0] + (pts[-1][0] - pts[0][0]) * t, pts[0][1] + (pts[-1][1] - pts[0][1]) * t)
+        out.append((c[0] + k * (p[0] - c[0]), c[1] + k * (p[1] - c[1])))
+        acc += seg[i] if i < len(seg) else 0
+    return out
+
+
+front_left_grid = smooth_under(front_left)
 sleeve_right = seam + slv_gap
 front_top = [S, NECK_L, NECK_R] + far_shoulder[1:]
 front_outline = (shoulder_top + neck_edge[1:] + far_shoulder[1:] + arm_right[:1] + arm_right[1:]
@@ -177,7 +197,7 @@ data = {
     "zones": {
         "front": {
             "order": 1,
-            "grid": {"top": T(front_top), "left": T(front_left), "right": T([(2048, 335), (2048, 2048)]),
+            "grid": {"top": T(front_top), "left": T(front_left_grid), "right": T([(2048, 335), (2048, 2048)]),
                      "bottom": T([(920, 2048), (2048, 2048)])},
             "outline": T(front_outline),
         },

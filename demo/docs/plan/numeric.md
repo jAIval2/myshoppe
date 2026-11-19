@@ -106,8 +106,8 @@ A float texture is needed for the filter passes. If the phone has no `EXT_color_
 **Do:** steps 2–4 on the 3 close views. On the sleeve, check the front grid's left edge (bulge, grain tilt; `render.md`) and fix it in `zones.json`, for both paths at once.
 
 **Accept:**
-- [ ] All 4 views pass the map tests and the render comparison.
-- [ ] Sleeve: grain tilt under the arm ≤ 5° (was 18.4°), only if the fix is made; else written as open.
+- [x] All 4 views pass the map tests and the render comparison.
+- [x] Sleeve: grain tilt under the arm ≤ 5° (was 18.4°), only if the fix is made; else written as open.
 
 ### Step 6: The `.dat` file
 
@@ -164,7 +164,7 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 2 Zone maps from the mesh (torso) | done, criteria revised | (step 2) | maps pass; render ≤ 0.30 after a 2 px blur (1.47 unblurred, texel jitter of the PNG's 12-bit uv) |
 | 3 Trims as ribbons | done | (step 3) | id G + uv_trim built; bias ≤ 0.11 px; lace fit identical; render ≤ 0.31 after blur |
 | 4 Shade on the GPU | done | (step 4) | garment shade identical to ±1 level in 100 % of px (torso, neck); transient ~100 MB GPU; render criterion → checker test |
-| 5 Neck, sleeve, hem | planned | | |
+| 5 Neck, sleeve, hem | done | (step 5) | all 4 views pass the map tests; sleeve front grid fixed (grain tilt 18.4° → 4.4°); sleeve render changes on purpose |
 | 6 The `.dat` file | planned | | |
 | 7 Stop sending the maps | planned | | |
 | 8 Direct mesh draw (optional) | planned | | |

@@ -411,7 +411,7 @@
   const params0 = new URLSearchParams(location.search);    // test switches: ?view=neck|sleeve|hem  ?fabric=mocha  ?lace=leaf
   const state = { view: VIEWS[params0.get("view")] ? params0.get("view") : "torso",
                   fabric: FABRICS[params0.get("fabric")] || params0.get("fabric") === "off" ? params0.get("fabric") : "sage",
-                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", trims: { neck: true, cuffs: true, hem: true, slits: false }, checker: params0.get("checker") === "1", photo: false };   // test: ?checker=1  the grain checker (2 cm squares from the uv: no fabric texture, so no texel noise)
+                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", trims: params0.has("trims") ? Object.fromEntries(["neck", "cuffs", "hem", "slits"].map((k) => [k, params0.get("trims").split(",").includes(k)])) : { neck: true, cuffs: true, hem: true, slits: false }, checker: params0.get("checker") === "1", photo: false };   // test: ?checker=1  the grain checker (2 cm squares from the uv: no fabric texture, so no texel noise)
   const stageImg = document.querySelector(".stage-frame img");
 
   const canvas = document.getElementById("stage");
@@ -950,7 +950,7 @@
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
   // numeric.md: ?geom=mesh builds the maps of the MESH_VIEWS on the GPU from the curves (plate.js, maps.js); default and ?geom=maps: the PNG maps
   const GEOM = params0.get("geom") === "mesh" ? "mesh" : "maps";
-  const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1 };   // views ported so far (numeric.md step 5 adds the others); test: ?meshviews=torso,neck,sleeve,hem
+  const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1, neck: 1, sleeve: 1, hem: 1 };   // all four views (numeric.md step 5); test: ?meshviews=torso,neck,sleeve,hem to choose
   const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
   const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");   // the shade is built on the GPU only with float render targets (else shade.png)
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)

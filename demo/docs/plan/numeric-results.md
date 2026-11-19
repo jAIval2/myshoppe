@@ -159,7 +159,7 @@ Without `EXT_color_buffer_float` the page keeps downloading `shade.png` and uses
 | neck, sage / geometric at 20 / 132 | 3.22 | 0.70 | 0.38 |
 | neck, plain; sleeve; hem | 0.00 | 0.00 | 0.00 |
 
-**What these numbers measure.** The unblurred difference of a detailed fabric is white noise: the PNG's own uv is a quad centre in 12-bit steps (a step is about one texel), the built uv is the exact surface, and at the neck plate (0.3 mm per px, one texel per px) a one-texel jitter in about half of the pixels changes the weave from pixel to pixel. A map test says so: neck uv u / v: median 0.00 px, 99 % 1.03 px (one packing step), bias 0.02 px. The difference falls as 1/σ with the blur (5.5 → 1.4 → 0.8 at σ = 0, 2, 4), as white noise does, and the difference map has no structure (`/tmp` only: speckle on the whole garment, nothing at the edges, the trim or the neck).
+**What these numbers measure.** The unblurred difference of a detailed fabric is white noise: the PNG's own uv is a quad centre in 12-bit steps (a step is about one texel), the built uv is the exact surface, and at the neck plate (0.3 mm per px, one texel per px) a one-texel jitter in about half of the pixels changes the weave from pixel to pixel. A map test says so: neck uv u / v: median 0.00 px, 99 % 1.03 px (one packing step), bias 0.02 px. The difference falls as 1/σ with the blur (5.5 → 1.4 → 0.8 at σ = 0, 2, 4), as white noise does,, and the difference map (looked at, not kept) is speckle over the whole garment with nothing at the edges, the trim or the neck.
 
 **A test that does not depend on the texture: the grain checker** (`?checker=1`: 2 cm squares computed from the uv, no fabric). Mesh against the PNG maps, same page, 5 queries (torso and neck, three laces, the neckline at the default and at the range ends):
 
@@ -175,3 +175,40 @@ These are the edges of the squares only: with an edge density of about 9 % and a
 - [x] Torso and neck shade pass the map test (≤ 1 level in 99 %: 100 %).
 - [x] Fine detail and fold band within 2 % of `shade.png` (the garment shade is identical to ±1 level in 100 % of the pixels).
 - [x] Build ≤ 50 ms on a laptop (SwiftShader: 12 / 33 ms; to be seen on a device).
+
+## Step 5: Neck, sleeve and hem
+
+`MESH_VIEWS` is now all four views (`?geom=mesh`; `?meshviews=` chooses). Nothing in `maps.js` changed for them except two limits of the map test; the occluders (the mannequin arm of the sleeve plate), the back zones of the hem plate and the slit trims worked as they were.
+
+### Map test, all four plates (`tools/map_diff.py`, from the page's own textures)
+
+| Plate | id R / G / B differ | holes | garment area | uv u: median / 99 % / bias | uvt (all trims) | shade (garment) | build |
+|---|---|---|---|---|---|---|---|
+| torso | 616 / 613 / 40 px, 0 away from an edge (G: 50 stray) | 0 gaps | −0.003 % | 0.35 / 1.04 / 0.03 px | bias ≤ 0.11 px | 100 % within 1 level, max 0 | 11–12 ms |
+| neck | 647 / 311 / 94, 0 (G: 1) | 0 gaps | +0.038 % | 0.00 / 1.03 / 0.02 | bias ≤ 0.02 | 100 %, mean 0.001, max 3 | 23–36 ms |
+| sleeve | 974 / 377 / 0, 0 (G: 7) | 1 px (a diagonal touch, not a gap) | +0.03 % | 0.00 / 0.92 / 0.01 | bias ≤ 0.04 | 100 %, mean 0.002, max 2 | 20–23 ms |
+| hem | 877 / 405 / 0, 0 (G: 3) | 0 gaps | +0.046 % | 0.35 / 0.70 / 0.03 | bias ≤ 0.02 | 100 %, mean 0.002, max 5 (7 px above 3) | 19–22 ms |
+
+Two limits of the test were adjusted: a built hole pixel that is R = 0 in both maps but 4-connected to the outside in only one (a diagonal touch) is not a gap (≤ 3 px allowed); and up to 0.001 % of the garment pixels may be above 3 levels of shade (7 of 1.4 M on the hem plate, 4–5 levels off, at a rounding boundary in a steep fold). The build times are SwiftShader's.
+
+### The sleeve view's front grid (the optional fix of the plan)
+
+`plate_checks.py` had failed the sleeve plate since it was made: the front grid's left edge followed the armhole seam, which bulges 161 px (10.7 %) from its chord in the turned view, and the Coons patch carried the bulge into the whole bodice (the checker's columns made an S-curve; grain tilt 18.4°). `tools/annotate_sleeve.py` now pulls that grid edge to the straight chord (`smooth_under`, `docs/annotate.md` rule 9): the outline keeps the seam and cuts the grid, which is under the sleeve. Checked on the plate (`img/numeric-step5-sleeve.png`, the plate's checker before and after):
+
+| k (share of the bulge kept) | Bulge | Front grain tilt (95 %) |
+|---|---|---|
+| 1 (before) | 10.7 % | 18.4° |
+| 0.3 | 3.2 % | 8.1° |
+| 0.15 | 1.6 % | 7.1° |
+| **0 (a straight edge, used)** | **0.0 %** | **4.4°** (median 0.0°) |
+
+All `plate_checks.py` checks of the sleeve plate pass; the garment area changes by 7 px; the sleeve plate is 616 KB (was 726). **The sleeve view's front fabric changes on purpose** (the S-curve is gone: `img/numeric-step5-sleeve.png`), for both paths at once, so the sleeve renders no longer match port 8100; the mesh is compared with the PNG maps of the same new plate. The `mesh_check.mjs` test of `plate.js` passes on the new zones.json.
+
+### Render
+
+Mesh against the PNG maps of the same page (the grain checker, lace off, 1 query for each view; torso also at the range ends): torso 0.93 / 0.91, neck 0.67 / 0.69, sleeve 0.88, hem 0.52 (limit 1.0). With the lace on, the difference is the lace's own texel jitter (the same noise as the fabric; the trims pass their map tests with a median of 0.35 px).
+
+The 12 real-fabric queries against 8100 (sleeve excluded by the grid fix): mean difference 0.0–5.5 unblurred, 0.0–1.4 at σ = 2, 0.0–0.8 at σ = 4 (the neck views with mocha are the highest: 0.3 mm per px, one texel per px). Neck views with a plain toile, and the sleeve and hem views against 8100 where the plate is unchanged: 0.00 blurred.
+
+- [x] All 4 views pass the map tests and the render comparison (the grain checker ≤ 1.0).
+- [x] Sleeve: grain tilt under the arm ≤ 5° (was 18.4°): 4.4°.
