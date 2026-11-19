@@ -435,6 +435,28 @@ python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabri
   - The two edges of one slit use `slit-l` (front) and `slit-r` (back): `FLIP` in `testing.html` flips `slit-r` already, but the lace direction is not checked in the page.
   - One cylinder for each zone: the `back` strip is only 3 cm wide, and its squares narrow towards the tip as a real turned panel would, but this is an approximation.
 
+### 2026-11-19: polish of the fabric and lace overlay (`docs/plan/polish.md`, results in `docs/plan/polish-results.md`)
+
+| Step | What changed | Measured |
+|---|---|---|
+| 1 Lace shadow | soft shadow of the lace on the fabric, offset on the screen (right, down), ≤ 35 % | 0 px changed outside the trims; darkest 17–35 % |
+| 2 Linear light | `SRGB8_ALPHA8` textures, shade stored as linear ratio with a sqrt code, sRGB encode at the end | mean luminance +0.15 / +0.87 %; the fold contrast was not lost before (step 0 finding) |
+| 3 Shade without the weave | masked guided filter, 1.2 mm, ε 0.006 | weave band −75 to −90 % (neck, sleeve, hem), folds kept 97–99 %; torso unchanged (fallback) |
+| 4 Lace repeat | whole-period tiles, `REPEAT`, whole repeats per trim, centred / end-aligned starts | pearl, geometric, fine have periods; leaf keeps the mirror; 35 of 36 trims fitted |
+| 5 Edging lace | hem and cuff laces hang past the edge by their decorative depth; strips oriented, no `FLIP` | only pearl and geometric have a clean edge |
+| 6 Lace relief | material map (height, metal, pearl); relief ±15 %, zari highlight, pearls filled | metal only on fine; 6 pearls per repeat |
+| 7 Fabric | displacement in folds ≤ 1.5 mm, per-fabric sheen (all matte now), hex anti-tiling on mocha and mustard | repeat autocorrelation 1.0 → 0.005 (offline) |
+
+Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524, leaf 409, geometric 212, fine 180 KB.
+
+**Known problems after the polish:**
+- **Not seen in a real browser.** Screenshot runs were stopped after step 2 (25–30 min per set on this machine). Steps 2–7 were checked offline (plates, assets, simulations, code review, JS syntax). The shader has not been compiled since step 4; the draw time (≤ 5 ms) was never measured. Open the page, check the console, and walk the switches before relying on it.
+- **Fine (zari) lace:** the paper inside the loops was never keyed (alpha 1). It cannot hang past an edge and its loops show cream paper. Re-key or photograph again.
+- **Leaf lace:** no repeat found (irregular); mirror kept, axis at the centre front.
+- **Geometric lace:** the scallop edge (80 px) and the diamonds (177.7 px) have no common repeat in the short band: a soft scallop jog at each wrap.
+- **Pearl lace on the hem view:** the hem is 3.4 repeats long; not fitted (a motif is cut at one end).
+- The scale values (`repeatCm`, lace `widthMm`) are still assumptions.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)

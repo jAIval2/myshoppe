@@ -1,6 +1,6 @@
 # Plan: polish of the fabric and lace overlay (steps 1–7)
 
-Status: **in progress**: steps 0 and 1 done (see `polish-results.md`); steps 5–7 added on 2026-11-19.
+Status: **done** on 2026-11-19 (results in `polish-results.md`). Steps 2–7 were checked offline, not in a browser: see step 8 there.
 **Numbering note:** the close step was step 5 before 2026-11-19, and is now **step 8**. In `polish-results.md`, "deleted in step 5" means the close step.
 Scope: `demo/` only: `testing.html`, `tools/make_plate.py`, `tools/prep_lace.py`, `tools/prep_fabric.py`, the plates in `assets/plates/`, the swatches in `assets/swatches/`.
 Background: the review of 2026-11-19 (lace looks like a sticker, mirrored seams, motifs cut at the ends, a second weave in the fabric, shadows too dark on dark fabrics). Earlier quality work: `upscale.md`.
@@ -261,10 +261,10 @@ Each step has a test switch for the old behaviour, so the demo works after every
 |---|---|---|---|
 | 0 Baseline | done | 09c78b4 | Step 0 |
 | 1 Lace shadow | done | 3946728 | Step 1 |
-| 2 Linear light | not started | | |
-| 3 Shade without the weave | not started | | |
-| 4 Lace repeat and placement | not started | | |
-| 5 Edging lace past the edge | not started | | |
-| 6 Lace relief, metal and pearl | not started | | |
-| 7 Fabric displacement, sheen, anti-tiling | not started | | |
-| 8 Close and record | not started | | |
+| 2 Linear light | done (offline checks) | 5be88dd | Step 2 |
+| 3 Shade without the weave | done (torso by the fallback) | 0c00617 | Step 3 |
+| 4 Lace repeat and placement | done (2 exceptions) | af93dcf | Step 4 |
+| 5 Edging lace past the edge | done (pearl, geometric only) | d29990a | Step 5 |
+| 6 Lace relief, metal and pearl | done (offline checks) | 0387e6b | Step 6 |
+| 7 Fabric displacement, sheen, anti-tiling | done (offline checks) | de6b155 | Step 7 |
+| 8 Close and record | done | (this commit) | Step 8 |

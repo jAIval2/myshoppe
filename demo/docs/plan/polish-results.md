@@ -318,3 +318,23 @@ Backups: `lace-*@6.json`, `testing@6.html` (untracked).
 | Draw time ≤ 5 ms | **not measured** (normal browser needed). This step adds the most reads: 4 shade + 4 id reads for displacement, 3 + 1 fabric reads for anti-tiling, 4 + 4 for a sheen fabric |
 
 Backup: `testing@7.html` (untracked).
+
+## Step 8: close (2026-11-19)
+
+- The step 0 harness was **not** run again at the close: screenshot runs were stopped after step 2 at the owner's request (25–30 min per set on this machine). The numbers above are the final numbers.
+- Final sizes: plate data torso 437, neck 381, sleeve 726, hem 481 KB (all ≤ 1.0 MB). Lace assets (band + material + sidecar): pearl 524, leaf 409, geometric 212, fine 180 KB (all ≤ 600 KB).
+- Test switches: all kept and documented in `tools/README.md` (each gives back the old behaviour of its step).
+- The `@<step>` copies are deleted. `render.md` §11 has the entry.
+- A last offline check before the commit: the page script passes `node --check`; two inner shader variables that shadowed outer names (`mx`, `o`) were renamed, to remove any doubt about a strict compiler.
+
+**What still needs a real browser** (open `testing.html`, look at the console, walk the switches):
+
+| Step | Item |
+|---|---|
+| all | **the shader compiles** (it has not been compiled since step 4); draw time ≤ 5 ms on a desktop GPU |
+| 2 | FCR ≥ 0.8 on mocha; `fabric=off` within 1 level; no banding in dark folds at 2×; `?linear=0` matches step 3 |
+| 3 | no second weave on the neck view, mustard, at 2× (person) |
+| 4 | a motif centred at the centre front (torso neck, hem); no visible joins except the geometric scallops and the leaf mirror |
+| 5 | overhang depth and holes over the photo; nothing on the mannequin arm; `fabric=off`, lace off identical to step 4 |
+| 6 | unit 7 freed with no change; relief visible on all 4 laces at 2× (person); pearls look like pearls |
+| 7 | the checker bends into the folds ≤ 1.5 mm with the same average square size; the test sheen runs along the grain; no blending blur on mocha at 2× (person); FCR ≥ 0.8 |

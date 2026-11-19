@@ -555,15 +555,15 @@
         // material map: R height, G metal, B pearl dome. Height gradient on the SCREEN (gx, gy = lace coords per canvas px),
         // so the light comes from the upper left on every trim, whatever its direction.
         vec3 m0 = textureGrad(uLaceMat, lc, gx * bias, gy * bias).rgb;
-        vec3 mx = textureGrad(uLaceMat, lc + gx * 1.5, gx * bias, gy * bias).rgb;
-        vec3 my = textureGrad(uLaceMat, lc + gy * 1.5, gx * bias, gy * bias).rgb;
+        vec3 mhx = textureGrad(uLaceMat, lc + gx * 1.5, gx * bias, gy * bias).rgb;
+        vec3 mhy = textureGrad(uLaceMat, lc + gy * 1.5, gx * bias, gy * bias).rgb;
         // a surface that rises towards the lower right faces the key light: lighter; away from it: darker; +-15 % at most
         // gain 0.15: offline, on the tiles at stage scale, 0.25 already clamped 5-24 % of the lace px; 0.15 keeps it gentle
-        float lit = clamp(1.0 + 0.15 * ((mx.r - m0.r) + (my.r - m0.r)), 0.85, 1.15);
+        float lit = clamp(1.0 + 0.15 * ((mhx.r - m0.r) + (mhy.r - m0.r)), 0.85, 1.15);
         // pearls: their bright centres were keyed out with the paper; the dome fills them, lit from the upper left
         float pd = m0.b;
         if (pd > 0.01) {
-          float pg = (mx.b - m0.b) + (my.b - m0.b);                      // > 0 on the upper-left half of the dome
+          float pg = (mhx.b - m0.b) + (mhy.b - m0.b);                      // > 0 on the upper-left half of the dome
           vec3 pc = vec3(0.93, 0.91, 0.87);
           if (uLinear > 0.5) pc = toLin(pc);
           float fill = smoothstep(0.0, 0.2, pd);
@@ -586,8 +586,8 @@
         // 1.5 mip levels softer. The shift is a fixed direction on the screen, so it stays lower-right along the
         // curve of the neckline: gx, gy are the lace coordinates per canvas px, from the plate UV.
         // on the background (wall, form) the lace is farther in front: a longer, softer shadow (x1.5, +0.5 mip)
-        vec2 o = uShadowMm * (bg ? 1.5 : 1.0) / (uCmPerPx * 10.0) / k;   // mm -> plate px -> canvas px
-        vec2 off = gx * o.x + gy * o.y;
+        vec2 so = uShadowMm * (bg ? 1.5 : 1.0) / (uCmPerPx * 10.0) / k;  // mm -> plate px -> canvas px
+        vec2 off = gx * so.x + gy * so.y;
         float soft = bg ? 4.0 : 2.8284;
         vec2 sc = lc - off;
         float sh = (sc.y >= 0.0 && sc.y <= 1.0) ? textureGrad(uLace, sc, gx * bias * soft, gy * bias * soft).a : 0.0;
@@ -597,8 +597,8 @@
       }
     }
 
-    vec3 o = mix(photo.rgb, clamp(col, 0.0, 1.0), cov);
-    outColor = vec4(uLinear > 0.5 ? toSRGB(o) : o, 1.0);
+    vec3 res = mix(photo.rgb, clamp(col, 0.0, 1.0), cov);
+    outColor = vec4(uLinear > 0.5 ? toSRGB(res) : res, 1.0);
   }`;
 
   function compile(type, src) {
