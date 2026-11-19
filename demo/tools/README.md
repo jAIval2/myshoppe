@@ -13,6 +13,7 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 | `make_plate.py` | 5 | `id`, `uv`, `uv_trim`, `shade` maps, `plate.json`, `check.png` |
 | `plate_checks.py` | 6 | Acceptance numbers, PASS / FAIL |
 | `snap_outline.py <plate> shoulders [--dry] [--preview png]` | numeric step 9: the front's shoulder run (and the grid's top edge) snapped to the photo's garment edge; writes `tuck.exempt` and a measured `tuck.profile` into `zones.json`. Run once; it refuses a second run |
+| `snap_outline.py <plate> trim-order` / `edge-trim <zone> <name> <x0> <x1> [--extend-start px] [--extend-end px]` / `hem [--dry]` | numeric step 10: hem trims drawn after the slit trims; a new edging trim along another zone's bottom edge (the side pieces of the hem view); `hem --dry` measures a trim's wobble and its offset to the hem edge against a derived centre line |
 
 ## Measuring and review (the middleware we keep reusing)
 

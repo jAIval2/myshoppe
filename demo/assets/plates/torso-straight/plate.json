@@ -50,15 +50,6 @@
    "vMax": 1.5,
    "side": 1
   },
-  "hem": {
-   "id": 4,
-   "lengthCm": 37.6,
-   "widthMm": 30,
-   "type": "edging",
-   "outerV": 1,
-   "vMax": 1.5,
-   "side": 1
-  },
   "slit-l": {
    "id": 5,
    "lengthCm": 24.1,
@@ -76,6 +67,15 @@
    "outerV": 1,
    "vMax": 1.0,
    "side": -1
+  },
+  "hem": {
+   "id": 4,
+   "lengthCm": 37.6,
+   "widthMm": 30,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5,
+   "side": 1
   }
  },
  "shadeSpace": "linear",

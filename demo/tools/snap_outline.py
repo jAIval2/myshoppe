@@ -2,6 +2,7 @@
 
 usage: python3 tools/snap_outline.py <plate-dir> shoulders [--dry] [--preview out.png]
        python3 tools/snap_outline.py <plate-dir> hem [--dry]
+       python3 tools/snap_outline.py <plate-dir> trim-order
        python3 tools/snap_outline.py <plate-dir> edge-trim <zone> <name> <x0> <x1> [--min-y 1250] [--extend-start px] [--extend-end px] [--dry]
 
 shoulders (torso plate): the front's shoulder run (sleeve top, over the rounded cap, along the slope, to the neck corner)
@@ -17,6 +18,9 @@ shoulders (torso plate): the front's shoulder run (sleeve top, over the rounded 
 hem (numeric.md step 10): the hem trim's centre line is derived from the front's hem edge (the grid's bottom edge): the edge
   moved inward by half the trim's width, smoothed, and cut at the inner edges of the two slit trims. The traced list wobbled
   by +-4 px around the hem's real undulation. Prints the wobble and the offset spread before and after.
+trim-order (numeric.md step 10): the hem trims are drawn AFTER the slit trims (a later trim wins in id.png G). Before, the slit trim's
+  strip (8 mm) overwrote the last 35 px of the hem lace at each corner: with the slits off (the default) that left bare fabric, and
+  the lace stopped short of the garment's edge. Now the hem lace runs to the corner and covers the slit trim's lower end.
 edge-trim (numeric.md step 10): a new trim along the bottom edge of ANOTHER zone (the side pieces of the hem view, so that the lace
   goes round the whole visible hem): the zone outline's points below --min-y between x0 and x1, ordered by x, moved inward by half the
   strip's width (the widthMm of the hem trim) and smoothed. A strip that ends at the frame ends there (x0 = 0, x1 = 1200).
@@ -343,8 +347,20 @@ def edge_trim(plate, a, dry):
     json.dump(Z, open(zj, "w"), separators=(",", ":")); print("wrote", zj)
 
 
+def trim_order(plate, dry):
+    zj = plate + "/zones.json"; Z = json.load(open(zj)); T = Z["trims"]
+    hems = [k for k in T if k == "hem" or k.startswith("hem-")]
+    order = [k for k in T if k not in hems] + hems
+    if list(T) == order: print("trim-order: already in order", order); return
+    print("trim-order:", list(T), "->", order)
+    if dry: return
+    Z["trims"] = {k: T[k] for k in order}
+    json.dump(Z, open(zj, "w"), separators=(",", ":")); print("wrote", zj)
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if len(a) < 2 or a[1] not in ("shoulders", "hem", "edge-trim"): sys.exit(__doc__)
+    if len(a) < 2 or a[1] not in ("shoulders", "hem", "edge-trim", "trim-order"): sys.exit(__doc__)
     if a[1] == "edge-trim": edge_trim(a[0], a, "--dry" in a)
+    elif a[1] == "trim-order": trim_order(a[0], "--dry" in a)
     else: (shoulders if a[1] == "shoulders" else hem)(a[0], "--dry" in a)

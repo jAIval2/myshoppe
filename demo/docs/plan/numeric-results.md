@@ -310,6 +310,46 @@ The render (`view=torso`, mocha, 3×) shows both tips closed: the white wedges a
 - [ ] White-fringe render test: written in step 11 (`plate_invariants.py`); looked at by eye here.
 - [ ] Left and right mirror about the centre line (≤ 1 px): the photo is not symmetric; measured in step 11.
 
+## Step 10: Hem layout
+
+**What the review of 2026-11-20 said:** the hem lace looked crude, in the **hem view** (not the torso). Measured, and the plan's first reading corrected:
+
+| Plan said (numeric.md, 2026-11-20) | Measured |
+|---|---|
+| The torso hem trim's centre line is hand-traced, wobbles ±4 px, starts 17 px low, and sits 13–19 px above the hem edge | **Wrong.** The centre is a constant 16.3 px above the hem edge (half strip 16.7 px), standard deviation **0.05 px**; the ±4 px wobble is the photographed hem's own undulation (the hem drapes in a W over the stand). A smooth derived centre (`snap_outline.py hem --dry`: wobble 0.47 px, std 0.32 px) is no better, so it was **not applied**. The 17 px start is the rounded hem corner. |
+| The front grid's bottom edge is a straight chord at y = 1451 | **Wrong.** It has 106 points and follows the hem edge. |
+
+**What was really wrong in the hem view** (found with a close render, `hm*` shots, and the maps):
+1. **The lace stopped 35 px short of the garment's edge on the right** (and on the torso hem at both corners). Cause: the slit trims were drawn after the hem trim, so the slit strip (8 mm) overwrote the hem lace's last 35 px in `id.png` G (ids 835–866 at y 1296–1320 were 5, not 4). With the slits off (the default) the strip showed bare fabric.
+2. **The lace was a patch on the front panel.** The photo shows three pieces (the left back piece, the front, the right back piece beyond the slit), and only the front had lace.
+
+**Done:**
+1. `tools/snap_outline.py trim-order`: the hem trims are written after the slit trims, so the hem lace runs to the corner and covers the slit trim's lower end (a butt join). Torso and hem plates.
+2. `tools/snap_outline.py edge-trim <zone> <name> <x0> <x1>`: a new trim along the bottom edge of another zone, inward by half the strip. Hem plate: `hem-bl` (left piece, y 1192, x −8 to 214, ends flush at the seam) and `hem-br` (right piece, along its slanted hem, 38°). Both are `edging` (the plate maker types by name; `hem-bl` came out as an insertion at first and had no overhang).
+3. Trim ids 7 and 8 (`make_plate.py` `TRIM_ID`, the shader's arrays 7 → 9 and the page's trim table; `hem-bl` / `hem-br` join the hem group, `hem-bl` ends with a whole motif at the seam).
+
+**Results:**
+
+| Check | Result |
+|---|---|
+| Lace at the front hem's right corner (id G 4 at y 1300) | ends at x 831 → covers to the garment edge (866) |
+| `plate_checks.py` torso, hem | ALL PASS |
+| `mesh_check.mjs`, `dat_check.mjs` (4 plates) | PASS; `plate.dat` hem 2.8 → 3.2 KB |
+| `rebuild_check.sh` neck, sleeve | ALL IDENTICAL |
+| `map_diff.py` hem (GPU maps against the PNG maps) | all PASS except `hem-br` u: 99 % 2.11 px against 1.85 (max 20.8 px, bias 0.02 px) |
+| Lace fit (`data-lacefit`), pearl / geometric / paisley | no console errors; `hem-bl` n = 1 / 4 / 3 whole motifs at scale 1.00 / 1.025 / 1.019 |
+
+**Open:**
+- `hem-br` u at 99 %: the strip runs on a slope of more than 35°, and the PNG's own quad jitter is larger along a slanted strip. Not a bias. Not loosened.
+- **Whole motifs at both ends of the front hem:** the pearl lace has a repeat of 4.25 cm against a trim of 14.6 cm (3.4 repeats): a whole number within ±10 % does not exist, so the scale stays 1.00 and the motif is centred, with partial motifs at both ends (symmetric). The fix is a smaller pearl repeat, not a layout rule.
+- The hairlines in the lace's net holes at the seams are the photo's own seam shading (the shade map), not a defect of the trim.
+- Mitred joins between the hem strip and the slit strips are not made: the slit strip ends under the hem lace.
+
+- [x] Lace runs to the corner; no bare fabric between the lace's end and the slit.
+- [x] Lace on the whole visible hem (three pieces).
+- [ ] Centre line smooth and at constant offset: already true (std 0.05 px); no change needed.
+- [ ] Whole motif at the centre front and whole at both ends within ±3 %: not possible for the pearl repeat (open).
+
 ## Summary
 
 | Step | Result |

@@ -1,6 +1,6 @@
 # Plan: numeric — curves and a `.dat` file in place of the map images
 
-Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; step 9 done; steps 10–11 (hem layout, invariant checks) planned**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
+Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; steps 9 and 10 done; step 11 (invariant checks) planned**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
 Compare: **http://localhost:8000** (`polish`), **http://localhost:8100** (`halfway`, the reference for this plan), **http://localhost:8200** (this worktree), each `/testing.html`.
 Background: `DedhD.md` §10. Product: a visualiser, 4 fixed views, **no 3D**.
 
@@ -169,6 +169,8 @@ Review of the torso view on port 8200 (2026-11-20) found two faults that no test
 
 ### Step 10: Hem layout
 
+> **Result 2026-11-20 (see `numeric-results.md`):** the review concerned the hem VIEW. Items 1 and 4 below rest on a wrong reading (the centre line is exact, the grid bottom follows the hem). The real faults were the slit trim's id overwriting the hem lace's last 35 px, and lace on the front panel only. Both are fixed (trim order; `hem-bl`, `hem-br`).
+
 **Do:**
 1. **Derive the trim from the hem.** In `zones.json` the trim gets `"derive": { "from": "front", "edge": "hem", "offsetMm": <measured>, "smoothPx": 24 }`. `plate.js` builds the centre line from the (snapped, smoothed) hem edge with `offset_poly`, then smooths it. The hand-traced list is no longer shipped. The `.dat` gets smaller as well.
 2. **Constant offset:** the lace's outer edge keeps the same distance to the hem edge, along the whole hem. The overhang (edging, `vMax` = 1.5) hangs a fixed length from it.
@@ -240,5 +242,5 @@ The check also runs on the page's own mesh (`?geom=mesh`), through `readMaps()`,
 | 7 Stop sending the maps | done, build time unverified | (step 7) | 1.67 MB first visit (was 3.64 MB); build 1.4–3 s in software rendering, device needed |
 | 8 Direct mesh draw (optional) | not done | | not needed by anything measured |
 | 9 Shoulder closure | done, one speck open | (step 9) | tips closed; run snapped to the photo edge; tuck.exempt and a measured tuck.profile; 199 → 65 px uncovered |
-| 10 Hem layout | planned | | |
+| 10 Hem layout | done, premise corrected | (step 10) | lace was cut 35 px short by the slit trim's id; hem trims drawn last; lace on the side pieces; centre line was already exact |
 | 11 Plate invariant checks | planned | | |
