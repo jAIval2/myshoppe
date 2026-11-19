@@ -272,6 +272,44 @@ It is optional in the plan ("only if phone memory needs it, or the stair-stepped
 - [x] First visit, 4 views: ≤ 1.75 MB of plate data (1.67 MB).
 - [ ] Journey steps ≤ 1 s after the first visit: **not verified; 1.4–3.1 s in software rendering** (a device is needed).
 
+## Step 9: Shoulder closure
+
+**Found (review of 8200, 2026-11-20):** the torso view showed the base photo's white garment at both shoulder tips and along the right shoulder slope. Measured on `id.png` against `base.jpg` (garment = low colour saturation, 0.5 at 22 of 255; the wall and the mannequin are warm, 32–36):
+- The front's shoulder run was a straight line, 4–5 px **inside** the real slope on the right and about 1 px on the left.
+- The tuck pushed the outline's run 10 px sideways (made for the side seam), which bent the slope into a kink.
+- At each tip the sleeve's top point (y 302.8) and the front's tip (y 294) did not meet: a wedge of 9 px at the top.
+- The tuck's fixed push of 40 px (from y 315 down) made the front stick out **past** the real edge beside the shoulder: the sleeve there is a crescent of only 5–17 px.
+
+**Done** (`tools/snap_outline.py <plate> shoulders`, one run on a `zones.json` that is not snapped yet; `--dry --preview <png>` shows old and new runs):
+1. Each side's run is rebuilt from a point 10 px down the sleeve's outer edge, over the sleeve's top vertex and the old tip, to the neck corner, at 3 px spacing. Each point moves along its outward normal, at most 5 px, to the 50 % crossing of the garment mask. The displacement is a robust cubic along the run (a soft shaded edge gives wild single crossings; points more than 1.2 px off the fit are dropped; the neck corner stays). Moves: left mean 1.2 px (max 6.0), right mean 4.2 px (max 5.8).
+2. The new run replaces the front outline's run **and** the front grid's top edge (the grid limits what the outline can show); the grid's side corners are the run's ends.
+3. `tuck.exempt` (new): index ranges of the outline and the grid corners that the tuck does not move. Python (`make_plate.py`) and JavaScript (`plate.js`) read it the same way.
+4. `tuck.profile` (new, `{left, right}`, each `[[y, push px]]`): the push is measured, so that the front's edge ends in the **middle of the sleeve** at each height (at most `reach`). It replaces `tip` / `reach` down to `yFull`; below it the plate's own taper stays. The photo is not symmetric, so the two sides differ (at the sleeve top the left push is 13 px, the right 11 px).
+5. The run's extension down the sleeve edge is 10 px: 22 px gave a front-side bulge of 5.3 % (limit 5 %, `plate_checks.py`), 10 px gives 5.0 / 4.9 %. The extra reach is what the right cap needed, so a longer extension needs its own grid zone (open).
+
+**Results** (torso plate):
+
+| Check | Before | After |
+|---|---|---|
+| Uncovered garment near a zone, shoulder band (x 350–850, y 230–360) | 199 px | 65 px |
+| Pieces wider than 2 px there | 24 px | 7 px (one speck at the right neck corner) |
+| `plate_checks.py` | ALL PASS | ALL PASS (bulge 5.0 / 4.9 %, front grain tilt 9.5°) |
+| `mesh_check.mjs`, `dat_check.mjs` (4 plates) | PASS | PASS |
+| `map_diff.py` (page's GPU maps against the PNG maps, torso) | PASS | PASS (id G: 7 px away from an edge; uv bias 0.01 / 0.04 px; shade 100 % within 1 level) |
+| `rebuild_check.sh` neck, sleeve, hem | | ALL IDENTICAL |
+| `plate.dat` torso | 14.4 KB | 17.5 KB (the run has 47 + 44 points; the `.dat` for 4 views is 24.8 KB) |
+
+The render (`view=torso`, mocha, 3×) shows both tips closed: the white wedges are gone, and the live neckline at both ends of its range renders with no errors. A rim of 1–3 px of white remains along the sleeve's outer edge below the right cap, and a fine grey rim of 1 px along the slopes (the photo's own edge pixel).
+
+**Open:**
+- **Right neck corner:** the corner is at y 257, the garment's edge at 252: a 7 px speck. Moving it changes `neck.edge` and the default neckline of the halfway work, so it is not done here.
+- **Body sides, y 940–1180, x about 805:** a strip of 2–3 px of uncovered garment along the right side (the traced side sits inside the real edge; `render.md`). Not a shoulder: step 11 reports it.
+- **Sleeve outer edges** are not snapped; the cap on the right shows the effect (the strip above).
+
+- [x] Shoulder band: uncovered garment 65 px (limit 0.05 % of the garment = 290 px); the pieces wider than 2 px: one 7 px speck at a neck corner (open).
+- [ ] White-fringe render test: written in step 11 (`plate_invariants.py`); looked at by eye here.
+- [ ] Left and right mirror about the centre line (≤ 1 px): the photo is not symmetric; measured in step 11.
+
 ## Summary
 
 | Step | Result |

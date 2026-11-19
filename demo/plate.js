@@ -76,7 +76,13 @@
     const [x, y] = p;
     if (Math.abs(x - t.cx) < t.centreBand) return [x, y];
     let d;
-    if (y < t.tipY) d = t.tip;
+    let pr = t.profile;
+    if (pr && !Array.isArray(pr)) pr = x > t.cx ? pr.right : pr.left;      // per side (the photo is not symmetric)
+    if (pr && y <= pr[pr.length - 1][0]) {                // measured push (tools/snap_outline.py shoulders), linear between its points
+      d = pr[0][1];
+      for (let i = 0; i + 1 < pr.length; i++) if (pr[i][0] <= y && y <= pr[i + 1][0]) d = pr[i + 1][0] > pr[i][0] ? pr[i][1] + ((pr[i + 1][1] - pr[i][1]) * (y - pr[i][0])) / (pr[i + 1][0] - pr[i][0]) : pr[i + 1][1];
+      if (y < pr[0][0]) d = 0;
+    } else if (y < t.tipY) d = t.tip;
     else if (y <= t.yFull) d = t.reach;
     else if (y <= t.yZero) d = t.reach + ((t.below - t.reach) * (y - t.yFull)) / (t.yZero - t.yFull);
     else d = t.below;
@@ -87,8 +93,10 @@
     const C = JSON.parse(JSON.stringify(Z));
     if (C.tuck) {
       const fz = C.zones.front;
-      for (const k of ["left", "right"]) fz.grid[k] = fz.grid[k].map((p) => tuck(p, C.tuck));
-      fz.outline = fz.outline.map((p) => tuck(p, C.tuck));
+      // tuck.exempt (tools/snap_outline.py shoulders): index ranges that the push does not move: the outline's shoulder runs, the grid-edge corners
+      const ex = C.tuck.exempt || {}, skip = (rs, i) => (rs || []).some(([lo, hi]) => i >= lo && i <= hi);
+      for (const [k, key] of [["left", "gridLeft"], ["right", "gridRight"]]) fz.grid[k] = fz.grid[k].map((p, i) => (skip(ex[key] ? [ex[key]] : [], i) ? p.slice() : tuck(p, C.tuck)));
+      fz.outline = fz.outline.map((p, i) => (skip(ex.outline, i) ? p.slice() : tuck(p, C.tuck)));
     }
     return C;
   }

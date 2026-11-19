@@ -1,6 +1,6 @@
 # Plan: numeric — curves and a `.dat` file in place of the map images
 
-Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
+Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; step 9 done; steps 10–11 (hem layout, invariant checks) planned**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
 Compare: **http://localhost:8000** (`polish`), **http://localhost:8100** (`halfway`, the reference for this plan), **http://localhost:8200** (this worktree), each `/testing.html`.
 Background: `DedhD.md` §10. Product: a visualiser, 4 fixed views, **no 3D**.
 
@@ -142,6 +142,77 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 - [ ] GPU memory per view ≤ 12 MB (was about 41 MB).
 - [ ] Render ≤ 1.0 against 8100 (the edges change on purpose: smooth instead of stair-stepped).
 
+## 3b. Invariants of the plates (steps 9–11)
+
+Review of the torso view on port 8200 (2026-11-20) found two faults that no test of steps 0–7 could catch: those tests compare the mesh with the PNG maps, and the PNG maps carry the same faults. A plate must also be **right in itself**. The properties that must hold for every plate and every setting are its **invariants**. The numeric version can fix them at the source, because the curves are numbers.
+
+### What was found (torso plate, `zones.json`)
+
+| Fault | Measurement | Cause |
+|---|---|---|
+| **Shoulders: white photo fabric shows** along the shoulder line (3–5 px rim) and as a wedge at each shoulder tip, beside the neck lace | Overlay of `id.png` R on `base.jpg` (left shoulder; the right side mirrors it) | The front outline's top edge is a stepped line inside the real shoulder slope. The sleeve zone starts at y = 303 and the shoulder point is at y = 298, so the front zone (ends at the tip) and the sleeve zone do not meet. `tuck` is 10 px at the tip. |
+| **Hem lace is wobbly, skewed, and starts low** | Trim centre y: 1,436 at the corner, then 1,453 to 1,462 (±4 px wobble); the front outline bottom is 1,472–1,479 (±3 px wobble). The lace centre sits 13–19 px above the hem edge, not at a constant offset. | The centre line of the `hem` trim is hand-traced, 106 points, not derived from the hem. The first segment drops 17 px. |
+| **Fabric at the hem is extrapolated** | Front grid bottom edge is straight at y = 1,450.7. The hem is 1,478 at its lowest. | The grid edge is a chord, not the hem curve. Fabric and lace beside it do not keep one grain. |
+
+### Step 9: Shoulder closure
+
+**Do:**
+1. **Edge snap tool** `tools/snap_outline.py`: move each outline point (front, sleeves) along its normal, ≤ 4 px, to the strongest edge of the base photo (garment against mannequin or wall). Then smooth the curve (≤ 0.5 px error) and write it back to `zones.json`. Only the garment-to-background edges move. Seams between zones do not.
+2. **Shoulder seam as one shared curve:** the front outline and the sleeve outline both use it from the neck corner to the shoulder tip, as the seam list in `annotate_*.py` does for the sleeve view. The sleeve zone starts at the shoulder point (y = 298), not below it. The `tuck` rule keeps the front under the sleeve.
+3. A **grow rule** in `plate.js` for a free (non-seam) outline edge: 0.5 px outward, so the photo's anti-aliased edge pixel is never left.
+4. Rebuild with `make_plate.py` (the PNG maps stay as the reference) and write the new `.dat`.
+
+**Accept:**
+- [x] **Uncovered garment** (new check): garment mask from the photo, minus the union of zones: ≤ 0.05 % of the garment area (65 px), no connected piece wider than 2 px **except one 7 px speck at the right neck corner (open: moving it changes the neckline)**.
+- [ ] **White-fringe render test**: a strongly coloured fabric (`?fabric=` a test red), the torso view at 2×. Count of pixels within 3 px of the outline that are close to the photo's white linen (< 12 levels): 0 in the shoulder band.
+- [ ] Left and right mirror about the centre line: mean outline difference ≤ 1 px.
+
+### Step 10: Hem layout
+
+**Do:**
+1. **Derive the trim from the hem.** In `zones.json` the trim gets `"derive": { "from": "front", "edge": "hem", "offsetMm": <measured>, "smoothPx": 24 }`. `plate.js` builds the centre line from the (snapped, smoothed) hem edge with `offset_poly`, then smooths it. The hand-traced list is no longer shipped. The `.dat` gets smaller as well.
+2. **Constant offset:** the lace's outer edge keeps the same distance to the hem edge, along the whole hem. The overhang (edging, `vMax` = 1.5) hangs a fixed length from it.
+3. **Corners and ends:** the hem trim runs from the left slit to the right slit and meets each slit trim at a **mitre** (both strips cut on the bisector of their two centre lines), not a butt cut. The ends of the hem band do not jump.
+4. **Grid follows the hem:** the front grid's bottom edge becomes the hem curve (smoothed). The Coons patch then keeps a square cell at the hem: cell aspect 1 ± 3 %, grain straight within 3° (the same measure as the sleeve fix of step 5).
+5. **Motif layout on the hem:** the repeat count is chosen so that a **whole motif is centred at the centre front** and the two ends are symmetric (a whole or a half motif at both ends, never a cut at one end and whole at the other). The scale change to reach this is ≤ ± 3 % (now 0.96 to 1.01).
+6. Check the dashed stitch line that shows over the stand base in the torso view (the white dashes near the centre of the hem). Clip it to the garment (the occluder rule of step 3), or remove it.
+
+**Accept:**
+- [ ] Centre line: second difference ≤ 0.3 px, no point more than 0.5 px from the offset curve.
+- [ ] Offset to the hem edge constant: standard deviation ≤ 0.5 px.
+- [ ] Hem trim end meets the slit trim: gap ≤ 0.5 px, no overlap step.
+- [ ] Front grid cell aspect at the hem 1 ± 3 %; grain tilt ≤ 3°.
+- [ ] Lace fit: whole motif at the centre front; ends symmetric; scale within ± 3 %. Check with `polish_metrics.py fit`.
+- [ ] Same rules checked on the hem plate (`hem-straight`), where the hem trim is already derived from a real edge.
+
+### Step 11: One invariant check for every plate
+
+**Do:** `tools/plate_invariants.py <plate-dir>`, run by `make_plate.py` at the end, PASS or FAIL per rule. The rules:
+
+| Rule | Test |
+|---|---|
+| Closure | no uncovered garment (step 9) |
+| No gaps | no hairline gap between zones (R = 0 inside the garment) |
+| Symmetry (torso, neck) | left and right curves mirror about the centre line (≤ 1 px) |
+| Grain | cell aspect 1 ± 3 %, tilt ≤ 3° on every zone |
+| Trim follows its edge | constant offset (σ ≤ 0.5 px), smooth (second difference ≤ 0.3 px) |
+| Trim joins | trims that meet do so on a mitre, gap ≤ 0.5 px |
+| Motif | whole motif at the centre front for centred trims; symmetric ends |
+| Landmarks | every landmark inside its zone, at the right place on the outline |
+
+The check also runs on the page's own mesh (`?geom=mesh`), through `readMaps()`, so that a curve change is caught without a PNG rebuild.
+
+**Accept:**
+- [ ] All 4 plates PASS, or each FAIL is written as an open item with its measurement.
+- [ ] `tools/README.md` and `docs/plate.md` list the new check, so that a new plate (a new look, a new view) must pass it.
+
+### Exit strategy for steps 9–11
+
+- Edge snap moves a point more than 4 px, or makes the outline noisy: keep the annotated outline there and mark the spot for a hand fix with `gridcrop.py`.
+- The derived hem trim looks worse than the traced one on the hem plate: derive only on the torso plate.
+- A mitre needs more than the ribbon code gives: butt-join and cover the join with a short overlapping piece.
+- Revert a step after 2 failed attempts, as in section 4.
+
 ## 4. Exit strategy
 
 **Stop a step** and revert its commit if it fails after 2 attempts or breaks a budget. Write the reason in `numeric-results.md`.
@@ -168,3 +239,6 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 6 The `.dat` file | done | (step 6) | 21.7 KB raw (8.3 KB gzip) for 4 views, exact; render identical to JSON; no thinning needed |
 | 7 Stop sending the maps | done, build time unverified | (step 7) | 1.67 MB first visit (was 3.64 MB); build 1.4–3 s in software rendering, device needed |
 | 8 Direct mesh draw (optional) | not done | | not needed by anything measured |
+| 9 Shoulder closure | done, one speck open | (step 9) | tips closed; run snapped to the photo edge; tuck.exempt and a measured tuck.profile; 199 → 65 px uncovered |
+| 10 Hem layout | planned | | |
+| 11 Plate invariant checks | planned | | |

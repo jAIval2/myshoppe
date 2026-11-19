@@ -12,6 +12,7 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 | `fit_zones.py` | — | Legacy, torso only |
 | `make_plate.py` | 5 | `id`, `uv`, `uv_trim`, `shade` maps, `plate.json`, `check.png` |
 | `plate_checks.py` | 6 | Acceptance numbers, PASS / FAIL |
+| `snap_outline.py <plate> shoulders [--dry] [--preview png]` | numeric step 9: the front's shoulder run (and the grid's top edge) snapped to the photo's garment edge; writes `tuck.exempt` and a measured `tuck.profile` into `zones.json`. Run once; it refuses a second run |
 
 ## Measuring and review (the middleware we keep reusing)
 

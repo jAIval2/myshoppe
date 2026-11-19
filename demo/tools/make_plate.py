@@ -96,7 +96,14 @@ def tuck(p, t):
     x, y = p
     if abs(x - t["cx"]) < t["centreBand"]:
         return [x, y]
-    if y < t["tipY"]:
+    pr = t.get("profile")
+    if isinstance(pr, dict): pr = pr["right" if x > t["cx"] else "left"]       # per side (the photo is not symmetric)
+    if pr and y <= pr[-1][0]:                       # measured push (snap_outline.py shoulders), linear between its points
+        d = pr[0][1]
+        for (ya, da), (yb, db) in zip(pr, pr[1:]):
+            if ya <= y <= yb: d = da + (db - da) * (y - ya) / (yb - ya) if yb > ya else db
+        if y < pr[0][0]: d = 0.0
+    elif y < t["tipY"]:
         d = t["tip"]
     elif y <= t["yFull"]:
         d = t["reach"]
@@ -109,9 +116,12 @@ def tuck(p, t):
 
 if "tuck" in Z:
     fz = Z["zones"]["front"]
-    for k in ("left", "right"):
-        fz["grid"][k] = [tuck(p, Z["tuck"]) for p in fz["grid"][k]]
-    fz["outline"] = [tuck(p, Z["tuck"]) for p in fz["outline"]]
+    # tuck.exempt (snap_outline.py shoulders): index ranges that the push does not move: the outline's shoulder runs and the grid-edge corners
+    ex = Z["tuck"].get("exempt", {})
+    skip = lambda rs, i: any(a <= i <= b for a, b in rs)
+    for k, key in (("left", "gridLeft"), ("right", "gridRight")):
+        fz["grid"][k] = [list(p) if skip([ex.get(key, [])] if ex.get(key) else [], i) else tuck(p, Z["tuck"]) for i, p in enumerate(fz["grid"][k])]
+    fz["outline"] = [list(p) if skip(ex.get("outline", []), i) else tuck(p, Z["tuck"]) for i, p in enumerate(fz["outline"])]
 
 
 # ---- live neckline (halfway.md step 2): the photographed neck edge = the run of front-outline points BELOW the grid top
