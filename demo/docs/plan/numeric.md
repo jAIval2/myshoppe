@@ -81,8 +81,8 @@ The pixel identity is then easy to test (read the textures back, compare them wi
 4. The live neck trim (halfway step 5) stays analytic in the shader. Only its baked default comes from the ribbon.
 
 **Accept:**
-- [ ] All trims on the torso pass the map tests; edging past the edge included.
-- [ ] Lace fit (`polish_metrics.py fit`) unchanged: the same whole repeats on every trim.
+- [x] All trims on the torso pass the map tests; edging past the edge included.
+- [x] Lace fit (`polish_metrics.py fit`) unchanged: the same whole repeats on every trim.
 
 ### Step 4: Shade from the photo, on the GPU
 
@@ -162,7 +162,7 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 0 Baseline | done | (step 0) | 12 of 12 identical on 8100 and 8200; maps 2,036 KB; 41 MB GPU per view |
 | 1 Plate maths in JavaScript | done | (step 1) | every vertex within 3e-11 px on 4 plates; trim `side` now in plate.json |
 | 2 Zone maps from the mesh (torso) | done, criteria revised | (step 2) | maps pass; render ≤ 0.30 after a 2 px blur (1.47 unblurred, texel jitter of the PNG's 12-bit uv) |
-| 3 Trims as ribbons | planned | | |
+| 3 Trims as ribbons | done | (step 3) | id G + uv_trim built; bias ≤ 0.11 px; lace fit identical; render ≤ 0.31 after blur |
 | 4 Shade on the GPU | planned | | |
 | 5 Neck, sleeve, hem | planned | | |
 | 6 The `.dat` file | planned | | |

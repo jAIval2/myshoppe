@@ -131,7 +131,16 @@ for (const [i, q] of queries.entries()) {
     } catch { ok = false; }
     if (ok) break;
   }
-  await sleep(400);
+  // a swatch or a lace can still be on its way when the first frame is drawn (a busy local server): wait until the canvas stops changing
+  let last = "", same = 0;
+  for (let n = 0; n < 40 && same < 3; n++) {
+    await sleep(300);
+    try {
+      const sig = await evaluate(`(() => { const d = document.getElementById("stage").toDataURL("image/png"); return d.length + ":" + d.slice(-200); })()`);
+      same = sig === last ? same + 1 : 0;
+      last = sig;
+    } catch { same = 0; }
+  }
   const entry = { query: q, ok };
   try {
     if (opt.input) entry.input = await runInput(opt.input);

@@ -1016,7 +1016,7 @@
   }
 
   const MAPS = [["photo", "base.jpg", false], ["id", "id.png", true], ["uv", "uv.png", true], ["uvt", "uv_trim.png", true], ["shade", "shade.png", true]];
-  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k !== "uv") : MAPS);   // the mesh makes uv itself
+  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k === "photo" || k === "shade") : MAPS);   // the mesh makes id, uv and uv_trim itself (steps 2-3)
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
       const P = VIEWS[view].plate, maps = mapsOf(view);
@@ -1441,6 +1441,7 @@
     gl.uniform1fv(U("uTrimFit"), new Float32Array(7).fill(1));
   }
 
+  const builtMapsFor = (view) => meshOn(view) && builtMaps && builtMaps.uvt;
   let builtMaps = null;                               // { id, uv, ms } of the current view when it was built from the mesh
   const MESH_CELL = params0.has("cell") ? parseFloat(params0.get("cell")) : 4;   // test: ?cell=<px> grid cell of the meshes
   const MESH_OFF = params0.has("mapoff") ? (([a, b, c, d, g]) => ({ idOff: [a, b], uvOff: [c, d], grow: g }))(params0.get("mapoff").split(",").map(parseFloat)) : {};   // test: ?mapoff=idx,idy,uvx,uvy,grow
@@ -1477,7 +1478,7 @@
     if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
     setUnit(0, bm.photo);
     if (meshOn(view)) {                                // the maps from the curves (numeric.md): id R / B and uv; G, uvt, shade still PNG
-      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), idImage: bm.id, cell: MESH_CELL, ...MESH_OFF });
+      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), cell: MESH_CELL, ...MESH_OFF });
       setUnitTex(1, built.id);
       setUnitTex(2, built.uv);
       stat.dataset.build = built.ms.toFixed(1);
@@ -1488,7 +1489,7 @@
       stat.dataset.build = "";
       builtMaps = null;
     }
-    setUnit(3, bm.uvt, { data: true });
+    if (builtMapsFor(view)) setUnitTex(3, builtMaps.uvt); else setUnit(3, bm.uvt, { data: true });
     setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
     Object.values(bm).forEach(release);                // on the GPU now: free the decoded images
     plate = v.plate;
@@ -1785,7 +1786,7 @@
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
     buildMs: () => (stat.dataset.build ? +stat.dataset.build : null),
-    readMaps: () => (builtMaps ? { id: Maps.readPNG(gl, builtMaps.id, plate.viewBox[0], plate.viewBox[1]), uv: Maps.readPNG(gl, builtMaps.uv, plate.viewBox[0], plate.viewBox[1]) } : null),
+    readMaps: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readPNG(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
     setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
     timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step }),
   };

@@ -6,8 +6,8 @@
   into offscreen RGBA8 textures from triangle meshes calculated by plate.js, with the same 12-bit packing as the PNGs of
   tools/make_plate.py. The main shader does not change.
 
-  Step 2: id.png R (zone) and B (neck area), and uv.png. Everything else of id (G, the trim) is taken from the image that
-  is passed in (the PNG, until step 3).
+  Step 2: id.png R (zone) and B (neck area), and uv.png. Step 3: id G (trims) and uv_trim.png, from ribbons along the trim
+  centre lines. If an `idImage` is passed in, its G channel is kept instead (the PNG) and the trims are not drawn.
 
   Coordinates: plate px, as make_plate.py (an integer coordinate = the centre of that pixel). Row j of a texture is plate row j
   (no flip), so the clip y is not flipped either.
@@ -28,11 +28,14 @@
   precision highp float;
   precision highp int;
   in vec2 vUV;
+  uniform sampler2D uMask;  // unit 14: the garment (id R > 0), copied from the id once the zones are drawn (trims, step 3)
+  uniform float uTestMask;  // 1 = draw only where the garment is (the inner part of a trim strip)
   uniform float uMode;      // 0 = a constant colour (id), 1 = the 12-bit packed (u, v) in cm (uv)
   uniform vec4  uCol;
   uniform float uRange;     // UV range in cm (plate.json uvRangeCm)
   out vec4 outColor;
   void main() {
+    if (uTestMask > 0.5 && texelFetch(uMask, ivec2(gl_FragCoord.xy), 0).r == 0.0) discard;
     if (uMode < 0.5) { outColor = uCol; return; }
     int a = int(clamp(floor(vUV.x / uRange * 4095.0 + 0.5), 0.0, 4095.0));
     int b = int(clamp(floor(vUV.y / uRange * 4095.0 + 0.5), 0.0, 4095.0));
@@ -82,10 +85,10 @@
   }
 
   /*
-    build(gl, { plate, Z, idImage, cell }) -> { id, uv, ms }
+    build(gl, { plate, Z, idImage, cell }) -> { id, uv, uvt, ms }
       plate   plate.json (viewBox, uvRangeCm, neck{rect, edge})
       Z       zones.json, prepared by Plate.prepare (tuck applied)
-      idImage the PNG of id.png (an ImageBitmap): its G channel (the trims) is kept until step 3 draws it too
+      idImage optional: the PNG of id.png (an ImageBitmap). With it the trims (G) are the PNG's and uvt is not built
       cell    px per grid cell of the meshes (default 4)
       idOff   [x, y] px added to the positions of the id and the coverage of every map (default 0, 0: found by tools/map_diff.py
               against id.png, 0 px of its 1 px edge band is missed)
@@ -95,9 +98,10 @@
               overwritten the earlier ones, so a pixel shows the surface about 1 px further on in u and in v. Found by tools/
               map_diff.py: the signed mean of PNG - built is 0 at (-0.5, -0.5). The uv is drawn twice: first at idOff (so that
               every pixel that has a zone has a uv), then at uvOff (the precise values).
-    id: the id texture (R zone, G from idImage, B neck area); uv: the packed fabric coordinates. Both RGBA8, NEAREST.
+    id: the id texture (R zone, G trim, B neck area); uv: the packed fabric coordinates; uvt: the packed trim coordinates (u cm along,
+    v 0..1 over vMax). All RGBA8, NEAREST.
   */
-  function build(gl, { plate, Z, idImage, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.4 }) {
+  function build(gl, { plate, Z, idImage = null, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.4 }) {
     const t0 = performance.now();
     const [W, H] = plate.viewBox;
     // ---- keep the state of the page: the program, the vertex array, the bound buffers, the viewport, the texture unit
@@ -149,7 +153,7 @@
       for (const f of polys) { gl.bindBuffer(gl.ARRAY_BUFFER, f.vb); attrib(); gl.drawArrays(gl.TRIANGLE_FAN, 0, f.count); }
       gl.stencilFunc(gl.EQUAL, 1, 1); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     };
-    const stencilDone = () => { gl.stencilMask(0xff); gl.clear(gl.STENCIL_BUFFER_BIT); gl.disable(gl.STENCIL_TEST); };
+    const stencilDone = () => { gl.stencilMask(1); gl.clear(gl.STENCIL_BUFFER_BIT); gl.disable(gl.STENCIL_TEST); };   // bit 1 (occluders) stays
     const drawGrid = (g, offs = [idOff]) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, g.vb); attrib(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.ib);
       for (const o of offs) { setOff(o); gl.drawElements(gl.TRIANGLES, g.count, gl.UNSIGNED_INT, 0); }
@@ -218,11 +222,72 @@
         gl.disable(gl.SCISSOR_TEST);
       }
     }
+    // ---- trims (step 3): ribbons along the centre lines, back to front in the order of zones.json (a later trim overwrites)
+    let uvtTex = null, maskTex = null, uvtFbo = null;
+    const trimList = idImage || !Z.trims ? [] : Object.entries(Z.trims);
+    if (trimList.length) {
+      // the garment: every pixel that has a zone. The inner part of a strip is drawn only there (a sampler, not the id: no feedback)
+      gl.activeTexture(gl.TEXTURE0 + 14);
+      maskTex = dataTexture(gl, W, H, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, idFbo);
+      gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, W, H);
+      gl.uniform1i(U("uMask"), 14);
+      gl.activeTexture(gl.TEXTURE0 + 15);
+      uvtTex = dataTexture(gl, W, H, null);
+      uvtFbo = fbo(uvtTex);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, uvtFbo);
+      gl.colorMask(true, true, true, true); gl.clear(gl.COLOR_BUFFER_BIT);
+      // objects in front (the mannequin arm): the overhang of a strip is not drawn there. Stencil bit 1, even-odd.
+      if (Z.occluders && Z.occluders.length) {
+        gl.enable(gl.STENCIL_TEST);
+        gl.colorMask(false, false, false, false);
+        gl.stencilMask(2); gl.stencilFunc(gl.ALWAYS, 0, 2); gl.stencilOp(gl.KEEP, gl.KEEP, gl.INVERT);
+        setOff(idOff);
+        for (const poly of Z.occluders) { const f = fanBuffer(gl, poly); buffers.push(f.vb); gl.bindBuffer(gl.ARRAY_BUFFER, f.vb); attrib(); gl.drawArrays(gl.TRIANGLE_FAN, 0, f.count); }
+        gl.disable(gl.STENCIL_TEST);
+      }
+      // The plate maker paints a strip quad after quad, along and then across, each with an outline: a pixel on the border of two
+      // quads shows the later one. So its u runs ahead of the exact value along the strip, and its v across it, by half a quad:
+      // tools/map_diff.py, all 6 trims of the torso plate, whatever the direction of the strip on the screen: +0.5 px in both.
+      // (halfway step 5 found 0.95 px for u: it measured against a shader convention in which a pixel sits half a px earlier.)
+      const TRIM_BIAS_PX = 0.5, TRIM_V_BIAS_PX = 0.5;
+      const trimShifts = grow > 0 ? [[grow, 0], [-grow, 0], [0, grow], [0, -grow], [0, 0]] : [[0, 0]];   // the centre copy last: its values win
+      for (const [name, trim] of trimList) {
+        const info = plate.trims[name];
+        if (!info || info.side === undefined) throw new Error(`maps.js: plate.json has no side for trim ${name}`);
+        const par = root.Plate.trimParams(name, trim, Z);
+        const tri = root.Plate.trimTriangles(trim, par, info.side, (TRIM_BIAS_PX * plate.mmPerPx) / 10, plate.uvRangeCm, TRIM_V_BIAS_PX / (par.vmax * 2 * par.half));
+        const parts = [[tri.inner, true]];
+        if (tri.outer) parts.push([tri.outer, false]);
+        const bufs = parts.map(([arr, inner]) => { const vb = gl.createBuffer(); buffers.push(vb); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW); return { vb, n: arr.length / 4, inner }; });
+        const draw = (sh) => {
+          setOff([idOff[0] + sh[0], idOff[1] + sh[1]]);
+          for (const b of bufs) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, b.vb); attrib();
+            gl.uniform1f(U("uTestMask"), b.inner ? 1 : 0);        // inner: on the garment only; overhang: anywhere but behind an occluder
+            if (b.inner) gl.disable(gl.STENCIL_TEST);
+            else { gl.enable(gl.STENCIL_TEST); gl.stencilMask(0); gl.stencilFunc(gl.EQUAL, 0, 2); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP); }
+            gl.drawArrays(gl.TRIANGLES, 0, b.n);
+          }
+          gl.disable(gl.STENCIL_TEST);
+        };
+        gl.bindFramebuffer(gl.FRAMEBUFFER, idFbo);               // id G = the trim number
+        gl.uniform1f(U("uMode"), 0); gl.uniform4f(U("uCol"), 0, info.id / 255, 0, 1);
+        gl.colorMask(false, true, false, false);
+        for (const sh of trimShifts) draw(sh);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, uvtFbo);              // uv_trim: u cm along, v 0..1 over vMax
+        gl.uniform1f(U("uMode"), 1);
+        gl.colorMask(true, true, true, true);
+        for (const sh of trimShifts) draw(sh);                   // the shifted copies first, the centre copy last: its values win
+      }
+      gl.uniform1f(U("uTestMask"), 0);
+    }
     gl.finish();
 
     // ---- release the scratch objects and give the state back
     for (const b of buffers) gl.deleteBuffer(b);
-    gl.deleteFramebuffer(idFbo); gl.deleteFramebuffer(uvFbo); gl.deleteRenderbuffer(rb);
+    gl.deleteFramebuffer(idFbo); gl.deleteFramebuffer(uvFbo); if (uvtFbo) gl.deleteFramebuffer(uvtFbo); gl.deleteRenderbuffer(rb);
+    if (maskTex) gl.deleteTexture(maskTex);
     gl.deleteVertexArray(vao); gl.deleteProgram(prog);
     gl.bindFramebuffer(gl.FRAMEBUFFER, saved.fb);
     gl.colorMask(...saved.cm);
@@ -230,8 +295,9 @@
     gl.bindVertexArray(saved.vao);
     gl.useProgram(saved.prog);
     gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0 + 14); gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(saved.active);
-    return { id: idTex, uv: uvTex, ms: performance.now() - t0 };
+    return { id: idTex, uv: uvTex, uvt: uvtTex, ms: performance.now() - t0 };
   }
 
   // read a texture back as an RGBA8 PNG data URL (tests only: tools/map_diff.py)
@@ -242,6 +308,7 @@
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
     gl.bindFramebuffer(gl.FRAMEBUFFER, prev);
     gl.deleteFramebuffer(f);
+    for (let i = 3; i < px.length; i += 4) px[i] = 255;       // alpha is not used by the maps; a 2D canvas would premultiply it away
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     c.getContext("2d").putImageData(new ImageData(px, w, h), 0, 0);

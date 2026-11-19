@@ -90,3 +90,37 @@ The neck edge and the two offsets of it (below / above, used for the plain fill 
 - [x] Torso `id` R + B and `uv` pass the map tests (with the revised uv criterion).
 - [ ] Torso render ≤ 0.5 against 8100 (default neckline and 2 range ends): **met after a 2 px blur (≤ 0.30)**, not unblurred (≤ 1.47).
 - [x] No hairline gap between zones: R = 0 holes 0 (PNG 1).
+
+## Step 3: Trims as ribbons
+
+`plate.js` `trimTriangles` writes each strip as **two quads across** (the inner part, and for an edging trim the overhang to `vMax` = 1.5) for each 1 px segment of the centre line, unwelded and with each segment's own normal, as `make_plate.py` draws it. u and v are linear across a quad, so the 1 px steps across the strip are not needed. A test against the full strip (`mesh_check.mjs`, levels 0, `stepsIn`, `steps`) passes on all 4 plates (≤ 6 × 10⁻⁵ px, the float32 of the vertex buffer).
+
+`maps.js` draws the ribbons into `id` G (the trim number, from `plate.json`, with the garment side `side` as a number: no march) and into a new `uv_trim` texture, in the order of `zones.json`:
+- **Inner part:** only where there is a garment (a copy of `id` R is sampled as a mask, so there is no read of the texture that is being drawn).
+- **Overhang:** anywhere, except behind the occluders (the mannequin arm of the sleeve plate), which are drawn into stencil bit 1 first.
+- The 5-times shifted copies (+0.4 px, as the zones) give the coverage of the PNG; the centre copy is drawn last, so its values win.
+- **The live neck trim** of halfway step 5 is analytic and unchanged. Only its baked default comes from the ribbon.
+- In `?geom=mesh` the page no longer downloads `id.png`, `uv.png` or `uv_trim.png` for the torso view (only `base.jpg` and `shade.png`, besides the curves).
+
+**Calibration against the PNG** (all 6 trims of the torso plate, whatever the direction of the strip on the screen): the PNG's u is ahead of the exact value by **0.5 px along** and its v by **0.5 px across** (a pixel on the border of two quads shows the later one). The exact values + 0.5 px in both give bias ≤ 0.11 px. Halfway step 5 had found 0.95 px along: it measured against a convention of the shader in which a pixel sits half a pixel earlier; the two agree (0.95 − 0.5 = 0.45, the half pixel of that convention).
+
+### Map test (torso plate)
+
+| Test | Result |
+|---|---|
+| id G (trims) | 613 px differ (0.032 %): 563 in a 1 px edge band; 50 are single stray pixels at the bends of the PNG's strips (0.13 % of its 38,806 trim px; 0.2 % allowed) |
+| uvt neck | u: median 0.35 px, 99 % 0.70, max 1.0, bias 0.02; v: median 0.23, 99 % 0.61, max 1.0, bias 0.02 |
+| uvt cuffs (2) | u: median 0.35, 99 % 1.04–1.39, max 3.1 / 5.2, bias 0.00 / 0.01; v: median 0.23–0.25, 99 % 0.56–0.60, bias 0.01–0.03 |
+| uvt hem (18,405 px) | u: median 0.35, 99 % 1.04, max 2.8, bias 0.02; v: median 0.26, 99 % 0.58, bias 0.01 |
+| uvt slits (2) | u: median 0.00–0.35, 99 % 0.70, bias 0.11 / 0.10; v: median 0.25–0.28, 99 % 0.49–0.50, bias 0.01–0.04 |
+
+(Px: plate px of the strip. The u packing step is 0.35 px on this plate.) The bias limit of the test is now 0.15 px for zones and trims; the largest value is 0.11 px, a third of one packing step.
+
+### Render against 8100 (the 12 queries, `?geom=mesh`)
+
+Mean difference after a 2 px blur: torso sage / pearl 0.161, torso mocha / geometric 0.305, torso neckline 100 / 194 0.301, torso neckline 20 / 132 0.010, **all neck, sleeve and hem queries 0.000**. Unblurred: 0.74 / 1.54 / 1.51 / 0.04 (the texel jitter of step 2). The lace fit (`data-lacefit`: whole repeats, fit and start for every trim) is **identical** to 8100. Crops of the hem, cuff and slit trims (pearl lace, overhang past the edge) look the same (`img/numeric-step3.png`).
+
+**Harness fix:** one run of the neck query changed by 0.03 (blurred) between two runs of the same page: a lace had not finished loading when the shot was taken, on a busy local server. `cdp_shot.mjs` now waits until the canvas has not changed for 3 checks in a row (300 ms apart).
+
+- [x] All trims on the torso pass the map tests; edging past the edge included.
+- [x] Lace fit unchanged: the same whole repeats on every trim.

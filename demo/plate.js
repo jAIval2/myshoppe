@@ -4,7 +4,7 @@
 
   Same names and same arithmetic as make_plate.py, so that the page can calculate what the plate maker calculates:
     resample, coons, tuck, prepare (tuck applied to a copy of zones.json), zoneParams, zoneVertices,
-    trimParams, trimStrip, neck_edge, offset_poly.
+    trimParams, trimStrip, trimTriangles, neck_edge, offset_poly.
   make_plate.py stays the reference. Decisions that it takes by searching the image (which side of a trim is the garment
   edge, the median light, the fill colours, the form patch) are NOT repeated here: they arrive as numbers (plate.json /
   the .dat file), e.g. trims[name].side.
@@ -152,6 +152,28 @@
     return out;
   }
 
+  // The same strip as two quads across (the inner part, v 0..1 strip width; and for an edging trim the overhang, up to vMax), per
+  // segment, unwelded, each with its own normal exactly as make_plate.py draws it. u and v vary linearly across a quad, so the
+  // 1 px steps across the strip are not needed. Triangles (6 vertices a quad), x y u v:
+  //   u: cm along (+ uBiasCm); v: 0..1 over vMax (+ vBias), times vScale (maps.js packs v / uvRange, so vScale = uvRangeCm)
+  function trimTriangles(trim, par, side, uBiasCm, vScale, vBias) {
+    const { n, steps, stepsIn, vmax, half, lenCm } = par, C = resample(trim.centre, n);
+    const bands = steps > stepsIn ? [[0, stepsIn], [stepsIn, steps]] : [[0, stepsIn]];   // [inner, overhang]
+    const out = bands.map(() => new Float32Array(n * 24));
+    for (let i = 0; i < n; i++) {
+      const a = C[i], b = C[i + 1], tx = b[0] - a[0], ty = b[1] - a[1], ln = Math.hypot(tx, ty) || 1;
+      const nx = (-ty / ln) * side, ny = (tx / ln) * side, ua = (i / n) * lenCm + (uBiasCm || 0), ub = ((i + 1) / n) * lenCm + (uBiasCm || 0);
+      bands.forEach(([k0, k1], bi) => {
+        const f0 = Math.min(vmax, k0 / stepsIn), f1 = Math.min(vmax, k1 / stepsIn), v0 = -half + 2 * half * f0, v1 = -half + 2 * half * f1;
+        const c = [[a[0] + nx * v0, a[1] + ny * v0, ua, f0 / vmax], [b[0] + nx * v0, b[1] + ny * v0, ub, f0 / vmax],
+                   [a[0] + nx * v1, a[1] + ny * v1, ua, f1 / vmax], [b[0] + nx * v1, b[1] + ny * v1, ub, f1 / vmax]];
+        let o = i * 24;
+        for (const q of [0, 1, 2, 1, 3, 2]) { out[bi][o++] = c[q][0]; out[bi][o++] = c[q][1]; out[bi][o++] = c[q][2]; out[bi][o++] = (c[q][3] + (vBias || 0)) * (vScale || 1); }
+      });
+    }
+    return { inner: out[0], outer: out[1] || null };
+  }
+
   // ---- the neckline
   function neck_edge(front, Z, W) {                      // the run of front-outline points BELOW the grid top, corner to corner
     const top = front.grid.top, o = front.outline;
@@ -187,7 +209,7 @@
     });
   }
 
-  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, neck_edge, offset_poly };
+  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, trimTriangles, neck_edge, offset_poly };
   if (typeof module !== "undefined" && module.exports) module.exports = Plate;
   else root.Plate = Plate;
 })(typeof window !== "undefined" ? window : globalThis);

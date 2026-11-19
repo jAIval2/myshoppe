@@ -48,6 +48,22 @@ for (const [name, m] of Object.entries(meta.trims)) {
   const s = Plate.trimStrip(trim, par, side);
   const [dp, du, dv] = cmp(s, m.offset, m.count, 4);      // stride 4: x y u v of each corner
   rep(`trim ${name}`, m.count / 4, dp, du, dv, { pos: 0.01, u: 0.001, v: 0.0001 });
+  // the two-quad ribbon of the page against the same corners of the full strip (levels 0, stepsIn, steps)
+  const T = Plate.trimTriangles(trim, par, side, 0, 1);
+  let rp = 0, ru = 0, rv = 0;
+  const lvl = (i, k, e) => m.offset + ((i * (par.steps + 1) + k) * 2 + e) * 4;       // start of the corner (i, level k, end e) in bin
+  const chk = (arr, q, i, k, e, tri) => {                 // vertex tri of quad i in arr against the strip corner
+    const o = i * 24 + tri * 4, b0 = lvl(i, k, e);
+    rp = Math.max(rp, Math.abs(arr[o] - bin[b0]), Math.abs(arr[o + 1] - bin[b0 + 1]));
+    ru = Math.max(ru, Math.abs(arr[o + 2] - bin[b0 + 2])); rv = Math.max(rv, Math.abs(arr[o + 3] - bin[b0 + 3]));
+  };
+  for (let i = 0; i < par.n; i++)
+    for (const [arr, k0, k1] of [[T.inner, 0, par.stepsIn], [T.outer, par.stepsIn, par.steps]]) {
+      if (!arr) continue;
+      // triangle order of a quad: (a,k0) (b,k0) (a,k1) | (b,k0) (b,k1) (a,k1)
+      chk(arr, 0, i, k0, 0, 0); chk(arr, 0, i, k0, 1, 1); chk(arr, 0, i, k1, 0, 2); chk(arr, 0, i, k1, 1, 4);
+    }
+  rep(`ribbon ${name}`, par.n * (T.outer ? 8 : 4), rp, ru, rv, { pos: 0.01, u: 0.001, v: 0.0001 });
 }
 if (meta.neck) {                                          // the neck edge (found by outline analysis) and its offsets
   const front = Z.zones.front, W = P.viewBox[0];
