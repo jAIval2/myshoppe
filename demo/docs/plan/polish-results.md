@@ -259,3 +259,38 @@ This is the plan's fallback ("edging only on the laces with a clean key"), but t
 | Plate data | torso 437, neck 381, sleeve 726, hem 481 KB ✔ |
 
 Backups: `id@5.png`, `uv_trim@5.png`, `plate@5.json`, sleeve `zones@5.json`, `testing@5.html` (untracked).
+
+## Step 6: lace relief, metal and pearl masks (accepted, offline checks only)
+
+**Unit 7 freed:** `shade.png` is uploaded once, on unit 4, with LINEAR filtering. `texelFetch` ignores the filter mode (exact reads, as before) and `texture()` gives the smooth read for a canvas larger than the plate (was the second copy on unit 7). Unit 7 now holds the lace material map. **Pixel identity is by the GL rule, not checked in a render.**
+
+**Material map** (`prep_lace.py --material`, lossless WebP at half the tile size: height and masks are smooth, and half size keeps the assets within budget):
+- **R height:** lace luminance high-passed at 2 mm in lace scale, × alpha; 128 = flat.
+- **G metal:** hue 20–60°, saturation ≥ 0.55, strong local brightness change, and the lace counts as metal only if ≥ 30 % of its opaque pixels pass (a zari lace is metallic through and through). Attempt 1 (saturation ≥ 0.40) marked 47 % of the geometric lace as metal; attempt 2 (≥ 0.50) still 16 %; the lace-level rule settles it.
+- **B pearl:** the pearls in the pearl lace are **rings** (their bright centres were keyed out with the paper: the known problem in `render.md`). The detector finds round transparent holes (difference of Gaussians on the inverted alpha, hole radius 6 px) closed by a pale, bright, opaque ring (10–16 px), in the decorative edge (bottom 30 % of the band). Attempt 1 (a bright-blob detector on luminance) found 128 "pearls" per repeat, all in the lace mesh.
+
+| Lace | metal (share of opaque px) | pearls per repeat | asset (band + map + json) |
+|---|---|---|---|
+| pearl | 0 (0.0) | **6.0** | 524 KB ✔ |
+| geometric | 0 (0.08 < 0.30) ✔ | 0 | 211 KB ✔ |
+| fine | **52.9 % of the tile** (0.54) | 0 | 179 KB ✔ |
+| leaf | 0 (0.00) ✔ | 0 | 409 KB ✔ |
+
+**Pearl count:** 6 per repeat, in both repeats of the tile, at the positions I counted on the tile (three large pearls hanging between three smaller ones). **My count, not a person's.**
+
+**Shader** (on lace pixels, when the lace has a map; `?relief=0` turns it off): 3 reads of the map (centre, +1.5 canvas px in x and y, so the light is from the upper left on every trim whatever its direction), +1 read for metal.
+- Relief: `lit = 1 + 0.15 × (∂h/∂x + ∂h/∂y)`, clamped to ±15 %. The gain was set offline: simulated on the tiles at stage scale, a gain of 1.5 clamped 70–85 % of the lace pixels (black-and-white noise), 0.25 still 5–24 %; 0.15 is used.
+- Pearls: the dome fills the keyed-out centres with a pearl white, lighter on the upper-left half, darker rim on the lower right, and a small highlight. **This also fixes the "pearls show only as rings" problem.**
+- Metal: a highlight tinted with the thread colour where the height is above its 3× along-the-lace average (stretched along the thread), stronger where the shade is above 1.
+
+| Check | Result |
+|---|---|
+| Unit 7 freed, render unchanged | by the GL rule (texelFetch ignores filtering); **not checked in a render** |
+| Mean lace colour change ≤ 5 % | relief term, simulated on the tiles: −0.5 to −2.1 % at gain 0.25 (gain 0.15 is smaller) ✔ |
+| Metal only where the mask is set; none on geometric or leaf | ✔ (masks are 0 on geometric, leaf, pearl) |
+| Pearl highlights only on the pearls; count within ± 10 % of a person's | 6 per repeat found = 6 counted (by me) |
+| No change outside the trims | by code (all new shader code is inside the lace block) |
+| Each lace asset ≤ 600 KB | ✔ (max 524 KB) |
+| Relief visible on all 4 laces at 2× (person check) | **not done** |
+
+Backups: `lace-*@6.json`, `testing@6.html` (untracked).

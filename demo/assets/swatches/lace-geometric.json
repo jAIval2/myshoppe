@@ -19,5 +19,17 @@
  "cutFromPx": 169,
  "blendPx": 21,
  "mirror": false,
- "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between",
+ "material": {
+  "file": "lace-geometric-mat.webp",
+  "size": [
+   266,
+   223
+  ],
+  "heightRadiusPx": 22.3,
+  "metalCoverPct": 0.0,
+  "metalPixelShare": 0.08,
+  "pearls": 0,
+  "pearlsPerRepeat": 0.0
+ }
 }

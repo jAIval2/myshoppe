@@ -13,5 +13,17 @@
  "edgingNote": "bottom 5 % of the band is mostly opaque (paper or ground not keyed): insertion only, until the lace is photographed and keyed again",
  "periodPx": null,
  "mirror": true,
- "reason": "no repeat found: best autocorrelation peak 0.27 (< 0.6). Hand-made or irregular lace: keep the mirrored repeat, with a mirror axis at the middle of neck and hem trims."
+ "reason": "no repeat found: best autocorrelation peak 0.27 (< 0.6). Hand-made or irregular lace: keep the mirrored repeat, with a mirror axis at the middle of neck and hem trims.",
+ "material": {
+  "file": "lace-leaf-mat.webp",
+  "size": [
+   474,
+   223
+  ],
+  "heightRadiusPx": 35.7,
+  "metalCoverPct": 0.0,
+  "metalPixelShare": 0.0,
+  "pearls": 0,
+  "pearlsPerRepeat": null
+ }
 }

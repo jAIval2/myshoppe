@@ -2,6 +2,9 @@
 
 usage: python3 tools/prep_lace.py <in> <out.webp> <preview.png> [--flip] [--cut-bottom 0.12]
        python3 tools/prep_lace.py --repeat <band.webp> <out.webp> <out.json> <preview.png> [--width-mm 30] [--flip]
+       python3 tools/prep_lace.py --material <tile.webp> <sidecar.json> <out-mat.webp> <preview.png> [--pearls]
+
+--material (polish.md step 6): R = height, G = metal mask, B = pearl mask, lossless WebP the size of the tile. See make_material().
 
 --repeat (polish.md step 4): an existing band (the output of the first mode) -> a seamless repeat of whole periods:
   1. Period = autocorrelation of the alpha along the band (Pearson, on columns, at 1/4 size, refined at 1/2 size).
@@ -22,7 +25,7 @@ Convention: the decorative edge (loops, scallops, pearls) at the BOTTOM. --flip 
 Output height 446 px, like lace-pearl-2048.webp.
 """
 import json, math, statistics, sys
-from PIL import Image, ImageFilter, ImageMath, ImageChops
+from PIL import Image, ImageDraw, ImageFilter, ImageMath, ImageChops
 
 REPEAT = "--repeat" in sys.argv
 
@@ -242,8 +245,129 @@ def make_repeat(src, out, out_json, prev, width_mm, flip=False):
           f"start {x0}, blend {B} px")
 
 
+def find_pearls(tile, hole=6.0, ring=(10, 16), ymin=0.7):
+    """Pearls in a keyed lace are RINGS: their bright centres were keyed out with the paper (render.md, known problem).
+    A pearl = a round transparent hole (difference of Gaussians on the inverted alpha, at the hole size) closed by a pale,
+    bright, opaque ring, in the decorative edge (centre in the bottom 30 % of the band)."""
+    W, H = tile.size
+    a = tile.split()[3]
+    ap = a.load()
+    Lp = tile.convert("RGB").convert("L").load()
+    Sp = tile.convert("RGB").convert("HSV").split()[1].load()
+    inv = a.point(lambda v: 255 - v)
+    dog = ImageMath.lambda_eval(lambda x: x["p"] - x["q"], p=inv.filter(ImageFilter.GaussianBlur(hole / 1.6)).convert("F"),
+                                q=inv.filter(ImageFilter.GaussianBlur(hole * 2.0)).convert("F"))
+    dl = ImageMath.lambda_eval(lambda x: x["d"] + 128.0, d=dog).convert("L")
+    mx = dl.filter(ImageFilter.MaxFilter(int(hole * 2) | 1))
+    dp, mp = dl.load(), mx.load()
+    r0, r1 = ring
+    cand = [(dp[x, y], x, y) for y in range(max(r1 + 1, int(ymin * H)), H - r1 - 1) for x in range(r1 + 1, W - r1 - 1)
+            if dp[x, y] == mp[x, y] and dp[x, y] > 145 and ap[x, y] < 100]
+    keep = []
+    for _, x, y in sorted(cand, reverse=True):
+        n = o = 0
+        lum, sat = [], []
+        for k in range(32):
+            th = 2 * math.pi * k / 32
+            for rr in (r0, (r0 + r1) / 2, r1):
+                xx, yy = int(x + rr * math.cos(th)), int(y + rr * math.sin(th))
+                n += 1
+                if ap[xx, yy] > 160:
+                    o += 1
+                    lum.append(Lp[xx, yy])
+                    sat.append(Sp[xx, yy])
+        if o / n < 0.65 or not lum:
+            continue
+        ds = []                                            # roundness: centre -> first opaque pixel, 16 directions
+        for k in range(16):
+            th = 2 * math.pi * k / 16
+            d = r1 + 4
+            for rr in range(1, r1 + 4):
+                if ap[int(x + rr * math.cos(th)), int(y + rr * math.sin(th))] > 160:
+                    d = rr
+                    break
+            ds.append(d)
+        m = sum(ds) / len(ds)
+        cv = (sum((d - m) ** 2 for d in ds) / len(ds)) ** 0.5 / m
+        if cv > 0.35 or sum(lum) / len(lum) < 160 or sum(sat) / len(sat) > 45:
+            continue
+        if all((x - bx) ** 2 + (y - by) ** 2 > (2 * r1) ** 2 for bx, by in keep):
+            keep.append((x, y))
+    return keep
+
+
+def make_material(tile_path, meta_path, out_path, prev_path=None):
+    """Lace material map (polish.md step 6), lossless WebP at HALF the size of the lace tile (height and masks are smooth;
+    half size keeps every lace asset under 600 KB). The shader samples it with the same coordinates as the lace.
+    R = height: lace luminance high-passed at 2 mm (in lace scale), weighted by alpha; 128 = flat.
+    G = metal: zari / metallic thread: hue 20..60 deg (gold .. brass), saturation >= 0.55, strong local brightness change.
+    B = pearl: a dome on each pearl found by find_pearls() (pearl radius = the outer ring radius)."""
+    tile = Image.open(tile_path).convert("RGBA")
+    meta = json.load(open(meta_path))
+    W, H = tile.size
+    width_mm = meta.get("widthMm") or 30.0
+    px_per_mm = H / width_mm
+    a = tile.split()[3]
+    L = tile.convert("RGB").convert("L")
+    r = max(2.0, 2.0 * px_per_mm)
+    hp = ImageMath.lambda_eval(lambda x: (x["l"] - x["b"]) * x["a"] / 255.0, l=L.convert("F"),
+                               b=L.filter(ImageFilter.GaussianBlur(r)).convert("F"), a=a.convert("F"))
+    vals = sorted(v for v, al in zip(hp.getdata(), a.getdata()) if al > 128)
+    lo, hi = vals[int(len(vals) * 0.01)], vals[int(len(vals) * 0.99)]
+    span = max(abs(lo), abs(hi), 1e-3)
+    height = ImageMath.lambda_eval(lambda x: 128.0 + x["h"] * (127.0 / span), h=hp).convert("L")
+    hsv = tile.convert("RGB").filter(ImageFilter.GaussianBlur(1.0)).convert("HSV")
+    hh, ss, vv = hsv.split()
+    hue_ok = hh.point(lambda v: 255 if 14 <= v <= 42 else 0)
+    sat_ok = ss.point(lambda v: 255 if v >= 140 else 0)                     # >= 0.55: geometric beige reaches 0.48 at p90
+    var = ImageChops.difference(L, L.filter(ImageFilter.GaussianBlur(max(2.0, 0.5 * px_per_mm)))).filter(ImageFilter.GaussianBlur(2))
+    var_ok = var.point(lambda v: 255 if v >= 6 else 0)
+    metal = ImageChops.multiply(ImageChops.multiply(ImageChops.multiply(hue_ok, sat_ok), var_ok),
+                                a.point(lambda v: 255 if v > 128 else 0))
+    metal = metal.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(1.5))
+    # a zari lace is metallic through and through; a few saturated crevices in a cotton lace are not metal:
+    # keep the mask only if >= 30 % of the opaque lace passes the pixel test
+    opaque = sum(1 for v in a.getdata() if v > 128) or 1
+    metal_share = sum(1 for v, al in zip(metal.getdata(), a.getdata()) if v > 64 and al > 128) / opaque
+    if metal_share < 0.30:
+        metal = Image.new("L", (W, H), 0)
+    pearl = Image.new("L", (W, H), 0)
+    blobs = []
+    if meta.get("pearls"):
+        p = meta["pearls"]
+        blobs = find_pearls(tile, p.get("holePx", 6), tuple(p.get("ringPx", (10, 16))), p.get("ymin", 0.7))
+        pr = p.get("ringPx", (10, 16))[1]
+        d = ImageDraw.Draw(pearl)
+        for x, y in blobs:                               # a dome: 255 at the centre, 0 at the pearl's outer radius
+            for k in range(int(pr), 0, -1):
+                d.ellipse((x - k, y - k, x + k, y + k), fill=round(255 * (1 - (k / pr) ** 2) ** 0.5))
+    mat = Image.merge("RGB", (height, metal, pearl)).resize((W // 2, H // 2), Image.BOX)
+    mat.save(out_path, lossless=True, method=6)
+    cover = lambda im: round(sum(1 for v in im.getdata() if v > 64) / (W * H) * 100, 2)
+    info = {"file": out_path.split("/")[-1], "size": [W // 2, H // 2], "heightRadiusPx": round(r, 1),
+            "metalCoverPct": cover(metal), "metalPixelShare": round(metal_share, 3), "pearls": len(blobs),
+            "pearlsPerRepeat": round(len(blobs) / meta["periods"], 2) if meta.get("periods") else None}
+    meta["material"] = info
+    json.dump(meta, open(meta_path, "w"), indent=1)
+    if prev_path:
+        pv = Image.new("RGB", (W, H * 4), (40, 40, 40))
+        bg = Image.new("RGB", (W, H), (60, 90, 70))
+        bg.paste(tile, (0, 0), tile)
+        pv.paste(bg, (0, 0)); pv.paste(height.convert("RGB"), (0, H)); pv.paste(metal.convert("RGB"), (0, 2 * H)); pv.paste(pearl.convert("RGB"), (0, 3 * H))
+        pv.save(prev_path)
+    print(f"{tile_path.split('/')[-1]}: height r {r:.1f} px, metal {info['metalCoverPct']} % of the tile, pearls {len(blobs)}"
+          + (f" ({info['pearlsPerRepeat']} per repeat)" if info["pearlsPerRepeat"] is not None else "") + f", map {W // 2} x {H // 2}")
+
 if __name__ == "__main__":
-    if REPEAT:
+    if "--material" in sys.argv:
+        i = sys.argv.index("--material")
+        m_tile, m_json, m_out, m_prev = sys.argv[i + 1:i + 5]
+        if "--pearls" in sys.argv:                        # this lace has pearls: hole radius, ring radii in tile px (measured)
+            meta = json.load(open(m_json))
+            meta["pearls"] = {"holePx": 6, "ringPx": [10, 16], "ymin": 0.7}
+            json.dump(meta, open(m_json, "w"), indent=1)
+        make_material(m_tile, m_json, m_out, m_prev)
+    elif REPEAT:
         i = sys.argv.index("--repeat")
         a_src, a_out, a_json, a_prev = sys.argv[i + 1:i + 5]
         wmm = float(sys.argv[sys.argv.index("--width-mm") + 1]) if "--width-mm" in sys.argv else None
