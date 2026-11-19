@@ -326,7 +326,29 @@
   uniform float uShadeOn;       // test: 0 = flat light (no folds), to measure the fold contrast of the render
   uniform float uShadowStrength; // darkening of the fabric under the lace (0 = off), polish.md step 1
   uniform vec2  uShadowMm;       // shadow offset on the stage in mm: right, down (key light at the upper left)
+  uniform float uLinear;        // 1 = light maths in linear light (polish.md step 2), 0 = the old sRGB maths (?linear=0)
+  uniform float uSrgbTex;       // 1 = colour textures are SRGB8_ALPHA8 (the GPU decodes), 0 = decode here (fallback)
+  uniform float uShadeSqrt;     // plate.json shadeEncoding == "sqrt": shade = 2 * stored^2, linear light
+  uniform float uShadeMed;      // plate.json shadeMedian / 255 (to convert between the two shade spaces)
   out vec4 outColor;
+  const float HL_LIN = 0.05;
+
+  // sRGB <-> linear (exact sRGB curve)
+  vec3 toLin(vec3 c) { return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
+  vec3 toSRGB(vec3 c) { c = clamp(c, 0.0, 1.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+  float toLin1(float c) { return toLin(vec3(c)).r; }
+  float toSRGB1(float c) { return toSRGB(vec3(c)).r; }
+  // a colour texture sample in the working space of the shader
+  vec4 cin(vec4 t) { return (uLinear > 0.5 && uSrgbTex < 0.5) ? vec4(toLin(t.rgb), t.a) : t; }
+  // stored shade -> shade in the working space (linear ratio, or the old sRGB ratio)
+  float shadeOf(float stored) {
+    if (uShadeSqrt > 0.5) {
+      float sl = 2.0 * stored * stored;                                   // linear ratio
+      return uLinear > 0.5 ? sl : toSRGB1(min(sl * toLin1(uShadeMed), 1.0)) / uShadeMed;
+    }
+    float so = stored * 2.0;                                               // old file: sRGB ratio
+    return uLinear > 0.5 ? toLin1(min(so * uShadeMed, 1.0)) / toLin1(uShadeMed) : so;
+  }
 
   vec2 decode(vec4 t) {                       // 12-bit packed → cm
     vec3 c = floor(t.rgb * 255.0 + 0.5);
@@ -373,15 +395,15 @@
   void main() {
     vec2 frag = vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y);   // top-left origin
     vec2 st = frag / uCanvas;
-    vec4 photo = texture(uPhoto, st);
-    if (uPhotoOnly > 0.5) { outColor = photo; return; }
+    vec4 photo = cin(texture(uPhoto, st));
+    if (uPhotoOnly > 0.5) { outColor = vec4(uLinear > 0.5 ? toSRGB(photo.rgb) : photo.rgb, 1.0); return; }
 
     float k = uPlate.x / uCanvas.x;                                  // plate px per canvas px
     ivec2 p = ivec2(min(floor(frag * k), uPlate - 1.0));
     vec4 idt = texelFetch(uId, p, 0);
     int zone = int(idt.r * 255.0 + 0.5);
     int trim = int(idt.g * 255.0 + 0.5);
-    if (zone == 0) { outColor = photo; return; }
+    if (zone == 0) { outColor = vec4(uLinear > 0.5 ? toSRGB(photo.rgb) : photo.rgb, 1.0); return; }
 
     // Canvas bigger than the plate (k < 1): interpolate between the 4 nearest plate texels,
     // but only when they are all in the same zone (or trim). Otherwise: nearest texel, so
@@ -408,7 +430,7 @@
       cov /= 9.0;
     }
 
-    float s = (up ? texture(uShadeL, st).r : texelFetch(uShade, p, 0).r) * 2.0;   // 1.0 = normal light
+    float s = shadeOf(up ? texture(uShadeL, st).r : texelFetch(uShade, p, 0).r);   // 1.0 = normal light
     if (uShadeOn < 0.5) s = 1.0;
     vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
     if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
@@ -420,14 +442,16 @@
       float c = mod(floor(uv.x / 2.0) + floor(uv.y / 2.0), 2.0);
       vec3 a = zone == 1 ? vec3(0.84, 0.28, 0.25) : zone == 4 ? vec3(0.15, 0.62, 0.38)
              : zone == 5 ? vec3(0.42, 0.24, 0.55) : vec3(0.17, 0.36, 0.75);    // 4 back, 5 side back
-      col = mix(a, vec3(0.96, 0.92, 0.86), c) * s;
+      vec3 ck = mix(a, vec3(0.96, 0.92, 0.86), c);
+      col = (uLinear > 0.5 ? toLin(ck) : ck) * s;
     } else if (uFabricOn > 0.5) {
       // explicit gradients (from the plate, not from screen derivatives): no seams where UVs jump
       vec2 gx, gy;
       gradFabric(p, zone, k, gx, gy);
       float bias = exp2(uMipBias);
-      vec3 f = textureGrad(uFabric, uv / uFabricCm, gx * bias, gy * bias).rgb;
-      col = f * s + max(s - 1.0, 0.0) * 0.15;                       // folds, soft highlights
+      vec3 f = cin(textureGrad(uFabric, uv / uFabricCm, gx * bias, gy * bias)).rgb;
+      // folds, soft highlights. In linear light the shade above 1 is s_srgb^2.4, so the same sheen needs a smaller weight.
+      col = f * s + max(s - 1.0, 0.0) * (uLinear > 0.5 ? HL_LIN : 0.15);
     }
 
     if (trim > 0 && uTrimOn[trim] > 0.5) {
@@ -442,7 +466,7 @@
       vec2 gx, gy;
       gradTrim(p, trim, k, w, gx, gy);
       float bias = exp2(uMipBias);
-      vec4 lace = textureGrad(uLace, lc, gx * bias, gy * bias);
+      vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
       if (uShadowStrength > 0.0) {
         // Shadow of the lace on the fabric: the lace alpha read again, shifted right and down on the stage,
         // 1.5 mip levels softer. The shift is a fixed direction on the screen, so it stays lower-right along the
@@ -452,10 +476,11 @@
         float sh = textureGrad(uLace, lc - off, gx * bias * 2.8284, gy * bias * 2.8284).a;
         col *= 1.0 - uShadowStrength * sh * (1.0 - lace.a);           // the lace itself is not darkened
       }
-      col = mix(col, lace.rgb * min(s * 1.05, 1.15), lace.a);
+      col = mix(col, lace.rgb * (uLinear > 0.5 ? min(s * 1.124, 1.399) : min(s * 1.05, 1.15)), lace.a);   // 1.05^2.4, 1.15^2.4
     }
 
-    outColor = vec4(mix(photo.rgb, clamp(col, 0.0, 1.0), cov), 1.0);
+    vec3 o = mix(photo.rgb, clamp(col, 0.0, 1.0), cov);
+    outColor = vec4(uLinear > 0.5 ? toSRGB(o) : o, 1.0);
   }`;
 
   function compile(type, src) {
@@ -476,7 +501,7 @@
 
   // ---------- textures
   const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0
   const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
   if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
     const st = document.createElement("style");
@@ -485,6 +510,8 @@
   }
   const USE_PLATE_GRAD = params.get("aniso") === "0" ? 0 : 1;
   const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
+  const LINEAR = params.get("linear") === "0" ? 0 : 1;            // test: ?linear=0  the old sRGB maths
+  let SRGB_TEX = LINEAR;                                         // SRGB8_ALPHA8 colour textures (falls back to shader decode)
   const SHADOW = params.has("shadow") ? parseFloat(params.get("shadow")) : 0.35;   // test: ?shadow=0 off, ?shadow=0.5 stronger
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
@@ -503,7 +530,7 @@
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, data ? gl.NONE : gl.BROWSER_DEFAULT_WEBGL);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texImage2D(gl.TEXTURE_2D, 0, (!data && SRGB_TEX) ? gl.SRGB8_ALPHA8 : gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap === gl.MIRRORED_REPEAT ? wrap : gl.CLAMP_TO_EDGE);
     if (data) {
@@ -512,6 +539,12 @@
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
     } else {
       gl.generateMipmap(gl.TEXTURE_2D);
+      if (SRGB_TEX && gl.getError() !== gl.NO_ERROR) {          // sRGB mipmaps not supported: decode in the shader instead
+        SRGB_TEX = 0;
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.uniform1f(U("uSrgbTex"), 0);
+      }
       if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -569,6 +602,8 @@
     gl.uniform1f(U("uAniso"), USE_PLATE_GRAD);
     gl.uniform1f(U("uShadeOn"), SHADE_ON);
     gl.uniform1f(U("uShadowStrength"), SHADOW);
+    gl.uniform1f(U("uLinear"), LINEAR);
+    gl.uniform1f(U("uSrgbTex"), SRGB_TEX);
     gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
   }
@@ -590,6 +625,8 @@
     gl.uniform2f(U("uPlate"), plate.viewBox[0], plate.viewBox[1]);
     gl.uniform1f(U("uCmPerPx"), plate.mmPerPx / 10);
     gl.uniform1f(U("uRange"), plate.uvRangeCm);
+    gl.uniform1f(U("uShadeSqrt"), plate.shadeEncoding === "sqrt" ? 1 : 0);
+    gl.uniform1f(U("uShadeMed"), (plate.shadeMedian || 213) / 255);
     const w = new Float32Array(7), flip = new Float32Array(7);
     const viewFlip = VIEW_FLIP[view] || FLIP;
     for (const [name, id] of Object.entries(TRIMS)) {

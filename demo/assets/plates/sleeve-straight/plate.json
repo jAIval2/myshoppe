@@ -31,5 +31,7 @@
  },
  "shadeSmoothMm": 1.2,
  "shadeSmoothPx": 4,
+ "shadeSpace": "linear",
+ "shadeEncoding": "sqrt",
  "shadeMedian": 224
 }

@@ -54,5 +54,7 @@
    "widthMm": 8
   }
  },
+ "shadeSpace": "linear",
+ "shadeEncoding": "sqrt",
  "shadeMedian": 213
 }

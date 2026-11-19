@@ -4,7 +4,8 @@ Reads base.jpg + zones.json. Writes into the same folder:
   id.png        R = fabric zone id, G = trim id (0 = none)
   uv.png        fabric UV in cm, 12-bit packed: R=U hi8, G=V hi8, B=(U lo4<<4)|V lo4
   uv_trim.png   trim UV: U = cm along the trim, V = 0..1 across (same packing)
-  shade.png     garment luminance / median, stored as L/2*255 (128 = normal light)
+  shade.png     garment luminance / median in LINEAR light, stored as sqrt(shade/2)*255 (plate.json "shadeEncoding": "sqrt");
+                zones.json "shadeSpace": "srgb" = the old file, L/median stored as L/2*255 (128 = normal light)
   plate.json    ids, ranges, scale
   check.png     checkerboard test (2 cm squares) on the photo
 """
@@ -268,8 +269,36 @@ if SMOOTH_MM > 0:
     shade_f = smooth
     plate["shadeSmoothMm"], plate["shadeSmoothPx"] = SMOOTH_MM, r_px
 
-shade = ImageMath.lambda_eval(lambda a: a["s"] * 127.5, s=shade_f).convert("L")
-shade = Image.composite(shade, Image.new("L", (W, H), 128), garment)
+# ---- store (polish.md step 2)
+# Default: the LINEAR luminance ratio, lin(L) / lin(median), stored as sqrt(shade / 2) * 255 ("shadeEncoding": "sqrt";
+# decoded shade = 2 * stored^2). The shader multiplies in linear light; the square root keeps precision in the dark folds.
+# The smoothing above runs on the sRGB ratio (its tuning stays exact); the result is converted here.
+# zones.json "shadeSpace": "srgb" keeps the old file: L / median * 127.5, 128 = normal light, no "shadeEncoding" key.
+SHADE_SPACE = Z.get("shadeSpace", "linear")
+
+
+def srgb_to_lin(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+if SHADE_SPACE == "linear":
+    lin_med = srgb_to_lin(med / 255.0)
+    m255 = med / 255.0
+    # sRGB ratio -> sRGB value -> linear value -> linear ratio -> sqrt code. (The exact sRGB curve is piecewise; its linear
+    # toe below 10/255 is replaced by the power law here: no garment pixel is that dark.)
+    shade = ImageMath.lambda_eval(
+        lambda a: (((((a["s"] * m255 + 0.055) / 1.055) ** 2.4) / lin_med / 2.0) ** 0.5) * 255.0, s=shade_f).convert("L")
+    shade = Image.composite(shade, Image.new("L", (W, H), round(255 * math.sqrt(0.5))), garment)   # outside: shade 1.0
+    plate["shadeSpace"], plate["shadeEncoding"] = "linear", "sqrt"
+
+    def lin_to_srgb(c):
+        return 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+    # check.png: stored code -> the sRGB ratio again, so that the checker looks as before
+    k_of_stored = [min(2.0, 255 * lin_to_srgb(min(1.0, 2.0 * (v / 255.0) ** 2 * lin_med)) / med) for v in range(256)]
+else:
+    shade = ImageMath.lambda_eval(lambda a: a["s"] * 127.5, s=shade_f).convert("L")
+    shade = Image.composite(shade, Image.new("L", (W, H), 128), garment)
+    k_of_stored = [v / 127.5 for v in range(256)]
 plate["shadeMedian"] = med
 
 for img, fn in ((id_img, "id.png"), (uv_img, "uv.png"), (uvt_img, "uv_trim.png"), (shade, "shade.png")):
@@ -296,7 +325,7 @@ for y in range(H):
         z, t = idp[x, y][0], idp[x, y][1]
         if not z:
             continue
-        k = shp[x, y] / 127.5
+        k = k_of_stored[shp[x, y]]
         if t:
             u, v = unpack(uvtp[x, y])
             v /= CM_RANGE

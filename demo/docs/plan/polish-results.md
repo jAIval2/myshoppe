@@ -113,3 +113,21 @@ Step 2 was tried first. Its square-root encoding made `shade.png` 17–19 % larg
 - Neck view, mustard, and sleeve cuff at 3× (`docs/plan/img/polish-step3-before-after.png`, before left): the folds, the seam lines and the cuff edge still show. At this zoom the mustard's own texture dominates, and I could not point to a second weave **in either** image. The "no second weave" item still needs a person's look; the plate numbers above are the measurable part.
 
 `rebuild_check.sh`: only `shade.png` and `plate.json` (and the review image `check.png`, which is drawn with the shade) changed; `id.png`, `uv.png`, `uv_trim.png` identical. Copies: `shade@3.png`, `plate@3.json` in each plate folder (untracked, deleted at the close).
+
+## Step 2: light maths in linear light (accepted, partly verified)
+
+**Plates** (`make_plate.py`): after the step 3 smoothing (on the sRGB ratio, so its tuning stays exact), the shade is converted to the **linear** ratio `lin(L) / lin(median)` and stored as `sqrt(shade / 2) × 255`; `plate.json` gets `"shadeSpace": "linear"`, `"shadeEncoding": "sqrt"`. `zones.json` `"shadeSpace": "srgb"` keeps the old file. `check.png` converts back, so the review checker looks as before.
+
+**Shader** (`testing.html`): photo, fabric and lace uploaded as `SRGB8_ALPHA8` (the GPU decodes them, mipmaps included); if `generateMipmap` fails on that format, the page re-uploads `RGBA8` and decodes in the shader (the plan's fallback). Multiply, shadow, lace mix and the photo edge mix are done in linear light, and the result is encoded to sRGB at the end (exact sRGB curve). The shader reads `shadeEncoding` and converts an old sRGB shade (or, with `?linear=0`, converts a new shade back) using `shadeMedian`. The 0.15 sRGB highlight becomes 0.05 in linear light (my estimate of the same sheen on mid to dark fabric); the lace light cap 1.05 / 1.15 becomes 1.05^2.4 / 1.15^2.4. Test switch: `?linear=0` (old sRGB maths, `RGBA8` textures).
+
+| Check | Result |
+|---|---|
+| `rebuild_check.sh` | only `shade.png` and `plate.json` differ (plus the review image `check.png`) ✔ |
+| Plate data | torso 430, neck 382, **sleeve 723**, hem 470 KB (≤ 1.0 MB ✔; without step 3 first the sleeve was 1064 KB) |
+| Mean luminance of the render, against step 3 | torso sage +0.4 %, torso mocha +0.8 % (≤ 8 % ✔). Measured on the two queries rendered before the screenshot runs were stopped. |
+| FCR (exact) | **not measured** at this step (the flat-light renders were stopped). The maths says it cannot fall: a multiply by the shade ratio is the same in sRGB and in linear light under a power-law gamma (step 0 finding), and the two torso renders above differ by < 1 % in mean. |
+| `fabric=off` ≤ 1 level | **not measured** (stopped). The photo is decoded by the GPU and encoded again with the exact curve, which round-trips 8-bit values to within 1 level. |
+| No banding in dark shadows | **not checked** in a render. The square-root code gives 0.4–2 % steps in linear light (finer than 8-bit linear, close to the old sRGB file). |
+| `?linear=0` same as step 3 | **not checked** in a render. |
+
+**Screenshot runs stopped here, at the owner's request**: each render set took 25–30 min on this machine (software rendering, a second session competing for the CPU). From step 2 on, steps are checked offline (plates, assets, computed numbers, code review); the items that need a real browser are listed for each step and collected under step 8.
