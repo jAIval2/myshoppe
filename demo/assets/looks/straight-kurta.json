@@ -1,0 +1,35 @@
+{
+ "look": "straight-kurta",
+ "name": "Straight kurta",
+ "note": "Design parameters in mm, measured from landmarks (halfway.md, the Amber model). The default is the photographed garment: neck depth from the neckline view (neck-point line to the centre-front edge, 134.4 px x 0.3046 mm), width = the agreed neck-l -> neck-r distance. Each view maps a CHANGE in mm to its own px (its mmPerPx and landmarks); the range must stay inside each plate's reach (plate.json neck.reachDeepMm, reachWideMm per side).",
+ "neck": {
+  "depthMm": {
+   "default": 40.9,
+   "min": 20,
+   "max": 100,
+   "stops": [
+    40.9,
+    65,
+    90
+   ],
+   "step": 1,
+   "bigStep": 10
+  },
+  "widthMm": {
+   "default": 158,
+   "min": 132,
+   "max": 194,
+   "stops": [
+    140,
+    158,
+    180
+   ],
+   "step": 1,
+   "bigStep": 10
+  },
+  "rules": [
+   "lace width < neck depth (12 mm lace, 20 mm minimum depth)",
+   "corners stay on the shoulder line"
+  ]
+ }
+}

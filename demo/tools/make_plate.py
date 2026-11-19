@@ -109,6 +109,50 @@ if "tuck" in Z:
         fz["grid"][k] = [tuck(p, Z["tuck"]) for p in fz["grid"][k]]
     fz["outline"] = [tuck(p, Z["tuck"]) for p in fz["outline"]]
 
+
+# ---- live neckline (halfway.md step 2): the photographed neck edge = the run of front-outline points BELOW the grid top
+# (the dip), with the two outline points on the grid top at its ends (the neck corners). The neck AREA (id.png B = 1) is the
+# part of the front grid that any setting in reach can turn into fabric, form or lace: from the grid top down to the deepest
+# reach plus the trim and the blend band, and sideways to the widest reach. uv.png is written for the whole grid there.
+NECK_REACH_DEEP_MM, NECK_REACH_WIDE_MM, NECK_BAND_MM = 70.0, 25.0, 30.0   # deeper than the photo; wider per side; trim + blend
+
+
+def neck_edge(front):
+    top, o = front["grid"]["top"], front["outline"]
+
+    def topy(x):
+        for a, b in zip(top, top[1:]):
+            if a[0] != b[0] and min(a[0], b[0]) <= x <= max(a[0], b[0]):
+                return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0])
+        return None
+    below = [topy(p[0]) is not None and p[1] > topy(p[0]) + 0.5 for p in o]
+    cfx = Z.get("landmarks", {}).get("cf-neck", [W / 2])[0]
+    i = 0
+    while i < len(o):
+        if below[i]:
+            j = i
+            while j + 1 < len(o) and below[j + 1]:
+                j += 1
+            xs = [o[k][0] for k in range(i, j + 1)]
+            if min(xs) < cfx < max(xs) and i > 0 and j + 1 < len(o):
+                return [list(p) for p in o[i - 1:j + 2]], topy
+            i = j + 1
+        else:
+            i += 1
+    return None, topy
+
+
+NECK = None
+if "front" in Z["zones"] and Z.get("view") in ("neck", "torso") and "neck" in Z.get("trims", {}):
+    edge, topy = neck_edge(Z["zones"]["front"])
+    if edge:
+        cfx = Z.get("landmarks", {}).get("cf-neck", [W / 2])[0]
+        ylo = max(p[1] for p in edge)
+        reach_w = NECK_REACH_WIDE_MM / MMPX + Z["trims"]["neck"]["widthMm"] / MMPX + 8
+        rect = (max(0, int(edge[0][0] - reach_w)), int(min(p[1] for p in edge)) - 2,
+                min(W, int(edge[-1][0] + reach_w) + 1), min(H, int(ylo + (NECK_REACH_DEEP_MM + NECK_BAND_MM) / MMPX) + 1))
+        NECK = {"edge": edge, "rect": rect, "cfx": cfx}
+
 id_img = Image.new("RGB", (W, H), (0, 0, 0))
 uv_img = Image.new("RGB", (W, H), (0, 0, 0))
 uvt_img = Image.new("RGB", (W, H), (0, 0, 0))
@@ -143,8 +187,20 @@ for name, zone in sorted(Z["zones"].items(), key=lambda kv: kv[1]["order"]):
     clip = Image.new("L", (W, H), 0)
     ImageDraw.Draw(clip).polygon([tuple(p) for p in zone["outline"]], fill=255)
     mask = ImageChops.multiply(layer_m, clip)
-    uv_img.paste(layer_uv, (0, 0), mask)
+    if NECK and name == "front":                       # the whole grid in the neck area gets UV (the dip too)
+        nr = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(nr).rectangle([NECK["rect"][0], NECK["rect"][1], NECK["rect"][2] - 1, NECK["rect"][3] - 1], fill=255)
+        uv_img.paste(layer_uv, (0, 0), ImageChops.lighter(mask, ImageChops.multiply(layer_m, nr)))
+        # neck area = (the cut garment + the dip under the corner line) in the rect: not the 1 px rim that the grid quads'
+        # outlines add beyond the outline (it would put a row of fabric on the shoulder line)
+        dip = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(dip).polygon([tuple(q) for q in NECK["edge"]], fill=255)
+        NECK["grid"] = ImageChops.multiply(ImageChops.multiply(layer_m, nr), ImageChops.lighter(mask, dip))
+    else:
+        uv_img.paste(layer_uv, (0, 0), mask)
     id_img.paste((ZONE_ID[name], 0, 0), (0, 0), mask)
+    if NECK and name != "front" and "grid" in NECK:    # a later zone (sleeve) on top: not neck area
+        NECK["grid"] = ImageChops.subtract(NECK["grid"], mask)
     plate["zones"][name] = {"id": ZONE_ID[name], "widthCm": round(width_cm, 1),
                             "heightCm": round(height_cm, 1)}
     print(f"{name:9} grid {ns}x{nt}  {width_cm:.1f} x {height_cm:.1f} cm")
@@ -218,6 +274,12 @@ for name, trim in Z["trims"].items():
     id_img = Image.merge("RGB", (r, g_, b_))
     plate["trims"][name] = {"id": TRIM_ID[name], "lengthCm": round(len_cm, 1), "widthMm": trim["widthMm"],
                             "type": ttype, "outerV": 1, "vMax": vmax}
+
+# ---- neck area: id.png B = 1 (halfway.md step 2)
+if NECK and "grid" in NECK:
+    r, g_, b_ = id_img.split()
+    b_.paste(1, (0, 0), NECK["grid"])
+    id_img = Image.merge("RGB", (r, g_, b_))
 
 # ---- shade: luminance / median inside the garment
 Lum = base.convert("L")
@@ -337,6 +399,69 @@ else:
     shade = Image.composite(shade, Image.new("L", (W, H), 128), garment)
     k_of_stored = [v / 127.5 for v in range(256)]
 plate["shadeMedian"] = med
+
+
+def offset_poly(pts, d, away):
+    """The same vertex-normal offset as tools/annotate_neck.py (and the page): d px, away from the point `away`."""
+    out = []
+    for i, (x, y) in enumerate(pts):
+        a, b = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+        tx, ty = b[0] - a[0], b[1] - a[1]
+        n = math.hypot(tx, ty) or 1
+        nx, ny = -ty / n, tx / n
+        if (x - away[0]) * nx + (y - away[1]) * ny < 0:
+            nx, ny = -nx, -ny
+        out.append([x + nx * d, y + ny * d])
+    return out
+
+
+if NECK and "grid" in NECK:
+    # shade in the dip: the garment's shade carried 8 px outward (mean of known neighbours), so that a smooth (LINEAR) read at
+    # the photographed edge does not mix in the 1.0 of the background (the page reads the edge band there when it moves)
+    x0, y0, x1, y1 = NECK["rect"]
+    sp, gp, ngp = shade.load(), garment.load(), NECK["grid"].load()
+    known = {(x, y) for y in range(y0, y1) for x in range(x0, x1) if gp[x, y]}
+    for _ in range(8):
+        new = {}
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                if (x, y) in known or not ngp[x, y]:
+                    continue
+                vals = [sp[x + dx, y + dy] for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                        if (x + dx, y + dy) in known and x0 <= x + dx < x1 and y0 <= y + dy < y1]
+                if vals:
+                    new[(x, y)] = round(sum(vals) / len(vals))
+        for (x, y), v in new.items():
+            sp[x, y] = v
+        known |= set(new)
+    # colours for the plain fills (?revealfill=0) and the toile: median of the garment just below the edge band, and of the
+    # form just above the edge
+    edge = NECK["edge"]
+    nk = Z["trims"]["neck"]
+    tw = nk["widthMm"] / MMPX
+    below_pts = offset_poly(edge, tw + 4 / MMPX, (NECK["cfx"], 0))
+    above_pts = offset_poly(edge, -4 / MMPX, (NECK["cfx"], 0))
+    bp = base.load()
+
+    def med_rgb(pts):
+        cols = [bp[int(x), int(y)] for x, y in pts[1:-1] if 0 <= x < W and 0 <= y < H]
+        return [sorted(c[k] for c in cols)[len(cols) // 2] for k in range(3)] if cols else [200, 200, 200]
+    st = Z.get("stitches", {}).get("neck-topstitch")
+    stitch_mm = None
+    if st:
+        on = offset_poly(edge, 0, (NECK["cfx"], 0))
+        stitch_mm = round(sum(min(math.dist(p, q) for q in on) for p in st[2:-2]) / max(1, len(st) - 4) * MMPX, 1)
+    lm = Z.get("landmarks", {})
+    plate["neck"] = {
+        "edge": [[round(x, 2), round(y, 2)] for x, y in edge],          # photographed edge, corner to corner, plate px
+        "centre": nk["centre"],                                        # the trim centre line of the plate (uv_trim.png)
+        "top": Z["zones"]["front"]["grid"]["top"],                     # grid top: the shoulder line and the neck-point line
+        "cf": [NECK["cfx"], lm.get("cf-neck", [NECK["cfx"], max(p[1] for p in edge)])[1]],
+        "trimWidthMm": nk["widthMm"], "stitchMm": stitch_mm,
+        "reachDeepMm": NECK_REACH_DEEP_MM, "reachWideMm": NECK_REACH_WIDE_MM,
+        "rect": list(NECK["rect"]),                                    # the neck area (id.png B = 1) lies inside
+        "toileRGB": med_rgb(below_pts), "formRGB": med_rgb(above_pts),
+    }
 
 for img, fn in ((id_img, "id.png"), (uv_img, "uv.png"), (uvt_img, "uv_trim.png"), (shade, "shade.png")):
     img.save(os.path.join(DIR, fn), optimize=True)

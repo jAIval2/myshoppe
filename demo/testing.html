@@ -338,6 +338,15 @@
   uniform float uSrgbTex;       // 1 = colour textures are SRGB8_ALPHA8 (the GPU decodes), 0 = decode here (fallback)
   uniform float uShadeSqrt;     // plate.json shadeEncoding == "sqrt": shade = 2 * stored^2, linear light
   uniform float uShadeMed;      // plate.json shadeMedian / 255 (to convert between the two shade spaces)
+  // ---- live neckline (halfway.md steps 2, 3, 5). In the neck area (id.png B = 1) the garment edge, the reveal fills and the
+  // neck trim come from curves, not from the baked maps. All curves in plate px, 24 points, corner to corner (left to right).
+  uniform float uNeckLive;      // 1 = live neckline, 0 = the baked maps (?neck=baked)
+  uniform vec2  uNE[24];        // live edge
+  uniform vec2  uNE0[24];       // photographed edge (same 24 picks: segment i of uNE matches segment i of uNE0)
+  uniform vec2  uNC[24];        // live trim centre line
+  uniform float uNeckTw;        // trim width, plate px
+  uniform vec3  uFormRGB, uToileRGB;   // plain fills (?revealfill=0): form and toile colour, sRGB 0..1
+  uniform float uRevealFill;    // step 3: 1 = fills from the photo, 0 = plain colours
   out vec4 outColor;
   const float HL_LIN = 0.05;
 
@@ -422,6 +431,31 @@
     return clamp(mean + (c - mean) / sqrt(dot(w, w)), 0.0, 1.0);     // keep the contrast of the motifs in the blend zones
   }
 
+  // nearest point on a 24-point polyline: distance, segment, parameter (one function per curve: GLSL has no array references)
+  ${["NE", "NE0", "NC"].map((n) => `
+  float near${n}(vec2 q, out int si, out float st, out float traw) {
+    float best = 1e9; si = 0; st = 0.0; traw = 0.0;
+    for (int i = 0; i < 23; i++) {
+      vec2 a = u${n}[i], ab = u${n}[i + 1] - a;
+      float tr = dot(q - a, ab) / max(dot(ab, ab), 1e-6);
+      float t = clamp(tr, 0.0, 1.0);
+      float d = distance(q, a + ab * t);
+      if (d < best) { best = d; si = i; st = t; traw = tr; }
+    }
+    return best;
+  }
+  // signed distance to an edge curve: + on the garment side (below the curve, or beside it, out past the corners)
+  float sd${n}(vec2 q, out int si, out float st) {
+    float tr;
+    float d = near${n}(q, si, st, tr);
+    if (q.x <= u${n}[0].x || q.x >= u${n}[23].x) return d;
+    for (int i = 0; i < 23; i++) {
+      vec2 a = u${n}[i], b = u${n}[i + 1];
+      if (q.x >= a.x && q.x <= b.x) return q.y > mix(a.y, b.y, (q.x - a.x) / max(b.x - a.x, 1e-6)) ? d : -d;
+    }
+    return d;
+  }`).join("")}
+
   void main() {
     vec2 frag = vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y);   // top-left origin
     vec2 st = frag / uCanvas;
@@ -433,9 +467,28 @@
     vec4 idt = texelFetch(uId, p, 0);
     int zone = int(idt.r * 255.0 + 0.5);
     int trim = int(idt.g * 255.0 + 0.5);
+
+    // ---- live neckline (halfway.md step 2): in the neck area the garment is what lies below the LIVE edge
+    bool neckA = uNeckLive > 0.5 && idt.b > 0.0;
+    vec2 fpx = frag * k - 0.5;                                       // plate px; integer = pixel centre (as PIL draws the maps)
+    float dL = 1e3, dO = 1e3, covE = 1.0;                            // signed distance to the live / photographed edge (+ = garment)
+    int eI = 0, oI = 0;
+    float eT = 0.0, oT = 0.0;
+    vec3 under = photo.rgb;                                          // what shows where there is no garment
+    if (neckA) {
+      dL = sdNE(fpx, eI, eT);
+      dO = sdNE0(fpx, oI, oT);
+      covE = clamp(0.5 + dL / k, 0.0, 1.0);                          // analytic edge coverage (canvas px)
+      zone = covE > 0.0 ? 1 : 0;
+      if (dO - dL > 0.25 && dO > -1.0) {                             // was garment in the photo, is form now (deeper setting)
+        vec3 fc = uLinear > 0.5 ? toLin(uFormRGB) : uFormRGB;
+        under = fc;
+      }
+    }
+
     bool bg = zone == 0;                                             // wall, form, stand: only an edging overhang is drawn here
     if (bg && !(trim > 0 && uTrimOn[trim] > 0.5 && uTrimEdging[trim] > 0.5)) {
-      outColor = vec4(uLinear > 0.5 ? toSRGB(photo.rgb) : photo.rgb, 1.0); return;
+      outColor = vec4(uLinear > 0.5 ? toSRGB(under) : under, 1.0); return;
     }
 
     // Canvas bigger than the plate (k < 1): interpolate between the 4 nearest plate texels,
@@ -454,18 +507,28 @@
 
     // soft edge
     float cov = 0.0;
+    // in the neck area the whole grid counts (B = 1): the live edge cuts it (covE); elsewhere the baked zones
+    float nb = neckA ? 1.0 : 0.0;
     if (bg) cov = 1.0;                                               // overhang: the lace alpha does the edge
     else if (up) {
-      cov = dot(wq, vec4(i00.r > 0.0 ? 1.0 : 0.0, i10.r > 0.0 ? 1.0 : 0.0, i01.r > 0.0 ? 1.0 : 0.0, i11.r > 0.0 ? 1.0 : 0.0));
+      cov = dot(wq, vec4(i00.r > 0.0 || nb * i00.b > 0.0 ? 1.0 : 0.0, i10.r > 0.0 || nb * i10.b > 0.0 ? 1.0 : 0.0,
+                         i01.r > 0.0 || nb * i01.b > 0.0 ? 1.0 : 0.0, i11.r > 0.0 || nb * i11.b > 0.0 ? 1.0 : 0.0));
     } else {                                                          // share of garment px in a 3x3 block
       for (int dy = -1; dy <= 1; dy++)
-        for (int dx = -1; dx <= 1; dx++)
-          cov += texelFetch(uId, clamp(p + ivec2(dx, dy), ivec2(0), mx), 0).r > 0.0 ? 1.0 : 0.0;
+        for (int dx = -1; dx <= 1; dx++) {
+          vec4 tq = texelFetch(uId, clamp(p + ivec2(dx, dy), ivec2(0), mx), 0);
+          cov += tq.r > 0.0 || nb * tq.b > 0.0 ? 1.0 : 0.0;
+        }
       cov /= 9.0;
     }
+    if (neckA) cov = min(cov, covE);
 
     float s = shadeOf(up ? texture(uShade, st).r : texelFetch(uShade, p, 0).r);   // 1.0 = normal light
     if (uShadeOn < 0.5) s = 1.0;
+    // fabric where the photo shows the form (shallower setting): the photo has no garment light there
+    bool revealed = neckA && dL - dO > 0.25 && dO < 0.0;
+    vec3 toile = uLinear > 0.5 ? toLin(uToileRGB) : uToileRGB;
+    if (revealed && uRevealFill < 0.5) s = 1.0;
     vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
     if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
       uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
@@ -494,7 +557,7 @@
       }
     }
 
-    vec3 col = photo.rgb;
+    vec3 col = revealed ? toile * s : photo.rgb;                     // fabric off: the photo, or the toile where it shows the form
     if (bg) {
       // the photo stays: the lace and its shadow go on top
     } else if (uChecker > 0.5) {
@@ -597,7 +660,7 @@
       }
     }
 
-    vec3 res = mix(photo.rgb, clamp(col, 0.0, 1.0), cov);
+    vec3 res = mix(under, clamp(col, 0.0, 1.0), cov);
     outColor = vec4(uLinear > 0.5 ? toSRGB(res) : res, 1.0);
   }`;
 
@@ -808,6 +871,136 @@
     document.documentElement.dataset.lacefit = JSON.stringify(fitLog);   // for the harness (--dump-dom)
   }
 
+  // ---------- live neckline (halfway.md steps 2-6)
+  // The design record (state.neck, mm) is one for all views. Each view turns a CHANGE from the look's default into its own px
+  // (mmPerPx) around its own landmarks: the corner line (the photographed neck points), the centre front, the grid top (the
+  // shoulder line). Recipe: width scales the photographed edge sideways around the centre front; the corners then sit on the
+  // grid top; depth scales the dip below the corner line. At the default the live edge IS the photographed edge.
+  const NECK_LIVE = params0.get("neck") !== "baked";                // test: ?neck=baked  the old baked mask and trim
+  const REVEAL_FILL = params0.get("revealfill") === "0" ? 0 : 1;     // test: ?revealfill=0  plain colours in the revealed areas
+  const NECK_N = 24;
+  let look = null;                                     // assets/looks/<look>.json
+  let neckGeo = null;                                  // geometry of the current view (from plate.json "neck")
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const at = (pts, f) => { const i = Math.min(Math.floor(f), pts.length - 2), t = f - i; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; };
+  function segDist(p, a, b) {
+    const ax = b[0] - a[0], ay = b[1] - a[1], L = ax * ax + ay * ay;
+    const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * ax + (p[1] - a[1]) * ay) / L)) : 0;
+    return Math.hypot(p[0] - a[0] - ax * t, p[1] - a[1] - ay * t);
+  }
+  function pickIdx(pts, n) {                           // n fractional indices: the n most telling vertices (Douglas-Peucker order),
+    const keep = new Set([0, pts.length - 1]);         // or all vertices plus midpoints of the longest spans when there are fewer
+    while (keep.size < Math.min(n, pts.length)) {
+      const ks = [...keep].sort((a, b) => a - b);
+      let best = -1, bj = -1;
+      for (let m = 0; m + 1 < ks.length; m++)
+        for (let j = ks[m] + 1; j < ks[m + 1]; j++) { const d = segDist(pts[j], pts[ks[m]], pts[ks[m + 1]]); if (d > best) { best = d; bj = j; } }
+      keep.add(bj);
+    }
+    const idx = [...keep].sort((a, b) => a - b);
+    while (idx.length < n) {
+      let bm = 0, bl = -1;
+      for (let m = 0; m + 1 < idx.length; m++) { const l = dist(at(pts, idx[m]), at(pts, idx[m + 1])); if (l > bl) { bl = l; bm = m; } }
+      idx.splice(bm + 1, 0, (idx[bm] + idx[bm + 1]) / 2);
+    }
+    return idx;
+  }
+  function offsetPoly(pts, d, away) {                  // the vertex-normal offset of tools/annotate_neck.py and make_plate.py
+    return pts.map(([x, y], i) => {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      const tx = b[0] - a[0], ty = b[1] - a[1], n = Math.hypot(tx, ty) || 1;
+      let nx = -ty / n, ny = tx / n;
+      if ((x - away[0]) * nx + (y - away[1]) * ny < 0) { nx = -nx; ny = -ny; }
+      return [x + nx * d, y + ny * d];
+    });
+  }
+  const polyY = (pts, x) => {                          // y of an x-monotone polyline at x (clamped at the ends)
+    if (x <= pts[0][0]) return pts[0][1];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [a, b] = [pts[i], pts[i + 1]];
+      if (x >= a[0] && x <= b[0]) return b[0] === a[0] ? a[1] : a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+    }
+    return pts[pts.length - 1][1];
+  };
+  // Catmull-Rom (centripetal) through the points of a polyline, at fractional vertex index f: the smooth shape used away from
+  // the default (scaling the photographed polyline would also scale its small kinks, e.g. at the centre front)
+  function catmull(pts, f) {
+    const n = pts.length, i = Math.min(Math.floor(f), n - 2), t = f - i;
+    const P = (j) => pts[Math.max(0, Math.min(n - 1, j))];
+    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const tj = (a, b) => Math.max(Math.sqrt(dist(a, b)), 1e-4);
+    const t1 = tj(p0, p1) * (i === 0 ? 0 : 1) || 1e-4, t2 = t1 + tj(p1, p2), t3 = t2 + tj(p2, p3);
+    const T = t1 + (t2 - t1) * t;
+    const L = (a, b, ta, tb) => (tb - ta < 1e-6 ? a : [0, 1].map((k) => ((tb - T) * a[k] + (T - ta) * b[k]) / (tb - ta)));
+    const A1 = L(p0, p1, 0, t1), A2 = L(p1, p2, t1, t2), A3 = L(p2, p3, t2, t3);
+    const B1 = L(A1, A2, 0, t2), B2 = L(A2, A3, t1, t3);
+    return L(B1, B2, t1, t2);
+  }
+  function dpPick(pts, n) {                            // n points of a dense polyline: the ends, then the most telling ones
+    const keep = pickIdx(pts, n);                      // (all integer here: the dense list is longer than n)
+    return keep;
+  }
+  function neckSetup() {                               // per view, from plate.json "neck"
+    neckGeo = null;
+    const n = plate.neck;
+    if (!n || !look) return;
+    const e = n.edge, c0 = e[0], c1 = e[e.length - 1], mmpp = plate.mmPerPx;
+    const lineY = (x) => c0[1] + (c1[1] - c0[1]) * (x - c0[0]) / (c1[0] - c0[0]);
+    const tw = n.trimWidthMm / mmpp, away = [n.cf[0], -1e4];
+    // dense parameters: every photographed segment cut into m parts (>= 240 points in all)
+    const m = Math.ceil(240 / (e.length - 1)), F = [];
+    for (let i = 0; i < e.length - 1; i++) for (let j = 0; j < m; j++) F.push(i + j / m);
+    F.push(e.length - 1);
+    const same = n.centre.length === e.length;          // the trim centre has one point per edge point (both plates)
+    neckGeo = {
+      n, mmpp, lineY, tw, away, cf: n.cf, F,
+      depthPx0: n.cf[1] - lineY(n.cf[0]), widthPx0: c1[0] - c0[0],
+      E0d: F.map((f) => at(e, f)),                     // the photographed edge, exact
+      S0d: F.map((f) => catmull(e, f)),                // its smooth version
+      C0d: same ? F.map((f) => at(n.centre, f)) : null,   // the photographed trim centre, exact
+    };
+    gl.uniform1f(U("uNeckTw"), tw);
+    gl.uniform3fv(U("uFormRGB"), n.formRGB.map((v) => v / 255));
+    gl.uniform3fv(U("uToileRGB"), n.toileRGB.map((v) => v / 255));
+  }
+  // The live curves for a record, as dense point lists. w: 0 at the default (the photographed polyline and the plate's trim
+  // centre, exact), 1 from 8 % of change on (the smooth curve, and a trim centre at exactly half the trim width from the edge).
+  function neckCurves(rec) {
+    const g = neckGeo, L = look.neck;
+    const sW = (g.widthPx0 + (rec.widthMm - L.widthMm.default) / g.mmpp) / g.widthPx0;
+    const sD = (g.depthPx0 + (rec.depthMm - L.depthMm.default) / g.mmpp) / g.depthPx0;
+    const x = Math.min(1, Math.max(Math.abs(sD - 1), Math.abs(sW - 1)) / 0.08), w = x * x * (3 - 2 * x);
+    const T = ([px, py]) => {
+      const x2 = g.cf[0] + (px - g.cf[0]) * sW;
+      return [x2, polyY(g.n.top, x2) + (py - g.lineY(px)) * sD];
+    };
+    const edge = g.E0d.map((p, i) => T(w ? [p[0] + (g.S0d[i][0] - p[0]) * w, p[1] + (g.S0d[i][1] - p[1]) * w] : p));
+    let centre;
+    if (!w && g.C0d) centre = g.C0d.map(T);
+    else {
+      const off = offsetPoly(g.S0d.map(T), g.tw / 2, g.away);
+      centre = g.C0d ? g.C0d.map((p, i) => { const q = T(p); return [q[0] + (off[i][0] - q[0]) * w, q[1] + (off[i][1] - q[1]) * w]; }) : off;
+    }
+    return { edge, centre, sD, sW, w };
+  }
+  function clampNeck(rec) {
+    const L = look.neck;
+    const c = (v, r) => Math.max(r.min, Math.min(r.max, +v));
+    return { depthMm: c(rec.depthMm, L.depthMm), widthMm: c(rec.widthMm, L.widthMm) };
+  }
+  function neckUpload() {                              // uniforms of the live curves for state.neck
+    gl.uniform1f(U("uNeckLive"), NECK_LIVE && neckGeo ? 1 : 0);
+    gl.uniform1f(U("uRevealFill"), REVEAL_FILL);
+    if (!neckGeo) return;
+    const { edge, centre } = neckCurves(state.neck);
+    // 24 points of each dense curve, picked for THIS shape (the most telling ones). The photographed edge goes to the shader
+    // at the same parameters, so segment i of the live edge matches segment i of the photographed one (step 3).
+    const ie = pickIdx(edge, NECK_N), ic = pickIdx(centre, NECK_N);
+    gl.uniform2fv(U("uNE"), new Float32Array(ie.flatMap((i) => edge[i])));
+    gl.uniform2fv(U("uNE0"), new Float32Array(ie.flatMap((i) => neckGeo.E0d[i])));
+    gl.uniform2fv(U("uNC"), new Float32Array(ic.flatMap((i) => centre[i])));
+  }
+
   async function loadShared() {                        // samplers and swatches: once for all views
     ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat"].forEach((n, i) => gl.uniform1i(U(n), i));
     gl.uniform1f(U("uMipBias"), MIP_BIAS);
@@ -819,6 +1012,11 @@
     gl.uniform1f(U("uLinear"), LINEAR);
     gl.uniform1f(U("uSrgbTex"), SRGB_TEX);
     gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
+    look = await fetch("assets/looks/straight-kurta.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (look) {                                        // the design record; ?neckDepth=110&neckWidth=165 for tests
+      const L = look.neck;
+      state.neck = clampNeck({ depthMm: params0.get("neckDepth") ?? L.depthMm.default, widthMm: params0.get("neckWidth") ?? L.widthMm.default });
+    }
     await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
     gl.uniform1fv(U("uTrimFit"), new Float32Array(7).fill(1));
   }
@@ -853,6 +1051,8 @@
     }
     gl.uniform1fv(U("uTrimWcm"), w);
     gl.uniform1fv(U("uTrimFlip"), flip);
+    neckSetup();
+    neckUpload();
     laceFit();
     // trim pills: only the trims this view shows
     document.querySelectorAll("[data-trim]").forEach((b) => {
@@ -961,6 +1161,8 @@
   // test hook for tools/cdp_shot.mjs --eval (no UI use)
   window.__studio = {
     state, showView, render: () => plate && render(),
+    setNeck: (rec) => { state.neck = clampNeck({ ...state.neck, ...rec }); neckUpload(); render(); return state.neck; },
+    neckCurves: () => neckGeo && neckCurves(state.neck), neckGeo: () => neckGeo,
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
   };

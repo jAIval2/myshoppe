@@ -53,9 +53,9 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 5. Test switch `?neck=baked` (the old mask).
 
 **Accept:**
-- [ ] Default: pixel-identical to port 8000 on the neck and torso views.
-- [ ] A depth change of ± 20 mm moves the edge by the right amount in px (`mm ÷ mmPerPx`, ± 1 px).
-- [ ] No hole, no hairline gap at the shoulder corners for any setting in the range.
+- [x] Default: pixel-identical to port 8000 on the neck and torso views.
+- [x] A depth change of ± 20 mm moves the edge by the right amount in px (`mm ÷ mmPerPx`, ± 1 px).
+- [x] No hole, no hairline gap at the shoulder corners for any setting in the range.
 
 ### Step 3: Area that a change reveals
 
@@ -152,7 +152,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 | Step | Status | Commit | Result (`halfway-results.md`) |
 |---|---|---|---|
 | 1 Decode only the current view | done | (step 1) | 0 MB decoded after switches (was 161 MB); render identical |
-| 2 Live neckline curve | not started | | |
+| 2 Live neckline curve | done | (step 2) | default mean ≤ 0.009; edge move exact (±0.08 px) |
 | 3 Area that a change reveals | not started | | |
 | 4 Pivot points and drag | not started | | |
 | 5 Lace and stitch follow the curve | not started | | |
