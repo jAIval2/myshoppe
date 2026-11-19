@@ -78,3 +78,38 @@ Crops: `after-polish-1/`.
 
 - `tools/shoot_views.sh`: `JOBS` (processes at a time), `TMO` (timeout), waits for its own Chrome processes only; use `PORT=<free port>` when another run is active (two runs on one port kill each other's server).
 - `tools/shoot_set.py`: runs a query list two at a time, rejects a shot that is only the fallback photo (the page had not drawn yet) and retries it. Four parallel software-rendered Chromes timed out on this machine; use this for review sets.
+
+## Order of steps 2 and 3
+
+Step 2 was tried first. Its square-root encoding made `shade.png` 17–19 % larger (it spreads the photo noise of the dark values over more codes), and the sleeve plate went to **1064 KB, over the 1.0 MB budget**. Re-compressing did not help (563 KB either way). Dropping the lowest bit fitted (500 KB) but costs precision in the dark folds, which is what step 2 is for. The steps are independent (§4 of the plan), and step 3 removes exactly that noise, so **step 3 was done first, on the sRGB shade**, and step 2 is done on top of it. The step 2 plate code was parked and the plates restored before step 3 started.
+
+## Step 3: shade without the cotton weave (accepted, torso by the fallback)
+
+`make_plate.py`: an edge-preserving **guided filter** on the shade (the shade is its own guide), made of box sums only (running sums with `itertools.accumulate`, so Pillow and plain Python are enough). **Masked per zone**: the box sums count only the pixels of the zone, so nothing mixes across a zone edge or the gap to the wall. Radius in mm (`shadeSmoothMm`, default 1.2 → neck 4 px, sleeve 4 px, hem 5 px). ε in `shadeSmoothEps`, default **0.006** on the 0–2 shade. Settings per plate in `zones.json`; `plate.json` records `shadeSmoothMm` and `shadeSmoothPx`. Run time: about 12–14 s CPU per plate (wall time on this machine was much longer at times: the machine stalls, not the code).
+
+**Tuning (2 attempts, as the plan allows):**
+
+| ε, radius | sleeve fine | neck fine | torso fine | fold kept (sleeve / neck / torso) |
+|---|---|---|---|---|
+| 0.002, 1.2 mm (attempt 1) | −67 % ✘ | −77 % | −35 % ✘ | 97.7 / 98.0 / 99.2 % |
+| **0.006, 1.2 mm (attempt 2, kept)** | **−75 %** | **−83 %** | −45 % ✘ | 97.0 / 97.2 / 99.0 % |
+| 0.012, 1.2 mm | −78 % | −86 % | −53 % ✘ | 96.7 / 96.8 / 98.8 % |
+| 0.006, 1.8 mm | −77 % | −87 % | −52 % ✘ | 95.8 / 95.3 / 97.7 % |
+
+**Torso:** no setting reaches −70 %. At 0.9 mm/px the cotton weave (0.3–0.5 mm) cannot be resolved by the plate at all; what is left below 1.5 mm (1.7 px) is 1–2 px photo noise, and the "second weave" defect cannot appear in this view. The plan's fallback applies ("keep the weave on the torso plate and smooth only the close views"): the torso sets `"shadeSmoothMm": 0` in its `zones.json`, and its shade is unchanged.
+
+**Final numbers** (FD as in step 0):
+
+| Plate | fine < 1.5 mm, var | reduction (≥ 70 %) | fold 2–30 mm kept (≥ 90 %) | plate data |
+|---|---|---|---|---|
+| hem-straight | 6.737 → 0.674 | **−90 %** ✔ | 99.4 % ✔ | 785 → 424 KB ✔ |
+| neck-straight | 3.498 → 0.583 | **−83 %** ✔ | 97.2 % ✔ | 668 → 343 KB ✔ |
+| sleeve-straight | 3.445 → 0.861 | **−75 %** ✔ | 97.0 % ✔ | 975 → 677 KB ✔ |
+| torso-straight | unchanged (fallback) | — | — | 396 KB ✔ |
+
+**Rendered (8 queries + 3 flat-light, against step 1):**
+- Mean luminance of every query unchanged (largest change 0.04 of 255). Mean |difference| 0.0–1.4 levels; the torso queries are identical (its shade did not change).
+- FCR (exact): 1.089 / **1.180** / **1.264** (step 0: 1.089 / 1.167 / 1.255). The folds stay.
+- Neck view, mustard, and sleeve cuff at 3× (`docs/plan/img/polish-step3-before-after.png`, before left): the folds, the seam lines and the cuff edge still show. At this zoom the mustard's own texture dominates, and I could not point to a second weave **in either** image. The "no second weave" item still needs a person's look; the plate numbers above are the measurable part.
+
+`rebuild_check.sh`: only `shade.png` and `plate.json` (and the review image `check.png`, which is drawn with the shade) changed; `id.png`, `uv.png`, `uv_trim.png` identical. Copies: `shade@3.png`, `plate@3.json` in each plate folder (untracked, deleted at the close).

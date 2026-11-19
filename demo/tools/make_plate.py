@@ -190,7 +190,85 @@ for v, h in enumerate(hist):
     if acc >= total / 2:
         med = v
         break
-shade = ImageMath.lambda_eval(lambda a: a["l"] * (127.5 / med), l=Lum.convert("F")).convert("L")
+shade_f = ImageMath.lambda_eval(lambda a: a["l"] * (1.0 / med), l=Lum.convert("F"))     # shade as a float, 1.0 = normal light
+
+# ---- smooth the shade without losing the folds (polish.md step 3)
+# The base photo is a white cotton: its weave (0.3-0.5 mm) is stored in the shade, and a new fabric then shows a second weave on
+# top of its own. An edge-preserving guided filter (the shade is its own guide) removes it and keeps the folds, seams and
+# stitches. Radius in mm, not px. Masked per zone: nothing is mixed across a zone edge or across the gap to the wall.
+# zones.json "shadeSmoothMm": radius in mm (default 1.2, 0 = off); "shadeSmoothEps": regularisation on the 0..2 shade (default 0.006; 0.002 left 33 % of the weave on the sleeve plate).
+# The torso plate sets "shadeSmoothMm": 0: at 0.9 mm/px the weave cannot be resolved, and what is left below 1.5 mm is 1-2 px of photo noise.
+SMOOTH_MM = float(Z.get("shadeSmoothMm", 1.2))
+SMOOTH_EPS = float(Z.get("shadeSmoothEps", 0.006))
+
+
+def box_rows(rows, r):
+    """Sum over [i-r, i+r] in every row (zero outside), with running sums: C-speed list operations only."""
+    out = []
+    for row in rows:
+        n = len(row)
+        pre = [0.0]
+        pre.extend(accumulate(row))
+        pp = [0.0] * r + pre + [pre[-1]] * r
+        out.append(list(map(sub, pp[2 * r + 1:2 * r + 1 + n], pp[:n])))
+    return out
+
+
+def box2d(rows, r):
+    cols = [list(c) for c in zip(*box_rows(rows, r))]
+    return [list(c) for c in zip(*box_rows(cols, r))]
+
+
+def guided_masked(I, w, r, eps):
+    """Guided filter (guide = the image itself) over the pixels where w = 1. I, w: lists of rows."""
+    Iw = [[a * b for a, b in zip(ri, rw)] for ri, rw in zip(I, w)]
+    I2w = [[a * a * b for a, b in zip(ri, rw)] for ri, rw in zip(I, w)]
+    Wn, S1, S2 = box2d(w, r), box2d(Iw, r), box2d(I2w, r)
+    Aw, Bw = [], []
+    for rn, r1, r2, rw in zip(Wn, S1, S2, w):
+        ra, rb = [], []
+        for n, s1, s2, m in zip(rn, r1, r2, rw):
+            if m and n > 0:
+                mean = s1 / n
+                var = s2 / n - mean * mean
+                a_ = var / (var + eps) if var > 0 else 0.0
+                ra.append(a_)
+                rb.append(mean - a_ * mean)
+            else:
+                ra.append(0.0)
+                rb.append(0.0)
+        Aw.append(ra)
+        Bw.append(rb)
+    SA, SB = box2d(Aw, r), box2d(Bw, r)
+    return [[(sa * i + sb) / n if n > 0 else i for sa, sb, i, n in zip(ra, rb, ri, rn)]
+            for ra, rb, ri, rn in zip(SA, SB, I, Wn)]
+
+
+if SMOOTH_MM > 0:
+    from itertools import accumulate
+    from operator import sub
+    r_px = max(1, round(SMOOTH_MM / MMPX))
+    id_r = id_img.split()[0]
+    smooth = shade_f.copy()
+    for zid in sorted(set(ZONE_ID[n] for n in Z["zones"])):
+        zmask = id_r.point(lambda p, z=zid: 255 if p == z else 0)
+        bb = zmask.getbbox()
+        if not bb:
+            continue
+        bb = (max(0, bb[0] - r_px), max(0, bb[1] - r_px), min(W, bb[2] + r_px), min(H, bb[3] + r_px))
+        zw, zh = bb[2] - bb[0], bb[3] - bb[1]
+        vals = list(shade_f.crop(bb).getdata())
+        msk = list(zmask.crop(bb).getdata())
+        I = [vals[y * zw:(y + 1) * zw] for y in range(zh)]
+        w = [[1.0 if m else 0.0 for m in msk[y * zw:(y + 1) * zw]] for y in range(zh)]
+        res = guided_masked(I, w, r_px, SMOOTH_EPS)
+        piece = Image.new("F", (zw, zh))
+        piece.putdata([v for row in res for v in row])
+        smooth.paste(piece, bb[:2], zmask.crop(bb))
+    shade_f = smooth
+    plate["shadeSmoothMm"], plate["shadeSmoothPx"] = SMOOTH_MM, r_px
+
+shade = ImageMath.lambda_eval(lambda a: a["s"] * 127.5, s=shade_f).convert("L")
 shade = Image.composite(shade, Image.new("L", (W, H), 128), garment)
 plate["shadeMedian"] = med
 

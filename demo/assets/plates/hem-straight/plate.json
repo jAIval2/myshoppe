@@ -39,5 +39,7 @@
    "widthMm": 8
   }
  },
+ "shadeSmoothMm": 1.2,
+ "shadeSmoothPx": 5,
  "shadeMedian": 220
 }
