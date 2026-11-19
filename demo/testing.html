@@ -378,6 +378,8 @@
   </div>
 </div>
 
+<script src="plate.js"></script>
+<script src="maps.js"></script>
 <script>
 (() => {
   // one journey step = one fixed view = one plate (render.md §4)
@@ -946,6 +948,10 @@
   // images: normal decode, LINEAR + mipmaps
   // halfway.md step 1: the page keeps the DOWNLOADED files (compressed blobs) of every view and decodes only what it shows.
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
+  // numeric.md: ?geom=mesh builds the maps of the MESH_VIEWS on the GPU from the curves (plate.js, maps.js); default and ?geom=maps: the PNG maps
+  const GEOM = params0.get("geom") === "mesh" ? "mesh" : "maps";
+  const MESH_VIEWS = { torso: 1 };                     // views ported so far (numeric.md step 5 adds the others)
+  const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
   const decoded = new Set();
   async function blobOf(url, tries = 2) {            // one retry: a busy local server sometimes drops a connection
@@ -1010,13 +1016,15 @@
   }
 
   const MAPS = [["photo", "base.jpg", false], ["id", "id.png", true], ["uv", "uv.png", true], ["uvt", "uv_trim.png", true], ["shade", "shade.png", true]];
+  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k !== "uv") : MAPS);   // the mesh makes uv itself
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
-      const P = VIEWS[view].plate;
+      const P = VIEWS[view].plate, maps = mapsOf(view);
       cache[view] = Promise.all([
         blobOf(P + "plate.json").then((b) => b.text()).then(JSON.parse),
-        ...MAPS.map(([, f]) => blobOf(P + f)),
-      ]).then(([plate, ...blobs]) => ({ plate, blobs: Object.fromEntries(MAPS.map(([k], i) => [k, blobs[i]])) }));
+        meshOn(view) ? blobOf(P + "zones.json").then((b) => b.text()).then(JSON.parse) : null,
+        ...maps.map(([, f]) => blobOf(P + f)),
+      ]).then(([plate, zones, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
     }
     return cache[view];
@@ -1024,10 +1032,17 @@
   const keptBitmaps = {};                              // ?decode=all: view -> decoded images (the old memory use)
   async function decodeView(view, v) {
     if (DECODE_ALL && keptBitmaps[view]) return keptBitmaps[view];
-    const bm = await Promise.all(MAPS.map(([k, , data]) => decode(v.blobs[k], data)));
-    const r = Object.fromEntries(MAPS.map(([k], i) => [k, bm[i]]));
+    const maps = mapsOf(view);
+    const bm = await Promise.all(maps.map(([k, , data]) => decode(v.blobs[k], data)));
+    const r = Object.fromEntries(maps.map(([k], i) => [k, bm[i]]));
     if (DECODE_ALL) keptBitmaps[view] = r;
     return r;
+  }
+  function setUnitTex(unit, tex) {                     // a texture that was built on the GPU (maps.js)
+    if (units[unit]) gl.deleteTexture(units[unit]);
+    units[unit] = tex;
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
   }
 
   const swatchCache = {};                              // url -> Promise of the swatch blob (decoded when it is put on the GPU)
@@ -1426,6 +1441,9 @@
     gl.uniform1fv(U("uTrimFit"), new Float32Array(7).fill(1));
   }
 
+  let builtMaps = null;                               // { id, uv, ms } of the current view when it was built from the mesh
+  const MESH_CELL = params0.has("cell") ? parseFloat(params0.get("cell")) : 4;   // test: ?cell=<px> grid cell of the meshes
+  const MESH_OFF = params0.has("mapoff") ? (([a, b, c, d, g]) => ({ idOff: [a, b], uvOff: [c, d], grow: g }))(params0.get("mapoff").split(",").map(parseFloat)) : {};   // test: ?mapoff=idx,idy,uvx,uvy,grow
   let switchToken = 0;
   // step 7: a step change cross-fades (250 ms) from a still of the old view; none with prefers-reduced-motion
   const fadeCv = document.getElementById("fade");
@@ -1458,8 +1476,18 @@
     const bm = await decodeView(view, v);              // decode this view only (step 1)
     if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
     setUnit(0, bm.photo);
-    setUnit(1, bm.id, { data: true });
-    setUnit(2, bm.uv, { data: true });
+    if (meshOn(view)) {                                // the maps from the curves (numeric.md): id R / B and uv; G, uvt, shade still PNG
+      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), idImage: bm.id, cell: MESH_CELL, ...MESH_OFF });
+      setUnitTex(1, built.id);
+      setUnitTex(2, built.uv);
+      stat.dataset.build = built.ms.toFixed(1);
+      builtMaps = built;
+    } else {
+      setUnit(1, bm.id, { data: true });
+      setUnit(2, bm.uv, { data: true });
+      stat.dataset.build = "";
+      builtMaps = null;
+    }
     setUnit(3, bm.uvt, { data: true });
     setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
     Object.values(bm).forEach(release);                // on the GPU now: free the decoded images
@@ -1756,6 +1784,8 @@
     neckCurves: () => neckGeo && neckCurves(state.neck), neckGeo: () => neckGeo, neckSent: () => neckGeo && neckGeo.sent,
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
+    buildMs: () => (stat.dataset.build ? +stat.dataset.build : null),
+    readMaps: () => (builtMaps ? { id: Maps.readPNG(gl, builtMaps.id, plate.viewBox[0], plate.viewBox[1]), uv: Maps.readPNG(gl, builtMaps.uv, plate.viewBox[0], plate.viewBox[1]) } : null),
     setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
     timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step }),
   };

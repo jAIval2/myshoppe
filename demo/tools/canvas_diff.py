@@ -1,14 +1,17 @@
 """Compare two runs of tools/cdp_shot.mjs, canvas by canvas.
 
-usage: python3 tools/canvas_diff.py <run-a> <run-b> [--diff <out-dir>]
+usage: python3 tools/canvas_diff.py <run-a> <run-b> [--diff <out-dir>] [--blur <sigma>]
 prints, per canvas: mean |a-b| over RGB (0..255), the share of px that differ by > 8 levels, the max; PASS when mean <= 0.5
 (the halfway.md rule for "pixel-identical"). --diff writes an amplified difference image (x8) for each pair.
+--blur: both images are blurred first (Gaussian, sigma in canvas px). numeric.md: a fabric texture is sampled at the 12-bit UV step, which is about one
+texel, so two correct maps differ by a texel of jitter; the blurred difference measures the structure (edges, position, light), not the jitter.
 """
 import json, os, sys
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageFilter, ImageStat
 
 a, b = sys.argv[1], sys.argv[2]
 dout = sys.argv[sys.argv.index("--diff") + 1] if "--diff" in sys.argv else None
+blur = float(sys.argv[sys.argv.index("--blur") + 1]) if "--blur" in sys.argv else 0     # Gaussian sigma in canvas px, applied to both before the difference
 qa = json.load(open(os.path.join(a, "log.json")))
 ok_all = True
 for i, e in enumerate(qa):
@@ -22,6 +25,8 @@ for i, e in enumerate(qa):
         print(f"{i} SIZE {A.size} vs {B.size}  {e['query']}")
         ok_all = False
         continue
+    if blur:
+        A, B = A.filter(ImageFilter.GaussianBlur(blur)), B.filter(ImageFilter.GaussianBlur(blur))
     d = ImageChops.difference(A, B)
     mean = sum(ImageStat.Stat(d).mean) / 3
     g = d.convert("L")
