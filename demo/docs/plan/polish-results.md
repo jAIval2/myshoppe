@@ -294,3 +294,27 @@ Backups: `id@5.png`, `uv_trim@5.png`, `plate@5.json`, sleeve `zones@5.json`, `te
 | Relief visible on all 4 laces at 2× (person check) | **not done** |
 
 Backups: `lace-*@6.json`, `testing@6.html` (untracked).
+
+## Step 7: fabric displacement in folds, directional sheen, anti-tiling (accepted, offline checks only)
+
+**Shader** (`testing.html`):
+- **Displacement:** the shade gradient from the four neighbours at ±4 plate px, used only if all four are in the same zone (no tear at a zone edge), per mm. The fabric UV moves along it by `uDisplaceMm` (1.0 mm) at a strong fold slope (0.05 shade per mm), at most **1.5 mm**, mapped to UV with the plate gradients that `gradFabric` already gives. It is applied before both the fabric and the grain checker. `?displace=0`.
+  The plan's `uv += k · ∇shade` has no unit for the gradient; the reference slope of 0.05 per mm makes "k = 1 mm" mean 1 mm in a strong fold.
+- **Directional sheen:** `sheen`, `sheenWidth` in the `FABRICS` table. The highlight is the shade above 1, **averaged along the warp** (±2 samples, 6 plate px apart, in the direction in which V changes fastest: down the front, along the arm), so it is stretched along the grain. Sage, mocha and mustard are matte (`sheen: 0`); `?sheen=test` gives the current fabric a temporary sheen of 0.6. **The fixed 0.15 highlight is removed**; `?sheen=0` brings it back.
+- **Anti-tiling:** hex tiling, `antiTile` in the `FABRICS` table (mocha, mustard: on; sage: off). Three reads at random **offsets only** (no rotation, so the grain stays), blended over a triangle grid with narrow zones (weights^7), with the contrast-preserving blend `mean + Σ wᵢ(cᵢ − mean) / √Σwᵢ²`; the mean is the top mip of the swatch. Reads: 3 + 1 instead of 1 (**3 extra**, the budget). `?antitile=0`.
+
+**Checks (offline):**
+
+| Check | Result |
+|---|---|
+| Displacement ≤ 1.5 mm | by the clamp. Same maths on the plates: median 0.14–0.19 mm, 90th percentile 0.49–0.73 mm, at the 1.5 mm cap on 0.9–2.3 % of the fabric pixels (the deepest folds) |
+| No tear at zone edges | by construction (no displacement unless all four neighbours are in the zone) |
+| Average square size unchanged (± 2 %) | displacement is a local shift of ≤ 1.5 mm with no mean scale; **not measured on a rendered checker** |
+| Sheen: matte fabrics change only by the removed highlight | by code (`col = f · s`); along the grain with a test sheen: **not checked in a render** |
+| Anti-tiling, mocha: autocorrelation at the tile period −50 % | simulated offline with the shader's maths on a flat 3 × 3 tile field: **1.000 → 0.005** (and mustard 1.000 → 0.011) ✔ |
+| Sharpness ≥ 90 % | simulated: 100 % ✔ (the contrast-preserving blend keeps the motifs crisp) |
+| No visible blending blur in the motifs | simulated image `docs/plan/img/polish-step7-antitile.png` (left plain, middle 1 cell per tile = used, right softer weights). 2 cells per tile was tried first: no blur, but more vines cut at the cell borders; 1 cell per tile kept. **Person check at 2× in a render not done.** |
+| FCR ≥ 0.8 | **not measured** (needs renders). Displacement moves the pattern, not the light; removing the highlight lowers the lit side by ≤ 0.05 × (s − 1) in linear light |
+| Draw time ≤ 5 ms | **not measured** (normal browser needed). This step adds the most reads: 4 shade + 4 id reads for displacement, 3 + 1 fabric reads for anti-tiling, 4 + 4 for a sheen fabric |
+
+Backup: `testing@7.html` (untracked).

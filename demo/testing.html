@@ -267,9 +267,9 @@
   };
   // repeatCm = real width of one tile (assumptions until the atelier measures them)
   const FABRICS = {
-    sage:    { src: "assets/swatches/fabric-sage-1024.jpg",    repeatCm: 30, name: "Sage Embroidered Organza" },
-    mocha:   { src: "assets/swatches/fabric-mocha-1024.jpg",   repeatCm: 30, name: "Mocha Chikan" },
-    mustard: { src: "assets/swatches/fabric-mustard-1024.jpg", repeatCm: 20, name: "Mustard Crinkled Gauze" },
+    sage:    { src: "assets/swatches/fabric-sage-1024.jpg",    repeatCm: 30, name: "Sage Embroidered Organza", sheen: 0, sheenWidth: 1, antiTile: false },
+    mocha:   { src: "assets/swatches/fabric-mocha-1024.jpg",   repeatCm: 30, name: "Mocha Chikan", sheen: 0, sheenWidth: 1, antiTile: true },
+    mustard: { src: "assets/swatches/fabric-mustard-1024.jpg", repeatCm: 20, name: "Mustard Crinkled Gauze", sheen: 0, sheenWidth: 1, antiTile: true },
   };
   // laces: horizontal band, decorative edge at the bottom (tools/prep_lace.py)
   const LACES = {
@@ -322,6 +322,9 @@
   uniform float uTrimOn[7], uTrimWcm[7], uTrimFlip[7];
   uniform float uTrimFit[7], uTrimU0[7];
   uniform float uTrimVMax[7], uTrimEdging[7];   // stored V range of each strip (1.5 = edging strip); 1 = lace hangs past the edge
+  uniform float uDisplaceMm;    // fabric shifted along the shade gradient in folds, mm at a strong fold slope (0 = off), step 7
+  uniform float uSheen, uSheenWidth, uSheenOld;   // directional sheen of the fabric; uSheenOld = the old fixed 0.15 highlight (?sheen=0)
+  uniform float uAntiTile;      // 1 = hex tiling of the fabric (irregular fabrics only), step 7
   uniform float uRelief;        // lace relief, metal and pearl (polish.md step 6); 0 = off (?relief=0)
   uniform float uHasMat;        // 1 = the lace has a material map on unit 7
   uniform float uLaceEdge;      // edgeDepth of the lace: share of its height that hangs past the garment edge
@@ -397,6 +400,28 @@
     gy = vec2(sy.x / (w * uLaceAspect * fit), sy.y / uRange);
   }
 
+  // ---- step 7: hex tiling (offsets only, no rotation: the grain direction stays), contrast-preserving blend
+  vec2 hash2(vec2 q) { return fract(sin(vec2(dot(q, vec2(127.1, 311.7)), dot(q, vec2(269.5, 183.3)))) * 43758.5453); }
+  vec3 fabricAt(vec2 t, vec2 gx, vec2 gy) {                         // t: uv / repeat (tile units)
+    if (uAntiTile < 0.5) return cin(textureGrad(uFabric, t, gx, gy)).rgb;
+    // 1 hex cell per tile (2 per tile cut more vines at the cell borders in the offline test), skewed triangle grid
+    vec2 sk = mat2(1.0, 0.0, -0.57735027, 1.15470054) * (t * 3.4641016);
+    vec2 base = floor(sk);
+    vec3 f = vec3(fract(sk), 0.0);
+    f.z = 1.0 - f.x - f.y;
+    float sgn = step(0.0, -f.z), s2 = 2.0 * sgn - 1.0;
+    vec3 w = vec3(-f.z * s2, sgn - f.y * s2, sgn - f.x * s2);       // barycentric, sums to 1
+    vec2 v1 = base + vec2(sgn), v2 = base + vec2(sgn, 1.0 - sgn), v3 = base + vec2(1.0 - sgn, sgn);
+    vec3 c1 = cin(textureGrad(uFabric, t + hash2(v1), gx, gy)).rgb;
+    vec3 c2 = cin(textureGrad(uFabric, t + hash2(v2), gx, gy)).rgb;
+    vec3 c3 = cin(textureGrad(uFabric, t + hash2(v3), gx, gy)).rgb;
+    vec3 mean = cin(textureLod(uFabric, vec2(0.5), 20.0)).rgb;       // top mip = the mean colour of the swatch
+    w = pow(w, vec3(7.0));
+    w /= (w.x + w.y + w.z);                                          // narrow blend zones
+    vec3 c = w.x * c1 + w.y * c2 + w.z * c3;
+    return clamp(mean + (c - mean) / sqrt(dot(w, w)), 0.0, 1.0);     // keep the contrast of the motifs in the blend zones
+  }
+
   void main() {
     vec2 frag = vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y);   // top-left origin
     vec2 st = frag / uCanvas;
@@ -446,6 +471,29 @@
       uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
          + wq.z * decode(texelFetch(uUV, q01, 0)) + wq.w * decode(texelFetch(uUV, q11, 0));
 
+    // ---- step 7: displacement in folds. Shade gradient from same-zone neighbours only (no tear at a zone edge), per mm;
+    // the fabric moves along it by uDisplaceMm at a strong fold slope (0.05 per mm), at most 1.5 mm.
+    vec2 fgx = vec2(0.0), fgy = vec2(0.0);
+    if (!bg) {
+      gradFabric(p, zone, k, fgx, fgy);
+      if (uDisplaceMm > 0.0) {
+        ivec2 mxp = ivec2(uPlate) - 1;
+        ivec2 pa = clamp(p + ivec2(R, 0), ivec2(0), mxp), pb = clamp(p - ivec2(R, 0), ivec2(0), mxp);
+        ivec2 pc = clamp(p + ivec2(0, R), ivec2(0), mxp), pd = clamp(p - ivec2(0, R), ivec2(0), mxp);
+        float zr = idt.r;
+        if (texelFetch(uId, pa, 0).r == zr && texelFetch(uId, pb, 0).r == zr && texelFetch(uId, pc, 0).r == zr && texelFetch(uId, pd, 0).r == zr) {
+          float mmpp = uCmPerPx * 10.0;                                  // mm per plate px
+          vec2 g = vec2(shadeOf(texelFetch(uShade, pa, 0).r) - shadeOf(texelFetch(uShade, pb, 0).r),
+                        shadeOf(texelFetch(uShade, pc, 0).r) - shadeOf(texelFetch(uShade, pd, 0).r)) / (2.0 * float(R) * mmpp);
+          vec2 dmm = uDisplaceMm * g / 0.05;
+          float L = length(dmm);
+          if (L > 1.5) dmm *= 1.5 / L;
+          vec2 dpx = dmm / mmpp / k;                                     // mm -> plate px -> canvas px
+          uv += (fgx * dpx.x + fgy * dpx.y) * uFabricCm;                 // fgx, fgy: (uv / repeat) per canvas px
+        }
+      }
+    }
+
     vec3 col = photo.rgb;
     if (bg) {
       // the photo stays: the lace and its shadow go on top
@@ -457,12 +505,29 @@
       col = (uLinear > 0.5 ? toLin(ck) : ck) * s;
     } else if (uFabricOn > 0.5) {
       // explicit gradients (from the plate, not from screen derivatives): no seams where UVs jump
-      vec2 gx, gy;
-      gradFabric(p, zone, k, gx, gy);
       float bias = exp2(uMipBias);
-      vec3 f = cin(textureGrad(uFabric, uv / uFabricCm, gx * bias, gy * bias)).rgb;
-      // folds, soft highlights. In linear light the shade above 1 is s_srgb^2.4, so the same sheen needs a smaller weight.
-      col = f * s + max(s - 1.0, 0.0) * (uLinear > 0.5 ? HL_LIN : 0.15);
+      vec3 f = fabricAt(uv / uFabricCm, fgx * bias, fgy * bias);
+      if (uSheenOld > 0.5) {
+        // the old fixed highlight (?sheen=0). In linear light the shade above 1 is s_srgb^2.4, so its weight is smaller.
+        col = f * s + max(s - 1.0, 0.0) * (uLinear > 0.5 ? HL_LIN : 0.15);
+      } else {
+        col = f * s;                                                     // matte: no extra highlight
+        if (uSheen > 0.0) {
+          // directional sheen: the shade above 1, averaged ALONG THE WARP (the direction in which V changes fastest on
+          // the plate), so the highlight is stretched along the grain: down the front, along the arm on the sleeve
+          vec2 wd = vec2(fgx.y, fgy.y);
+          wd = length(wd) > 0.0 ? normalize(wd) : vec2(0.0, 1.0);
+          float sa = s, n = 1.0;
+          ivec2 mxp = ivec2(uPlate) - 1;
+          for (int i = -2; i <= 2; i++) {
+            if (i == 0) continue;
+            ivec2 q = clamp(p + ivec2(round(wd * float(i) * 6.0)), ivec2(0), mxp);
+            if (texelFetch(uId, q, 0).r == idt.r) { sa += shadeOf(texelFetch(uShade, q, 0).r); n += 1.0; }
+          }
+          sa /= n;
+          col += f * uSheen * pow(max(sa - 1.0, 0.0), uSheenWidth) + vec3(0.25 * uSheen) * pow(max(sa - 1.0, 0.0), uSheenWidth + 1.0);
+        }
+      }
     }
 
     if (trim > 0 && uTrimOn[trim] > 0.5) {
@@ -554,7 +619,7 @@
 
   // ---------- textures
   const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0  ?lacefit=0  ?edging=0  ?relief=0
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0  ?lacefit=0  ?edging=0  ?relief=0  ?displace=0  ?sheen=0|test  ?antitile=0
   const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
   if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
     const st = document.createElement("style");
@@ -565,6 +630,9 @@
   const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
   const LINEAR = params.get("linear") === "0" ? 0 : 1;            // test: ?linear=0  the old sRGB maths
   let SRGB_TEX = LINEAR;                                         // SRGB8_ALPHA8 colour textures (falls back to shader decode)
+  const DISPLACE = params.get("displace") === "0" ? 0 : 1.0;      // test: ?displace=0  no displacement in folds
+  const SHEEN = params.get("sheen");                              // test: ?sheen=0  old fixed highlight; ?sheen=test  a temporary sheen
+  const ANTITILE = params.get("antitile") === "0" ? 0 : 1;        // test: ?antitile=0  plain repeat
   const RELIEF = params.get("relief") === "0" ? 0 : 1;            // test: ?relief=0  no lace relief, metal or pearl
   const EDGING = params.get("edging") === "0" ? 0 : 1;            // test: ?edging=0  edging trims clipped at the garment edge
   const LACEFIT = params.get("lacefit") === "0" ? 0 : 1;          // test: ?lacefit=0  the old mirrored lace, no fit, no start point
@@ -647,6 +715,10 @@
     setUnit(5, img, { wrap: gl.REPEAT });              // swatch is made seamless offline
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.uniform1f(U("uFabricCm"), f.repeatCm);
+    gl.uniform1f(U("uSheenOld"), SHEEN === "0" ? 1 : 0);
+    gl.uniform1f(U("uSheen"), SHEEN === "test" ? 0.6 : f.sheen || 0);
+    gl.uniform1f(U("uSheenWidth"), f.sheenWidth || 1);
+    gl.uniform1f(U("uAntiTile"), ANTITILE && f.antiTile ? 1 : 0);
   }
   const matCache = {};                                 // url -> Promise of the lace material map
   const metaCache = {};                                // url -> Promise of the lace sidecar (tools/prep_lace.py --repeat)
@@ -724,6 +796,7 @@
     gl.uniform1f(U("uShadeOn"), SHADE_ON);
     gl.uniform1f(U("uShadowStrength"), SHADOW);
     gl.uniform1f(U("uRelief"), RELIEF);
+    gl.uniform1f(U("uDisplaceMm"), DISPLACE);
     gl.uniform1f(U("uLinear"), LINEAR);
     gl.uniform1f(U("uSrgbTex"), SRGB_TEX);
     gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
