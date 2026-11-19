@@ -31,7 +31,11 @@ for (let i = 0; i < args.length; i++) {
 const POLISH = ["view=torso&fabric=sage&lace=pearl", "view=torso&fabric=mocha&lace=geometric", "view=neck&fabric=mustard&lace=leaf",
   "view=neck&fabric=mocha&lace=fine", "view=sleeve&fabric=sage&lace=geometric", "view=hem&fabric=mocha&lace=geometric",
   "view=hem&fabric=mustard&lace=pearl", "view=neck&fabric=off"];
+// numeric plan: the 8 polish queries + 4 halfway neckline queries (default neckline is in the polish ones; these move it)
+const HALFWAY = ["view=neck&fabric=mocha&neckDepth=100&neckWidth=158", "view=neck&fabric=sage&lace=geometric&neckDepth=20&neckWidth=132",
+  "view=torso&fabric=mocha&neckDepth=100&neckWidth=194", "view=torso&fabric=off&neckDepth=20&neckWidth=132"];
 let [out, port, ...queries] = pos;
+if (queries[0] === "--numeric") queries = [...POLISH, ...HALFWAY].map((q) => q + (queries[1] || ""));
 if (queries[0] === "--polish") queries = POLISH.map((q) => q + (queries[1] || ""));
 if (!out || !port || !queries.length) { console.error("usage: node tools/cdp_shot.mjs <out> <port> [opts] <query> ..."); process.exit(2); }
 mkdirSync(out, { recursive: true });
