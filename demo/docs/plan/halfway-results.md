@@ -116,3 +116,42 @@ Fixed on the way: the first touch drag was cancelled by the browser after one mo
 - [x] Drag works with mouse, touch and keyboard; the handles never leave their rails, because their positions come from the clamped record.
 - [ ] The lace follows during the drag: step 5.
 - **Open (phone):** ≥ 30 frames per second on a mid-range phone. SwiftShader's timings are not real. The drag cost is one draw per frame, and the neck area adds three 24-segment curve searches per pixel.
+
+## Step 5: The lace and the stitch line follow the live neckline
+
+In the neck area the baked neck trim is not used. The shader finds the nearest point on the **live trim centre line** (24 points), and writes the same coordinates the plate maker writes:
+- u = cm along the centre line;
+- v = 0.5 + offset toward the edge ÷ trim width.
+
+Past the two ends of the strip there is no trim, as on the plate. The lace's texture gradients come from the curve's tangent and normal, not from the plate.
+
+Default match, measured by `tools/trim_match.py` at every baked neck-trim px, with the 24 points the shader gets:
+
+| Plate | Along (u): median / 95 % / max | Across (v): median / 95 % / max | Signed mean (u, v) |
+|---|---|---|---|
+| neck (26 921 px) | 0.36 / 1.09 / 6.9 px | 0.29 / 0.86 / 1.9 px | +0.05, −0.06 px |
+| torso (2 795 px) | 0.28 / 0.77 / 2.5 px | 0.26 / 0.74 / 1.4 px | −0.03, 0.00 px |
+
+Two fixes made the default match:
+- **Recipe at the strip ends.** The recipe was not the identity for the trim centre's end points, which lie past the neck corners. Depth is now measured from the grid top, not the corner line. Before the fix the whole strip was shifted 7 px.
+- **The plate's u convention.** The plate maker draws the strip quad after quad, each with a 1 px outline, so a px on the border of two quads takes the later quad's u. The baked u runs 0.9–1.0 px ahead of the exact arc, and the page adds the same 0.95 px.
+
+The few px with a larger error are at the bends, on the outer side, where neighbouring baked quads overlap.
+
+The 8 queries against port 8000: PASS, mean 0.013–0.189. The neck views are the highest, because the high-contrast lace changes a lot for a sub-pixel move. Sleeve and hem: 0.000.
+
+**Lace fit:** repeat, fit and start (polish step 4) now use the live trim length: the plate's `lengthCm` × live length ÷ default length (both from the 24-point line), so the default fit is exactly the plate's.
+
+| Setting | Live length | Pearl repeats / fit | Middle motif to the CF line |
+|---|---|---|---|
+| neck, default | 20.71 cm | 12 / 1.014 | −1.45 mm (the photo's own) |
+| neck, depth 100 | 29.93 cm | 17 / 1.035 | −0.82 mm |
+| torso, depth 100, width 194 | 27.32 cm | 16 / 1.003 | −0.19 mm |
+| neck 20 / 132 (geometric) | 15.70 cm | 33 / 0.995 | −2.07 mm |
+
+The motif is centred at the middle of the strip's length, as before. That is within 2.1 mm of the centre-front line at every setting tried, 12 % of a pearl motif. Centring on the CF line exactly would move the default lace by 1.45 mm, so it was not done.
+
+**Top-stitch:** the photographed top-stitch at 5.5 mm moves with the edge, because the edge band (step 3) is taken from the photographed band at the same distance from the edge (seen in `img/halfway-step3.png`). With a lace on, the stitch is under the 12 mm lace, as in the photo; no extra dashed line is drawn.
+
+- [x] Default: matches the baked trim (median 0.3 px; 8 queries: mean ≤ 0.19).
+- [x] At every setting tried: the lace hugs the edge, the motifs are whole, the middle motif is within 2.1 mm of the CF, and there is no seam at the neck corners (`img/halfway-step5.png`: neck pearl at depth 100, geometric at 20/132, fine at 65/194, leaf (mirror) at 90/140 on toile; torso pearl at 100/194 and geometric at 20/132).

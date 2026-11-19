@@ -86,7 +86,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 
 **Accept:**
 - [x] Drag works with mouse, touch and keyboard; the handles never leave their rails.
-- [ ] The neckline, the lace and the stitch line follow during the drag (needs step 5 for the lace).
+- [x] The neckline, the lace and the stitch line follow during the drag (needs step 5 for the lace).
 - [ ] ≥ 30 frames per second on a mid-range phone during a drag.
 
 ### Step 5: The lace and the stitch line follow the live neckline
@@ -100,8 +100,8 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 4. Default curve: the result must match the baked trim (≤ 0.5 px).
 
 **Accept:**
-- [ ] Default: pixel-identical to the baked trim (mean difference ≤ 0.5).
-- [ ] At every setting: the lace hugs the edge, whole motifs, centred at the centre front, no seam at the neck corners.
+- [x] Default: pixel-identical to the baked trim (mean difference ≤ 0.5).
+- [x] At every setting: the lace hugs the edge, whole motifs, centred at the centre front, no seam at the neck corners.
 
 ### Step 6: The torso view shows the same neckline
 
@@ -155,6 +155,6 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 | 2 Live neckline curve | done | (step 2) | default mean ≤ 0.009; edge move exact (±0.08 px) |
 | 3 Area that a change reveals | done | (step 3) | old-edge step = the light's own change; no repeat; 10 s person test open |
 | 4 Pivot points and drag | done | (step 4) | mouse, touch, keys checked with real input events; phone fps open |
-| 5 Lace and stitch follow the curve | not started | | |
+| 5 Lace and stitch follow the curve | done | (step 5) | default trim match median 0.3 px; whole motifs, CF within 2.1 mm |
 | 6 Torso view shows the same neckline | not started | | |
 | 7 Showcase | not started | | |

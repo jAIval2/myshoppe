@@ -534,11 +534,35 @@
     int eI = 0, oI = 0;
     float eT = 0.0, oT = 0.0;
     vec3 under = photo.rgb;                                          // what shows where there is no garment
+    bool liveTrim = false;                                           // step 5: the neck trim of this pixel comes from the live curve
+    vec2 tLive = vec2(0.0), tT = vec2(1.0, 0.0), tN = vec2(0.0, -1.0);
     if (neckA) {
       dL = sdNE(fpx, eI, eT);
       dO = sdNE0(fpx, oI, oT);
       covE = clamp(0.5 + dL / k, 0.0, 1.0);                          // analytic edge coverage (canvas px)
       zone = covE > 0.0 ? 1 : 0;
+      // ---- step 5: the neck trim from the live trim centre line, as the plate maker writes it: u = cm along the centre line,
+      // v = 0.5 + offset toward the edge / trim width (0 inner side, 1 the garment edge). The baked neck trim is not used here.
+      if (trim == 1) trim = 0;
+      if (zone == 1 && uTrimOn[1] > 0.5) {
+        float best = 1e9, acc = 0.0, bacc = 0.0, btr = 0.5;
+        int bi = 0;
+        for (int i = 0; i < 23; i++) {
+          vec2 a = uNC[i], ab = uNC[i + 1] - a;
+          float sl = length(ab), tr = dot(fpx - a, ab) / max(sl * sl, 1e-6);
+          float d = distance(fpx, a + ab * clamp(tr, 0.0, 1.0));
+          if (d < best) { best = d; bi = i; btr = tr; bacc = acc + sl * clamp(tr, 0.0, 1.0); }
+          acc += sl;
+        }
+        vec2 ab = uNC[bi + 1] - uNC[bi];
+        tT = normalize(ab);
+        tN = vec2(tT.y, -tT.x);                                      // toward the edge (up, for a curve drawn left to right)
+        float v = 0.5 + dot(fpx - (uNC[bi] + ab * clamp(btr, 0.0, 1.0)), tN) / uNeckTw;
+        bool ends = (bi == 0 && btr < 0.0) || (bi == 22 && btr > 1.0); // past the ends of the strip: no trim (as the plate)
+        // +0.95 px: the plate maker draws the strip quad after quad, each with a 1 px outline, so a px on the border of two quads
+        // takes the later quad's u: the baked u runs 0.9-1.0 px ahead of the exact arc (tools/trim_match.py). Same convention here.
+        if (!ends && v >= 0.0 && v <= 1.0) { liveTrim = true; trim = 1; tLive = vec2((bacc + 0.95) * uCmPerPx, v * uRange); }
+      }
       if (dO - dL > 0.25 && dO > -8.5 / (uCmPerPx * 10.0)) {         // was garment in the photo (or its edge), is form now
         if (uRevealFill < 0.5) {
           if (dO > -1.0) under = uLinear > 0.5 ? toLin(uFormRGB) : uFormRGB;   // ?revealfill=0: plain colour
@@ -713,8 +737,8 @@
     }
 
     if (trim > 0 && uTrimOn[trim] > 0.5) {
-      vec2 t = decode(texelFetch(uUVT, p, 0));
-      if (up && i00.g == idt.g && i10.g == idt.g && i01.g == idt.g && i11.g == idt.g)
+      vec2 t = liveTrim ? tLive : decode(texelFetch(uUVT, p, 0));
+      if (!liveTrim && up && i00.g == idt.g && i10.g == idt.g && i01.g == idt.g && i11.g == idt.g)
         t = wq.x * decode(texelFetch(uUVT, q00, 0)) + wq.y * decode(texelFetch(uUVT, q10, 0))
           + wq.z * decode(texelFetch(uUVT, q01, 0)) + wq.w * decode(texelFetch(uUVT, q11, 0));
       float rawV = t.y / uRange * uTrimVMax[trim];                      // 0 inner side .. 1 garment edge .. vMax tip of the overhang
@@ -729,7 +753,10 @@
       float fit = uTrimFit[trim];
       vec2 lc = vec2(t.x / (w * uLaceAspect * fit) + uTrimU0[trim], across);
       vec2 gx, gy;
-      gradTrim(p, trim, k, w, fit, gx, gy);
+      if (liveTrim) {                                                    // lace coordinates per canvas px, from the curve
+        gx = vec2(tT.x * k * uCmPerPx / (w * uLaceAspect * fit), tN.x * k / uNeckTw);
+        gy = vec2(tT.y * k * uCmPerPx / (w * uLaceAspect * fit), tN.y * k / uNeckTw);
+      } else gradTrim(p, trim, k, w, fit, gx, gy);
       float bias = exp2(uMipBias);
       vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
       if (!inLace) lace = vec4(0.0);
@@ -957,7 +984,9 @@
     for (const [name, id] of Object.entries(TRIMS)) {
       const t = plate.trims[name];
       if (!t) continue;
-      const L = t.lengthCm, w = t.widthMm / 10, tile = w * lace.aspect;   // cm
+      // the neck trim follows the live neckline (halfway.md step 5): its length changes with the setting
+      const live = name === "neck" && neckGeo && NECK_LIVE && neckGeo.defLenPx;
+      const L = live ? t.lengthCm * neckGeo.lenPx / neckGeo.defLenPx : t.lengthCm, w = t.widthMm / 10, tile = w * lace.aspect;   // cm
       vmax[id] = t.vMax || 1;
       edging[id] = EDGING && t.type === "edging" && lace.meta?.edging ? 1 : 0;   // only laces with a clean (keyed) edge
       if (!LACEFIT) { fitLog[name] = "off"; continue; }
@@ -1093,7 +1122,8 @@
     const x = Math.min(1, Math.max(Math.abs(sD - 1), Math.abs(sW - 1)) / 0.08), w = x * x * (3 - 2 * x);
     const T = ([px, py]) => {
       const x2 = g.cf[0] + (px - g.cf[0]) * sW;
-      return [x2, polyY(g.n.top, x2) + (py - g.lineY(px)) * sD];
+      // depth below the grid top (between the corners: the corner line), scaled; the trim centre's ends lie past the corners
+      return [x2, polyY(g.n.top, x2) + (py - polyY(g.n.top, px)) * sD];
     };
     const edge = g.E0d.map((p, i) => T(w ? [p[0] + (g.S0d[i][0] - p[0]) * w, p[1] + (g.S0d[i][1] - p[1]) * w] : p));
     let centre;
@@ -1120,6 +1150,20 @@
     gl.uniform2fv(U("uNE"), new Float32Array(ie.flatMap((i) => edge[i])));
     gl.uniform2fv(U("uNE0"), new Float32Array(ie.flatMap((i) => neckGeo.E0d[i])));
     gl.uniform2fv(U("uNC"), new Float32Array(ic.flatMap((i) => centre[i])));
+    neckGeo.sent = { ne: ie.map((i) => edge[i]), nc: ic.map((i) => centre[i]) };   // what the shader has (test hook)
+    // step 5: the lace is fitted to the LIVE trim length (the 24-point centre line the shader measures u along), as a
+    // share of the default length, so the default fit stays exactly the plate's
+    let len = 0;
+    for (let i = 0; i + 1 < ic.length; i++) len += dist(centre[ic[i]], centre[ic[i + 1]]);
+    neckGeo.lenPx = len;
+    if (!neckGeo.defLenPx) neckGeo.defLenPx = neckLen(neckCurves({ depthMm: look.neck.depthMm.default, widthMm: look.neck.widthMm.default }).centre);
+    laceFit();
+  }
+  function neckLen(centre) {
+    const ic = pickIdx(centre, NECK_N);
+    let len = 0;
+    for (let i = 0; i + 1 < ic.length; i++) len += dist(centre[ic[i]], centre[ic[i + 1]]);
+    return len;
   }
 
   // ---------- pivots (halfway.md step 4): three handles in the neckline view, each on a rail, in plate px (SVG viewBox)
@@ -1416,7 +1460,7 @@
   window.__studio = {
     state, showView, render: () => plate && render(),
     setNeck: (rec) => { state.neck = clampNeck({ ...state.neck, ...rec }); neckUpload(); render(); return state.neck; },
-    neckCurves: () => neckGeo && neckCurves(state.neck), neckGeo: () => neckGeo,
+    neckCurves: () => neckGeo && neckCurves(state.neck), neckGeo: () => neckGeo, neckSent: () => neckGeo && neckGeo.sent,
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
   };
