@@ -68,8 +68,8 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 
 **Accept:**
 - [ ] At the range limits, a person cannot point to the old neckline in 10 seconds (neck view, 2×).
-- [ ] No visible repeat or smear in the form fill.
-- [ ] Range limits written in the look's data, for example depth 60–140 mm. Outside the range the pivots stop.
+- [x] No visible repeat or smear in the form fill.
+- [x] Range limits written in the look's data, for example depth 60–140 mm. Outside the range the pivots stop.
 
 ### Step 4: Pivot points and drag
 
@@ -153,7 +153,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 |---|---|---|---|
 | 1 Decode only the current view | done | (step 1) | 0 MB decoded after switches (was 161 MB); render identical |
 | 2 Live neckline curve | done | (step 2) | default mean ≤ 0.009; edge move exact (±0.08 px) |
-| 3 Area that a change reveals | not started | | |
+| 3 Area that a change reveals | done | (step 3) | old-edge step = the light's own change; no repeat; 10 s person test open |
 | 4 Pivot points and drag | not started | | |
 | 5 Lace and stitch follow the curve | not started | | |
 | 6 Torso view shows the same neckline | not started | | |

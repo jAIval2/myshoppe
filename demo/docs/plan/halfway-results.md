@@ -56,3 +56,32 @@ Only these channels changed: id B, uv in the dip, and shade outside the garment.
 | Corners at the 4 range ends (both views) | no hole, no hairline (`img/halfway-step2.png`: shallow-narrow, deep-wide, shallow-wide, deep-narrow, torso shallow-narrow and deep-wide; plain fills) |
 
 The depth minimum is 20 mm, not 30 mm, so that −20 mm can be tested. In the torso view that gives a 4 mm dip, because the torso photo's neckline is 25 mm deep against 41 mm in the neckline photo (step 6).
+
+## Step 3: Area that a change reveals
+
+All in the shader, in the neck area only. `?revealfill=0` gives the plain colours of step 2. Where the edge has not moved (under 0.5–3 px), the photo shows as it is, so the default does not change (8 queries: same numbers as step 2).
+
+| Area | Fill |
+|---|---|
+| **Edge band**: 9 mm along the live edge | Shade (and, with fabric off, the photo) from the **photographed edge band at the same distance from the edge**, at the matching place along it. The edge roll and the top-stitch at 5.5 mm move with the edge. |
+| **More fabric** (shallower): in or above the photographed band | The shade just inside the photographed band, averaged over 12 mm along the edge. Smooth, so no fold of the old edge stays. A 5 mm crossfade to the photo's own shade further in. |
+| **More form** (deeper) | **Colour:** the photo's form just above the old edge at that place, blurred. When it strays more than 15 % from the patch mean, an added share of the patch colour pulls it back; scaling a dark warm colour up turned it orange. **Detail:** a clean square of the form (`plate.json neck.formPatch`, chosen beside the centre-front tape) hex-tiled, as for the fabric in polish step 7. **Centre-front tape:** the photo's column just above the old edge, averaged over 4 heights (the line stays, the weave goes), carried straight down. **Contact shade:** 0.84 at the new edge, gone after 5 mm. The photo's own collar shadow (4 mm above the old edge) is replaced, with a 4 mm fade. |
+
+What did not work, kept for the record:
+1. Mirroring the photo about the old edge, folded into an 8 mm band, gave visible bands and dashes in the tape.
+2. Using the patch mean colour made the fill 6–13 levels too light, because the patch is on the lit side.
+3. Scaling the local colour up made the shaded side orange.
+
+`tools/reveal_metrics.py` measures a render of a deeper setting with the lace off:
+
+| Render | Step across the old edge (6 mm below − 6 mm above) | Same 12 mm step in real form (6–18 mm above) | Detail repeat peak (fill / real form) |
+|---|---|---|---|
+| neck, depth 100, toile | +7.9 levels (mean \|·\| 10.6) | +6.4 (mean \|·\| 15.2) | 0.18 / 0.25 |
+| torso, depth 100, width 194, toile | +9.2 (9.4) | +11.7 (16.7) | (square too small at 0.9 mm/px) |
+
+The step across the old edge is the size of the light's own change, and the fill's detail has no stronger repeat than the real form. Review images: `img/halfway-step3.png` (neck deep, neck shallow, neck deep-wide in mocha, neck at 65 mm narrow in sage, torso deep-wide, torso shallow-narrow) and `img/halfway-step3-2x.png` (neck deep-wide at plate scale).
+
+- [x] Range limits written in the look's data (`assets/looks/straight-kurta.json`): depth 20–100 mm, width 132–194 mm. The page clamps to them, and the pivots (step 4) stop there.
+- [x] No visible repeat or smear: no repeat peak (0.18); smear checked at plate scale.
+- **Open (a person):** "cannot point to the old neckline in 10 s". By my own look at plate scale, I could not point to it. The number above is the stand-in.
+- **Known:** on the torso plate the photo's white garment shows in a 2–4 px sliver along the shoulder line, above the grid top. It is in the default render too: the plate fit at the shoulder, not this step. With a wide setting it now sits next to the form fill near the corner.

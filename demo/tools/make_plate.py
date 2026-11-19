@@ -452,7 +452,31 @@ if NECK and "grid" in NECK:
         on = offset_poly(edge, 0, (NECK["cfx"], 0))
         stitch_mm = round(sum(min(math.dist(p, q) for q in on) for p in st[2:-2]) / max(1, len(st) - 4) * MMPX, 1)
     lm = Z.get("landmarks", {})
+    # a clean square of the dress form inside the dip, beside the centre-front tape (the side with less detail): the page
+    # tiles its fine detail (hex tiling) where a deeper setting shows the form (halfway.md step 3)
+    c0, c1 = edge[0], edge[-1]
+    cfy = lm.get("cf-neck", [NECK["cfx"], max(p[1] for p in edge)])[1]
+    depth_px = cfy - (c0[1] + (c1[1] - c0[1]) * (NECK["cfx"] - c0[0]) / (c1[0] - c0[0]))
+    P = min(25 / MMPX, 0.55 * depth_px)
+
+    def edge_y(x):
+        for a, b in zip(edge, edge[1:]):
+            if a[0] <= x <= b[0]:
+                return a[1] + (b[1] - a[1]) * (x - a[0]) / ((b[0] - a[0]) or 1)
+        return cfy
+    Lb = base.convert("L")
+    best = None
+    for sgn in (-1, 1):
+        cx = NECK["cfx"] + sgn * (P / 2 + 3 / MMPX)
+        bot = min(edge_y(cx - P / 2), edge_y(cx + P / 2)) - 3.5 / MMPX
+        box = (round(cx - P / 2), round(bot - P), round(cx + P / 2), round(bot))
+        crop = Lb.crop(box)
+        hp = ImageChops.difference(crop, crop.resize((max(1, crop.width // 6), max(1, crop.height // 6))).resize(crop.size, Image.BILINEAR))
+        var = sum(v * v * n for v, n in enumerate(hp.histogram())) / max(1, crop.width * crop.height)
+        if best is None or var < best[0]:
+            best = (var, box)
     plate["neck"] = {
+        "formPatch": list(best[1]),
         "edge": [[round(x, 2), round(y, 2)] for x, y in edge],          # photographed edge, corner to corner, plate px
         "centre": nk["centre"],                                        # the trim centre line of the plate (uv_trim.png)
         "top": Z["zones"]["front"]["grid"]["top"],                     # grid top: the shoulder line and the neck-point line

@@ -76,6 +76,12 @@
  "shadeEncoding": "sqrt",
  "shadeMedian": 213,
  "neck": {
+  "formPatch": [
+   603,
+   265,
+   619,
+   280
+  ],
   "edge": [
    [
     509.4,

@@ -347,6 +347,8 @@
   uniform float uNeckTw;        // trim width, plate px
   uniform vec3  uFormRGB, uToileRGB;   // plain fills (?revealfill=0): form and toile colour, sRGB 0..1
   uniform float uRevealFill;    // step 3: 1 = fills from the photo, 0 = plain colours
+  uniform vec4  uFormPatch;     // a clean square of the dress form in the photo (x0, y0, x1, y1 plate px): its fine detail
+  uniform vec2  uCfX;           // x of the centre front (plate px), and 1 / mm per plate px
   out vec4 outColor;
   const float HL_LIN = 0.05;
 
@@ -456,6 +458,29 @@
     return d;
   }`).join("")}
 
+  // ---- step 3: fine detail of the dress form at q (plate px): hex tiling of the form patch, offsets only (the weave keeps its
+  // direction), cells of 0.35 patch, each cell reads the patch around its own random point; zero-mean detail, so the blend
+  // only needs the contrast correction
+  vec3 hp(vec2 q) { vec2 s = (q + 0.5) / uPlate; return cin(texture(uPhoto, s)).rgb - cin(textureLod(uPhoto, s, 2.0)).rgb; }
+  vec3 formDetail(vec2 q) {
+    vec2 pc = 0.5 * (uFormPatch.xy + uFormPatch.zw);
+    float P = min(uFormPatch.z - uFormPatch.x, uFormPatch.w - uFormPatch.y), c = 0.35 * P;
+    mat2 M = mat2(1.0, 0.0, -0.57735027, 1.15470054), Mi = inverse(M);
+    vec2 sk = M * (q / c), base = floor(sk);
+    vec3 f = vec3(fract(sk), 0.0);
+    f.z = 1.0 - f.x - f.y;
+    float sgn = step(0.0, -f.z), s2 = 2.0 * sgn - 1.0;
+    vec3 w = vec3(-f.z * s2, sgn - f.y * s2, sgn - f.x * s2);
+    vec2 v1 = base + vec2(sgn), v2 = base + vec2(sgn, 1.0 - sgn), v3 = base + vec2(1.0 - sgn, sgn);
+    vec2 lo = uFormPatch.xy + 1.0, hi = uFormPatch.zw - 2.0;
+    vec3 d1 = hp(clamp(pc + q - Mi * v1 * c + (hash2(v1) - 0.5) * 0.24 * P, lo, hi));
+    vec3 d2 = hp(clamp(pc + q - Mi * v2 * c + (hash2(v2) - 0.5) * 0.24 * P, lo, hi));
+    vec3 d3 = hp(clamp(pc + q - Mi * v3 * c + (hash2(v3) - 0.5) * 0.24 * P, lo, hi));
+    w = pow(w, vec3(4.0));
+    w /= (w.x + w.y + w.z);
+    return (w.x * d1 + w.y * d2 + w.z * d3) / sqrt(dot(w, w));
+  }
+
   void main() {
     vec2 frag = vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y);   // top-left origin
     vec2 st = frag / uCanvas;
@@ -480,9 +505,43 @@
       dO = sdNE0(fpx, oI, oT);
       covE = clamp(0.5 + dL / k, 0.0, 1.0);                          // analytic edge coverage (canvas px)
       zone = covE > 0.0 ? 1 : 0;
-      if (dO - dL > 0.25 && dO > -1.0) {                             // was garment in the photo, is form now (deeper setting)
-        vec3 fc = uLinear > 0.5 ? toLin(uFormRGB) : uFormRGB;
-        under = fc;
+      if (dO - dL > 0.25 && dO > -8.5 / (uCmPerPx * 10.0)) {         // was garment in the photo (or its edge), is form now
+        if (uRevealFill < 0.5) {
+          if (dO > -1.0) under = uLinear > 0.5 ? toLin(uFormRGB) : uFormRGB;   // ?revealfill=0: plain colour
+        } else {
+          // step 3: the dress form. Colour: the patch mean, times the light of the photo's form just ABOVE the photographed
+          // edge at this place along it (a ratio, 0.85-1.15: the light carries on, a stray dark spot does not). Detail: the
+          // patch, hex tiled (formDetail). Centre-front tape: the photo's column just above the edge, averaged over 4 heights
+          // (a vertical line stays, the weave does not), carried straight down within 10 mm of the centre front.
+          // The first g mm above the photographed edge (its contact shadow) are replaced, and the next 4 mm fade: no line there.
+          float mmpp = uCmPerPx * 10.0;
+          vec2 a0 = uNE0[oI], b0 = uNE0[oI + 1];
+          vec2 op = mix(a0, b0, oT), t0 = normalize(b0 - a0), nOut = vec2(t0.y, -t0.x);
+          float g = 4.0 / mmpp, F = 8.0 / mmpp;
+          vec2 pc = 0.5 * (uFormPatch.xy + uFormPatch.zw);
+          float P = min(uFormPatch.z - uFormPatch.x, uFormPatch.w - uFormPatch.y);
+          vec3 mean = vec3(0.0);                                     // 9 taps inside the patch (a coarse mip would reach the garment)
+          for (int j = -1; j <= 1; j++)
+            for (int i = -1; i <= 1; i++)
+              mean += cin(textureLod(uPhoto, (pc + vec2(i, j) * 0.3 * P + 0.5) / uPlate, log2(0.15 * P))).rgb;
+          mean /= 9.0;
+          vec3 loc = cin(textureLod(uPhoto, (op + nOut * (g + 0.5 * F) + 0.5) / uPlate, log2(0.4 * F))).rgb;
+          float lum = dot(loc, vec3(0.2126, 0.7152, 0.0722)) / max(dot(mean, vec3(0.2126, 0.7152, 0.0722)), 1e-3);
+          vec3 det = 1.2 * formDetail(fpx);                         // a little more: the patch is the calmer side
+          float wc = 1.0 - smoothstep(4.0, 10.0, abs(fpx.x - uCfX.x) * mmpp);
+          if (wc > 0.0) {
+            float ye = op.y - g;                                       // just above the photographed edge, in this column
+            vec3 ln = vec3(0.0);
+            for (int j = 0; j < 4; j++) ln += hp(vec2(fpx.x, ye - float(j) * 2.0 / mmpp));
+            det += wc * ln * 0.25;
+          }
+          float sh = mix(0.84, 1.0, smoothstep(0.0, 5.0 / mmpp, -dL));      // the garment edge shades the form below it
+          // the local colour of the form (its light and hue at this place); only when it strays more than 15 % from the patch
+          // mean, an ADDED share of the patch colour brings it back (scaling a dark warm colour up would turn it orange)
+          vec3 fill = max((loc + mean * (clamp(lum, 0.85, 1.15) - lum)) * sh + det, 0.0);
+          float mv = smoothstep(0.5, 3.0, distance(mix(uNE[eI], uNE[eI + 1], eT), mix(uNE0[eI], uNE0[eI + 1], eT)));
+          under = mix(photo.rgb, fill, smoothstep(-g - 4.0 / mmpp, -0.2 * g, dO) * mv);   // 8 mm fade: the old collar shadow goes softly
+        }
       }
     }
 
@@ -529,6 +588,32 @@
     bool revealed = neckA && dL - dO > 0.25 && dO < 0.0;
     vec3 toile = uLinear > 0.5 ? toLin(uToileRGB) : uToileRGB;
     if (revealed && uRevealFill < 0.5) s = 1.0;
+    vec3 toileCol = revealed ? toile * s : photo.rgb;                // fabric off: the photo, or the toile where it shows the form
+    if (neckA && uRevealFill > 0.5 && zone == 1) {
+      // ---- step 3: the edge band follows the live edge, and fabric that the photo did not have gets a smooth light.
+      // Band (9 mm from the live edge): shade and photo from the photographed edge band at the same distance (edge roll,
+      // top-stitch). Past it, where the pixel is in or above the photographed band: the shade just inside that band, averaged
+      // along the edge (12 mm), so no fold of the old edge stays. Further in: the photo's own shade.
+      float mmpp = uCmPerPx * 10.0;
+      vec2 a0 = uNE0[eI], b0 = uNE0[eI + 1];
+      vec2 lp = mix(uNE[eI], uNE[eI + 1], eT), op = mix(a0, b0, eT);
+      float mv = smoothstep(0.5, 3.0, distance(lp, op));            // 0 where the edge has not moved: the photo as it is
+      if (mv > 0.0) {
+        vec2 t0 = normalize(b0 - a0), nIn = vec2(-t0.y, t0.x);
+        float Bw = 9.0 / mmpp, Tb = 5.0 / mmpp;
+        vec2 qb = op + nIn * max(dL, 0.0);
+        vec2 qe = op + nIn * (Bw + 3.0 / mmpp);
+        float sb = shadeOf(texture(uShade, (qb + 0.5) / uPlate).r), se = 0.0;
+        for (int j = -2; j <= 2; j++) se += shadeOf(texture(uShade, (qe + t0 * float(j) * 3.0 / mmpp + 0.5) / uPlate).r);
+        se /= 5.0;
+        float bandW = 1.0 - smoothstep(Bw, Bw + Tb, dL);
+        float restW = 1.0 - smoothstep(Bw, Bw + Tb, dO);
+        if (uShadeOn > 0.5) s = mix(s, mix(mix(s, se, restW), sb, bandW), mv);
+        vec3 pb = cin(texture(uPhoto, (qb + 0.5) / uPlate)).rgb;
+        vec3 pe = cin(textureLod(uPhoto, (qe + 0.5) / uPlate, 2.5)).rgb;
+        toileCol = mix(toileCol, mix(mix(photo.rgb, pe, restW), pb, bandW), mv);
+      }
+    }
     vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
     if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
       uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
@@ -557,7 +642,7 @@
       }
     }
 
-    vec3 col = revealed ? toile * s : photo.rgb;                     // fabric off: the photo, or the toile where it shows the form
+    vec3 col = toileCol;
     if (bg) {
       // the photo stays: the lace and its shadow go on top
     } else if (uChecker > 0.5) {
@@ -962,6 +1047,8 @@
     gl.uniform1f(U("uNeckTw"), tw);
     gl.uniform3fv(U("uFormRGB"), n.formRGB.map((v) => v / 255));
     gl.uniform3fv(U("uToileRGB"), n.toileRGB.map((v) => v / 255));
+    gl.uniform4fv(U("uFormPatch"), n.formPatch);
+    gl.uniform2f(U("uCfX"), n.cf[0], 1 / mmpp);
   }
   // The live curves for a record, as dense point lists. w: 0 at the default (the photographed polyline and the plate's trim
   // centre, exact), 1 from 8 % of change on (the smooth curve, and a trim centre at exactly half the trim width from the edge).
