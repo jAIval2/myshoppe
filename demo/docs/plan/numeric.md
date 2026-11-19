@@ -54,10 +54,10 @@ The pixel identity is then easy to test (read the textures back, compare them wi
 **Do:**
 1. New `demo/plate.js` (one module, no dependencies): `resample`, `coons`, the cylinder correction (`thetaDeg`, `asin`), `tuck`, `widthPx`, `neck_edge`, `offset_poly`. A port of `make_plate.py`, the same names.
 2. `make_plate.py --dump-mesh <out.json>`: write the evaluated grid points (x, y, u, v) of every zone and trim, for the test only.
-3. `tools/mesh_check.py`: compare the JavaScript points (dumped from the page with `--dump-dom`) with the Python points.
+3. `tools/mesh_check.mjs`: compare the JavaScript points with the Python points (run in Node: `plate.js` is the same file the page loads).
 
 **Accept:**
-- [ ] All 4 plates: every grid point within 0.01 px and 0.001 cm of the Python value.
+- [x] All 4 plates: every grid point within 0.01 px and 0.001 cm of the Python value.
 
 ### Step 2: Zone maps from the mesh, torso first (`?geom=mesh`)
 
@@ -160,7 +160,7 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | Step | Status | Commit | Result (`numeric-results.md`) |
 |---|---|---|---|
 | 0 Baseline | done | (step 0) | 12 of 12 identical on 8100 and 8200; maps 2,036 KB; 41 MB GPU per view |
-| 1 Plate maths in JavaScript | planned | | |
+| 1 Plate maths in JavaScript | done | (step 1) | every vertex within 3e-11 px on 4 plates; trim `side` now in plate.json |
 | 2 Zone maps from the mesh (torso) | planned | | |
 | 3 Trims as ribbons | planned | | |
 | 4 Shade on the GPU | planned | | |

@@ -29,7 +29,8 @@
    "widthMm": 12,
    "type": "insertion",
    "outerV": 1,
-   "vMax": 1.0
+   "vMax": 1.0,
+   "side": -1
   }
  },
  "shadeSmoothMm": 1.2,

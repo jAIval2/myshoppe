@@ -13,6 +13,10 @@ import json, math, os, sys
 from PIL import Image, ImageChops, ImageDraw, ImageMath
 
 DIR = sys.argv[1]
+# numeric.md step 1: --dump-mesh <out>  writes <out>.json + <out>.bin (float64) with the evaluated vertices of every zone grid and
+# trim strip, for tools/mesh_check.mjs (the test of plate.js). Nothing else changes.
+DUMP = sys.argv[sys.argv.index("--dump-mesh") + 1] if "--dump-mesh" in sys.argv else None
+DUMP_META, DUMP_BIN = {"zones": {}, "trims": {}}, []
 Z = json.load(open(os.path.join(DIR, "zones.json")))
 base = Image.open(os.path.join(DIR, Z["base"])).convert("RGB")
 W, H = base.size
@@ -170,6 +174,15 @@ for name, zone in sorted(Z["zones"].items(), key=lambda kv: kv[1]["order"]):
     th = THETA[name]
     width_cm = w_px * MMPX / 10 * th / math.sin(th)  # unrolled cylinder
     height_cm = h_px * MMPX / 10
+    if DUMP:                                             # vertex (x, y, u, v) at every grid point, u / v in cm
+        off = sum(len(c) for c in DUMP_BIN)
+        arr = []
+        for j in range(nt + 1):
+            for i in range(ns + 1):
+                arc = (math.asin((2 * (i / ns) - 1) * math.sin(th)) + th) / (2 * th)
+                arr += [P[j][i][0], P[j][i][1], arc * width_cm, j / nt * height_cm]
+        DUMP_BIN.append(arr)
+        DUMP_META["zones"][name] = {"ns": ns, "nt": nt, "widthCm": width_cm, "heightCm": height_cm, "offset": off, "count": len(arr)}
 
     layer_uv = Image.new("RGB", (W, H), (0, 0, 0))
     layer_m = Image.new("L", (W, H), 0)
@@ -249,6 +262,22 @@ for name, trim in Z["trims"].items():
     sg = -1 if med(dneg) < med(dpos) else 1
     steps_in = max(8, math.ceil(2 * half))              # one step per px across the strip
     steps = math.ceil(steps_in * vmax)
+    if DUMP:                                             # per segment i, per level k, 2 corners (a side, b side): x, y, u, v (v: 0..1 over vMax)
+        off = sum(len(c) for c in DUMP_BIN)
+        arr = []
+        for i in range(n):
+            a_, b_ = C[i], C[i + 1]
+            tx, ty = b_[0] - a_[0], b_[1] - a_[1]
+            ln = math.hypot(tx, ty) or 1
+            nx, ny = -ty / ln * sg, tx / ln * sg
+            for k in range(steps + 1):
+                f = min(vmax, k / steps_in)
+                vv = -half + 2 * half * f
+                arr += [a_[0] + nx * vv, a_[1] + ny * vv, i / n * len_cm, f / vmax,
+                        b_[0] + nx * vv, b_[1] + ny * vv, (i + 1) / n * len_cm, f / vmax]
+        DUMP_BIN.append(arr)
+        DUMP_META["trims"][name] = {"n": n, "steps": steps, "stepsIn": steps_in, "vmax": vmax, "lenCm": len_cm, "side": sg, "half": half,
+                                    "offset": off, "count": len(arr)}
     layer = Image.new("RGB", (W, H), (0, 0, 0))
     m_in, m_out = Image.new("L", (W, H), 0), Image.new("L", (W, H), 0)
     dl, di, do = ImageDraw.Draw(layer), ImageDraw.Draw(m_in), ImageDraw.Draw(m_out)
@@ -273,7 +302,7 @@ for name, trim in Z["trims"].items():
     g_.paste(TRIM_ID[name], (0, 0), m)
     id_img = Image.merge("RGB", (r, g_, b_))
     plate["trims"][name] = {"id": TRIM_ID[name], "lengthCm": round(len_cm, 1), "widthMm": trim["widthMm"],
-                            "type": ttype, "outerV": 1, "vMax": vmax}
+                            "type": ttype, "outerV": 1, "vMax": vmax, "side": sg}   # side: +1 / -1, the normal that points to the garment edge
 
 # ---- neck area: id.png B = 1 (halfway.md step 2)
 if NECK and "grid" in NECK:
@@ -442,6 +471,8 @@ if NECK and "grid" in NECK:
     below_pts = offset_poly(edge, tw + 4 / MMPX, (NECK["cfx"], 0))
     above_pts = offset_poly(edge, -4 / MMPX, (NECK["cfx"], 0))
     bp = base.load()
+    if DUMP:
+        DUMP_META["neck"] = {"edge": edge, "below": below_pts, "above": above_pts, "away": [NECK["cfx"], 0], "belowD": tw + 4 / MMPX, "aboveD": -4 / MMPX}
 
     def med_rgb(pts):
         cols = [bp[int(x), int(y)] for x, y in pts[1:-1] if 0 <= x < W and 0 <= y < H]
@@ -522,4 +553,14 @@ for y in range(H):
             c = COL[z][(int(u / 2) + int(v / 2)) % 2]
         op[x, y] = tuple(min(255, int(ch * k)) for ch in c)
 out.save(os.path.join(DIR, "check.png"), optimize=True)
+if DUMP:
+    import array
+    flat = array.array("d")
+    for arr in DUMP_BIN:
+        flat.extend(arr)
+    flat.tofile(open(DUMP + ".bin", "wb"))
+    DUMP_META["mmPerPx"] = MMPX
+    DUMP_META["step"] = STEP
+    json.dump(DUMP_META, open(DUMP + ".json", "w"))
+    print("mesh dump:", DUMP, len(flat), "float64")
 print("done:", sorted(f for f in os.listdir(DIR)))

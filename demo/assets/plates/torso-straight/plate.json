@@ -29,7 +29,8 @@
    "widthMm": 12,
    "type": "insertion",
    "outerV": 1,
-   "vMax": 1.0
+   "vMax": 1.0,
+   "side": -1
   },
   "cuff-l": {
    "id": 2,
@@ -37,7 +38,8 @@
    "widthMm": 25,
    "type": "edging",
    "outerV": 1,
-   "vMax": 1.5
+   "vMax": 1.5,
+   "side": 1
   },
   "cuff-r": {
    "id": 3,
@@ -45,7 +47,8 @@
    "widthMm": 25,
    "type": "edging",
    "outerV": 1,
-   "vMax": 1.5
+   "vMax": 1.5,
+   "side": 1
   },
   "hem": {
    "id": 4,
@@ -53,7 +56,8 @@
    "widthMm": 30,
    "type": "edging",
    "outerV": 1,
-   "vMax": 1.5
+   "vMax": 1.5,
+   "side": 1
   },
   "slit-l": {
    "id": 5,
@@ -61,7 +65,8 @@
    "widthMm": 8,
    "type": "insertion",
    "outerV": 1,
-   "vMax": 1.0
+   "vMax": 1.0,
+   "side": 1
   },
   "slit-r": {
    "id": 6,
@@ -69,7 +74,8 @@
    "widthMm": 8,
    "type": "insertion",
    "outerV": 1,
-   "vMax": 1.0
+   "vMax": 1.0,
+   "side": -1
   }
  },
  "shadeSpace": "linear",
