@@ -112,7 +112,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 
 **Accept:**
 - [ ] For 3 settings, the neck depth measured in the torso view and in the neckline view agrees within ± 3 mm.
-- [ ] Switching views keeps the setting.
+- [x] Switching views keeps the setting.
 
 ### Step 7: Showcase
 
@@ -156,5 +156,5 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 | 3 Area that a change reveals | done | (step 3) | old-edge step = the light's own change; no repeat; 10 s person test open |
 | 4 Pivot points and drag | done | (step 4) | mouse, touch, keys checked with real input events; phone fps open |
 | 5 Lace and stitch follow the curve | done | (step 5) | default trim match median 0.3 px; whole motifs, CF within 2.1 mm |
-| 6 Torso view shows the same neckline | not started | | |
+| 6 Torso view shows the same neckline | done, fallback | (step 6) | changes agree within 0.3 mm; absolute depth: the photos differ by 15.7 mm → neckline view is the reference |
 | 7 Showcase | not started | | |

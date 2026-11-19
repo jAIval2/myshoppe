@@ -92,6 +92,12 @@
     display: none;
   }
   .stage-note.show { display: block; }
+  .stage-badge {
+    position: absolute; top: 14px; left: 14px; max-width: 70%; margin: 0;
+    padding: 6px 11px; border-radius: 999px; background: rgba(251, 248, 243, 0.9); backdrop-filter: blur(8px);
+    font-size: 11px; line-height: 1.35; color: var(--ink); display: none;
+  }
+  .stage-badge.show { display: block; }
   /* NECKLINE PIVOTS (halfway.md step 4): an SVG layer in plate px over the canvas */
   .pivots { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; overflow: visible; touch-action: none; }   /* only the outer svg's touch-action counts */
   .pivots.show { display: block; }
@@ -211,6 +217,7 @@
       <g class="handle" id="h-r" data-pivot="r" role="slider" tabindex="0" aria-label="Neckline width, right point" aria-orientation="horizontal">
         <circle class="hit"/><circle class="ring"/><circle class="dot"/></g>
     </svg>
+    <p class="stage-badge" id="badge" aria-live="polite"></p>
     <p class="stage-note" id="note"></p>
     <div class="stage-caption">
       <span id="caption-fabric">Sage Embroidered Organza</span>
@@ -1194,7 +1201,14 @@
     }
     return out;
   }
+  // views that show the neckline but cannot move it yet (halfway.md step 6, phase 1): the turned sleeve view keeps its
+  // photographed neckline, with a note when the design has another one
+  const NECK_NOTE_VIEWS = { sleeve: 1 };
   function neckReadout() {
+    const badge = document.getElementById("badge");
+    const changed = state.neck && look && (Math.abs(state.neck.depthMm - look.neck.depthMm.default) > 0.5 || Math.abs(state.neck.widthMm - look.neck.widthMm.default) > 0.5);
+    badge.textContent = changed && NECK_NOTE_VIEWS[state.view] ? `Neckline here as photographed. Your neckline (${fmt(state.neck.depthMm)} deep, ${fmt(state.neck.widthMm)} wide) shows in the front views.` : "";
+    badge.classList.toggle("show", !!badge.textContent);
     if (!state.neck) { document.getElementById("neck-panel").hidden = true; return; }
     document.getElementById("neck-depth").textContent = `Depth ${fmt(state.neck.depthMm)}`;
     document.getElementById("neck-width").textContent = `Width ${fmt(state.neck.widthMm)}`;

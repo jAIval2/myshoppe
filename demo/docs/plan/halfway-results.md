@@ -155,3 +155,30 @@ The motif is centred at the middle of the strip's length, as before. That is wit
 
 - [x] Default: matches the baked trim (median 0.3 px; 8 queries: mean ≤ 0.19).
 - [x] At every setting tried: the lace hugs the edge, the motifs are whole, the middle motif is within 2.1 mm of the CF, and there is no seam at the neck corners (`img/halfway-step5.png`: neck pearl at depth 100, geometric at 20/132, fine at 65/194, leaf (mirror) at 90/140 on toile; torso pearl at 100/194 and geometric at 20/132).
+
+## Step 6: The torso view shows the same neckline
+
+Both front views read the same record (`state.neck`). Each one converts a **change in mm** into its own px with its own `mmPerPx` and landmarks (corner line, centre front, grid top). The torso plate has the same neck area, live edge, fills and live trim (steps 2, 3, 5), as the step 2–5 images show.
+
+**Sleeve view (phase 1):** it keeps its photographed neckline. When the record differs from the photo, a note shows on the stage: "Neckline here as photographed. Your neckline (80 mm deep, 170 mm wide) shows in the front views." (`img/halfway-step6-sleeve.png`).
+
+**Switching views keeps the setting:** with real clicks on the view pills, the record went from neck (80 / 170) to torso and then to sleeve unchanged.
+
+**Neck depth in the two views:** the depth is measured on the live edge at the centre front, from the corner line.
+
+| Record | Neckline view | Torso view | Change from the photo, neckline / torso |
+|---|---|---|---|
+| 65 / 158 | 65.0 mm | 49.2 mm | +24.10 / +23.92 mm |
+| 90 / 180 | 90.0 mm | 74.1 mm | +49.10 / +48.83 mm |
+| 25 / 140 | 25.0 mm | 9.3 mm | −15.90 / −15.93 mm |
+
+- **Changes:** the two views agree within 0.3 mm (the torso's smooth shape moves the CF point by up to 0.27 mm).
+- **Absolute depth:** the views differ by 15.7–15.9 mm, which is more than the ±3 mm the plan allows. The cause is in the photos, not in the method. The photographed necklines already differ: 40.9 mm deep in the neckline photo and 25.2 mm in the torso photo, with the same 158 mm width (from the corners: 29.6 mm from the torso's neck-point landmarks). The close-up is most likely shot from lower down: the neck points sit about 6 cm behind the centre front, so seen from below they appear higher, and the dip looks deeper. To match the absolute depth, the torso view would have to move its photographed neckline at the default, and then the default would no longer be the photo.
+- **Width:** the torso corners (grid top) are 2.6 px outside the `neck-l` / `neck-r` landmarks that set the scale, so the torso measures 160.35 mm for the same width (158 mm in the neckline view). A change in width agrees exactly.
+
+**Applied: the plan's fallback for "views disagree by more than 3 mm".** The neckline view is the control (the handles are only there), and its mm values are the record. The torso view shows the same change from its own photographed neckline, and updates when it is shown (one view is on screen at a time).
+
+To close the 3 mm check, measure the real garment's neck depth (atelier), then re-annotate the torso neckline, or re-shoot one of the two views from the same height.
+
+- [ ] For 3 settings, the neck depth in the torso and neckline views agrees within ±3 mm: **no**, the photos differ by 15.7 mm. Changes agree within 0.3 mm. Fallback applied.
+- [x] Switching views keeps the setting.
