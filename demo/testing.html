@@ -639,14 +639,24 @@
   const SHADOW = params.has("shadow") ? parseFloat(params.get("shadow")) : 0.35;   // test: ?shadow=0 off, ?shadow=0.5 stronger
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
   // images: normal decode, LINEAR + mipmaps
-  async function bitmap(url, data) {
+  // halfway.md step 1: the page keeps the DOWNLOADED files (compressed blobs) of every view and decodes only what it shows.
+  // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
+  const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
+  const decoded = new Set();
+  async function blobOf(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url}: ${res.status}`);
-    const blob = await res.blob();
-    return createImageBitmap(blob, data
+    return res.blob();
+  }
+  async function decode(blob, data) {
+    const b = await createImageBitmap(blob, data
       ? { colorSpaceConversion: "none", premultiplyAlpha: "none" }
       : { premultiplyAlpha: "none" });
+    decoded.add(b);
+    return b;
   }
+  const release = (b) => { if (b && !DECODE_ALL) { decoded.delete(b); b.close(); } };
+  async function bitmap(url, data) { return decode(await blobOf(url), data); }
   function texture(unit, img, { data = false, linear = false, mips = false, wrap = gl.CLAMP_TO_EDGE } = {}) {
     const t = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
@@ -689,30 +699,37 @@
     units[unit] = texture(unit, img, opts);
   }
 
-  function fetchView(view) {                           // download once, keep the decoded images
+  const MAPS = [["photo", "base.jpg", false], ["id", "id.png", true], ["uv", "uv.png", true], ["uvt", "uv_trim.png", true], ["shade", "shade.png", true]];
+  function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
       const P = VIEWS[view].plate;
       cache[view] = Promise.all([
         fetch(P + "plate.json").then((r) => { if (!r.ok) throw new Error(`${P}plate.json: ${r.status}`); return r.json(); }),
-        bitmap(P + "base.jpg", false),
-        bitmap(P + "id.png", true),
-        bitmap(P + "uv.png", true),
-        bitmap(P + "uv_trim.png", true),
-        bitmap(P + "shade.png", true),
-      ]).then(([plate, photo, id, uv, uvt, shade]) => ({ plate, photo, id, uv, uvt, shade }));
+        ...MAPS.map(([, f]) => blobOf(P + f)),
+      ]).then(([plate, ...blobs]) => ({ plate, blobs: Object.fromEntries(MAPS.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
     }
     return cache[view];
   }
+  const keptBitmaps = {};                              // ?decode=all: view -> decoded images (the old memory use)
+  async function decodeView(view, v) {
+    if (DECODE_ALL && keptBitmaps[view]) return keptBitmaps[view];
+    const bm = await Promise.all(MAPS.map(([k, , data]) => decode(v.blobs[k], data)));
+    const r = Object.fromEntries(MAPS.map(([k], i) => [k, bm[i]]));
+    if (DECODE_ALL) keptBitmaps[view] = r;
+    return r;
+  }
 
-  const swatchCache = {};                              // url -> Promise of ImageBitmap
-  const swatch = (src) => (swatchCache[src] ||= bitmap(src, false));
+  const swatchCache = {};                              // url -> Promise of the swatch blob (decoded when it is put on the GPU)
+  const swatch = (src) => (swatchCache[src] ||= blobOf(src));
+  swatch.decoded = async (src) => decode(await swatch(src), false);
 
   async function setFabric(key) {                      // fabric on unit 5 (no-op for "off")
     if (key === "off") return;
-    const f = FABRICS[key], img = await swatch(f.src);
-    if (state.fabric !== key) return;                  // a later click won
+    const f = FABRICS[key], img = await swatch.decoded(f.src);
+    if (state.fabric !== key) { release(img); return; }   // a later click won
     setUnit(5, img, { wrap: gl.REPEAT });              // swatch is made seamless offline
+    release(img);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.uniform1f(U("uFabricCm"), f.repeatCm);
     gl.uniform1f(U("uSheenOld"), SHEEN === "0" ? 1 : 0);
@@ -726,9 +743,10 @@
   let lace = null;                                     // { meta, aspect } of the lace on unit 6
 
   async function setLace(key) {                        // lace on unit 6
-    const [img, meta, mat] = await Promise.all([swatch(LACES[key].src), laceMetaOf(LACES[key].meta),
-      LACES[key].mat ? (matCache[LACES[key].mat] ||= bitmap(LACES[key].mat, true).catch(() => null)) : null]);
-    if (state.lace !== key) return;
+    const [img, meta, matBlob] = await Promise.all([swatch.decoded(LACES[key].src), laceMetaOf(LACES[key].meta),
+      LACES[key].mat ? (matCache[LACES[key].mat] ||= blobOf(LACES[key].mat).catch(() => null)) : null]);
+    const mat = matBlob ? await decode(matBlob, true) : null;
+    if (state.lace !== key) { release(img); release(mat); return; }
     // a lace with a measured repeat tiles with REPEAT; a lace without one (or ?lacefit=0) keeps the mirror
     const mirror = !LACEFIT || !meta || meta.mirror;
     setUnit(6, img, { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
@@ -739,6 +757,7 @@
     }
     gl.uniform1f(U("uHasMat"), mat && RELIEF ? 1 : 0);
     lace = { meta: mirror ? null : meta, aspect: img.width / img.height, mirror };
+    release(img); release(mat);
     gl.uniform1f(U("uLaceAspect"), lace.aspect);
     laceFit();
   }
@@ -810,11 +829,14 @@
     const t0 = performance.now();
     const v = await fetchView(view);
     if (token !== switchToken) return;                 // a later click won
-    setUnit(0, v.photo);
-    setUnit(1, v.id, { data: true });
-    setUnit(2, v.uv, { data: true });
-    setUnit(3, v.uvt, { data: true });
-    setUnit(4, v.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
+    const bm = await decodeView(view, v);              // decode this view only (step 1)
+    if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
+    setUnit(0, bm.photo);
+    setUnit(1, bm.id, { data: true });
+    setUnit(2, bm.uv, { data: true });
+    setUnit(3, bm.uvt, { data: true });
+    setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
+    Object.values(bm).forEach(release);                // on the GPU now: free the decoded images
     plate = v.plate;
     note.classList.remove("show");
     gl.uniform2f(U("uPlate"), plate.viewBox[0], plate.viewBox[1]);
@@ -935,6 +957,13 @@
     b.setAttribute("aria-pressed", String(state[k]));
     if (plate) render();
   }));
+
+  // test hook for tools/cdp_shot.mjs --eval (no UI use)
+  window.__studio = {
+    state, showView, render: () => plate && render(),
+    decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
+    decodedCount: () => decoded.size,
+  };
 
   let raf = 0;
   new ResizeObserver(() => { if (plate) { cancelAnimationFrame(raf); raf = requestAnimationFrame(resize); } }).observe(canvas);
