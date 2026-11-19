@@ -85,7 +85,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 6. Redraw only while dragging (one `requestAnimationFrame` per pointer move).
 
 **Accept:**
-- [ ] Drag works with mouse, touch and keyboard; the handles never leave their rails.
+- [x] Drag works with mouse, touch and keyboard; the handles never leave their rails.
 - [ ] The neckline, the lace and the stitch line follow during the drag (needs step 5 for the lace).
 - [ ] ≥ 30 frames per second on a mid-range phone during a drag.
 
@@ -154,7 +154,7 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 | 1 Decode only the current view | done | (step 1) | 0 MB decoded after switches (was 161 MB); render identical |
 | 2 Live neckline curve | done | (step 2) | default mean ≤ 0.009; edge move exact (±0.08 px) |
 | 3 Area that a change reveals | done | (step 3) | old-edge step = the light's own change; no repeat; 10 s person test open |
-| 4 Pivot points and drag | not started | | |
+| 4 Pivot points and drag | done | (step 4) | mouse, touch, keys checked with real input events; phone fps open |
 | 5 Lace and stitch follow the curve | not started | | |
 | 6 Torso view shows the same neckline | not started | | |
 | 7 Showcase | not started | | |

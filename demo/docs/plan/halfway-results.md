@@ -85,3 +85,34 @@ The step across the old edge is the size of the light's own change, and the fill
 - [x] No visible repeat or smear: no repeat peak (0.18); smear checked at plate scale.
 - **Open (a person):** "cannot point to the old neckline in 10 s". By my own look at plate scale, I could not point to it. The number above is the stand-in.
 - **Known:** on the torso plate the photo's white garment shows in a 2–4 px sliver along the shoulder line, above the grid top. It is in the default render too: the plate fit at the shoulder, not this step. With a wide setting it now sits next to the form fill near the corner.
+
+## Step 4: Pivot points and drag
+
+The neckline view has three handles in an SVG layer over the canvas (viewBox = the 1200 × 1600 plate frame), each on a rail drawn between the range limits, with the snap stops marked (`img/halfway-step4.png`).
+
+| Handle | Moves | Sets |
+|---|---|---|
+| Centre front | down and up along the centre-front line only | `depthMm` |
+| Left and right | sideways only, mirrored, along the grid top (the shoulder line) | `widthMm` |
+
+- **Design record:** `state.neck = { depthMm, widthMm }`, clamped to the look's range. The record goes into the URL when a drag ends (`?neckDepth=65&neckWidth=194`), and the page reads it from there.
+- **Snap:** on by default ("Snap to stops"). Within 2.5 mm of a stop the value goes to the stop. With snap off, every value in the range can be set.
+- **Keys:** Tab to a handle. The arrow keys move it 1 mm in the direction it moves (down = deeper, outward = wider); Shift + arrow moves 10 mm; Page Up / Down jumps to the next stop; Home / End go to the range ends. Each handle is a `role="slider"` with `aria-valuetext` "Depth 65 mm".
+- **Panel:** "Depth 65 mm · Width 194 mm", Reset, and Snap to stops. In the other views it says to open the Neckline view.
+- **Redraw:** at most one redraw per animation frame during a drag (pointer events are merged); nothing is drawn when no drag is running.
+
+Checked with real input events through the DevTools protocol (`tools/cdp_shot.mjs --input`):
+
+| Input | Result |
+|---|---|
+| Mouse: centre handle 20, 40, then 400 css px down | depth 57.9 → 74.9 → **100** (stops at the max) |
+| Mouse: left handle 15 px out, then 80 px up | width 183.8; the move up does nothing (the handle stays on its rail) |
+| Keys: Tab to the right handle; ←, Shift+←, Page Up, Home | 182.8 → 172.8 → 158 (stop) → 132 (min) |
+| Touch: right handle 10, 20, 30 px out | 174.8 → 191.6 → **194** (max), no `pointercancel` |
+| Touch: centre handle 15, then 30 px down | 53.7 → 65 (snapped to the 65 stop) |
+
+Fixed on the way: the first touch drag was cancelled by the browser after one move, because Chrome reads `touch-action` only on the outer `<svg>`, not on its children. The outer SVG now has `touch-action: none`. It takes no pointer events itself, so the page still scrolls when the photo is touched.
+
+- [x] Drag works with mouse, touch and keyboard; the handles never leave their rails, because their positions come from the clamped record.
+- [ ] The lace follows during the drag: step 5.
+- **Open (phone):** ≥ 30 frames per second on a mid-range phone. SwiftShader's timings are not real. The drag cost is one draw per frame, and the neck area adds three 24-segment curve searches per pixel.

@@ -92,6 +92,21 @@
     display: none;
   }
   .stage-note.show { display: block; }
+  /* NECKLINE PIVOTS (halfway.md step 4): an SVG layer in plate px over the canvas */
+  .pivots { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; overflow: visible; touch-action: none; }   /* only the outer svg's touch-action counts */
+  .pivots.show { display: block; }
+  .pivots .rail { fill: none; stroke: rgba(251, 248, 243, 0.9); stroke-width: 2.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .pivots .rail-shadow { fill: none; stroke: rgba(29, 26, 22, 0.35); stroke-width: 4.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .pivots .stop { fill: rgba(251, 248, 243, 0.95); stroke: rgba(29, 26, 22, 0.5); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .pivots .handle { pointer-events: all; cursor: grab; touch-action: none; outline: none; }
+  .pivots .handle.drag { cursor: grabbing; }
+  .pivots .hit { fill: transparent; }
+  .pivots .dot { fill: #fbf8f3; stroke: #1d1a16; stroke-width: 2; vector-effect: non-scaling-stroke; transition: fill 0.15s; }
+  .pivots .ring { fill: none; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .pivots .handle:hover .dot, .pivots .handle.drag .dot { fill: #fff; }
+  .pivots .handle:focus-visible .ring { stroke: #1d1a16; }
+  .neck-values { font-size: 13px; margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 11px; color: var(--muted); margin: 10px 0 0; line-height: 1.45; }
   /* EDITORIAL CONTROLS */
   .panel {
     display: grid;
@@ -187,6 +202,15 @@
   <div class="stage-frame">
     <img src="assets/plates/torso-straight/base.jpg" alt="" width="1200" height="1600">
     <canvas id="stage" role="img" aria-label="Straight kurta on a dress form"></canvas>
+    <svg class="pivots" id="pivots" viewBox="0 0 1200 1600" preserveAspectRatio="none">
+      <g id="rails"></g>
+      <g class="handle" id="h-cf" data-pivot="cf" role="slider" tabindex="0" aria-label="Neckline depth at the centre front" aria-orientation="vertical">
+        <circle class="hit"/><circle class="ring"/><circle class="dot"/></g>
+      <g class="handle" id="h-l" data-pivot="l" role="slider" tabindex="0" aria-label="Neckline width, left point" aria-orientation="horizontal">
+        <circle class="hit"/><circle class="ring"/><circle class="dot"/></g>
+      <g class="handle" id="h-r" data-pivot="r" role="slider" tabindex="0" aria-label="Neckline width, right point" aria-orientation="horizontal">
+        <circle class="hit"/><circle class="ring"/><circle class="dot"/></g>
+    </svg>
     <p class="stage-note" id="note"></p>
     <div class="stage-caption">
       <span id="caption-fabric">Sage Embroidered Organza</span>
@@ -245,8 +269,18 @@
       </div>
     </div>
 
+    <div id="neck-panel">
+      <p class="eyebrow">03 · Neckline</p>
+      <p class="neck-values" aria-live="polite"><span id="neck-depth">Depth — mm</span> · <span id="neck-width">Width — mm</span></p>
+      <div class="pill-row">
+        <button class="pill" id="neck-reset">Reset</button>
+        <button class="pill" id="neck-snap" aria-pressed="true">Snap to stops</button>
+      </div>
+      <p class="hint" id="neck-hint"></p>
+    </div>
+
     <div>
-      <p class="eyebrow">03 · Test</p>
+      <p class="eyebrow">04 · Test</p>
       <div class="pill-row">
         <button class="pill" aria-pressed="false" data-test="checker">Grain checker</button>
         <button class="pill" aria-pressed="false" data-test="photo">Show photo only</button>
@@ -1088,6 +1122,137 @@
     gl.uniform2fv(U("uNC"), new Float32Array(ic.flatMap((i) => centre[i])));
   }
 
+  // ---------- pivots (halfway.md step 4): three handles in the neckline view, each on a rail, in plate px (SVG viewBox)
+  const svg = document.getElementById("pivots");
+  const HANDLE = { cf: document.getElementById("h-cf"), l: document.getElementById("h-l"), r: document.getElementById("h-r") };
+  const PIVOT_VIEWS = { neck: 1 };                     // the fixed view in which the customer drags the neckline
+  let snapOn = params0.get("snap") !== "0";
+  const SNAP_MM = 2.5;
+  const fmt = (v) => `${Math.round(v)} mm`;
+  function pivotPos(rec) {                             // handle positions for a record (plate px), same recipe as neckCurves
+    const g = neckGeo, L = look.neck, e = g.n.edge, c0 = e[0], c1 = e[e.length - 1];
+    const sW = (g.widthPx0 + (rec.widthMm - L.widthMm.default) / g.mmpp) / g.widthPx0;
+    const xl = g.cf[0] + (c0[0] - g.cf[0]) * sW, xr = g.cf[0] + (c1[0] - g.cf[0]) * sW;
+    return { cf: [g.cf[0], g.cf[1] + (rec.depthMm - L.depthMm.default) / g.mmpp], l: [xl, polyY(g.n.top, xl)], r: [xr, polyY(g.n.top, xr)] };
+  }
+  function valueFrom(pivot, p) {                       // pointer (plate px) -> a value on the rail
+    const g = neckGeo, L = look.neck, e = g.n.edge;
+    if (pivot === "cf") return { depthMm: L.depthMm.default + (p[1] - g.cf[1]) * g.mmpp };
+    const sW = pivot === "l" ? (g.cf[0] - p[0]) / (g.cf[0] - e[0][0]) : (p[0] - g.cf[0]) / (e[e.length - 1][0] - g.cf[0]);
+    return { widthMm: L.widthMm.default + (sW - 1) * g.widthPx0 * g.mmpp };
+  }
+  function snap(rec) {
+    if (!snapOn) return rec;
+    const out = { ...rec };
+    for (const k of Object.keys(rec)) {
+      const s = look.neck[k].stops.find((v) => Math.abs(v - rec[k]) <= SNAP_MM);
+      if (s !== undefined) out[k] = s;
+    }
+    return out;
+  }
+  function neckReadout() {
+    if (!state.neck) { document.getElementById("neck-panel").hidden = true; return; }
+    document.getElementById("neck-depth").textContent = `Depth ${fmt(state.neck.depthMm)}`;
+    document.getElementById("neck-width").textContent = `Width ${fmt(state.neck.widthMm)}`;
+    document.getElementById("neck-hint").textContent = PIVOT_VIEWS[state.view]
+      ? "Drag the three points on the neckline: the centre point sets the depth, the side points the width. Or Tab to a point and use the arrow keys (Shift: 10 mm, Page Up / Down: the next stop)."
+      : "Open the Neckline view to drag its three points.";
+  }
+  function railsDraw() {                               // the rails and the stops: once per view and size
+    const R = document.getElementById("rails");
+    R.textContent = "";
+    if (!neckGeo || !PIVOT_VIEWS[state.view]) return;
+    const L = look.neck, NS = "http://www.w3.org/2000/svg", u = plate.viewBox[0] / (svg.clientWidth || 430);
+    const lo = pivotPos({ depthMm: L.depthMm.min, widthMm: L.widthMm.min }), hi = pivotPos({ depthMm: L.depthMm.max, widthMm: L.widthMm.max });
+    const along = (a, b) => {                          // a rail along the grid top (the shoulder line) between two x
+      const pts = [a, ...neckGeo.n.top.filter((q) => q[0] > Math.min(a[0], b[0]) && q[0] < Math.max(a[0], b[0])), b];
+      return pts.sort((p, q) => p[0] - q[0]).map((q) => q.join(",")).join(" ");
+    };
+    const rails = [`${lo.cf.join(",")} ${hi.cf.join(",")}`, along(lo.l, hi.l), along(lo.r, hi.r)];
+    for (const cls of ["rail-shadow", "rail"])
+      for (const pts of rails) { const pl = document.createElementNS(NS, "polyline"); pl.setAttribute("points", pts); pl.setAttribute("class", cls); R.appendChild(pl); }
+    for (const d of L.depthMm.stops) {
+      const p = pivotPos({ ...state.neck, depthMm: d }).cf;
+      const c = document.createElementNS(NS, "circle"); c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); c.setAttribute("r", 3.2 * u); c.setAttribute("class", "stop"); R.appendChild(c);
+    }
+    for (const w of L.widthMm.stops) {
+      const p = pivotPos({ ...state.neck, widthMm: w });
+      for (const q of [p.l, p.r]) { const c = document.createElementNS(NS, "circle"); c.setAttribute("cx", q[0]); c.setAttribute("cy", q[1]); c.setAttribute("r", 3.2 * u); c.setAttribute("class", "stop"); R.appendChild(c); }
+    }
+  }
+  function pivotsUpdate() {                            // handle positions, sizes and ARIA values for state.neck
+    neckReadout();
+    const show = !!(neckGeo && PIVOT_VIEWS[state.view] && NECK_LIVE);
+    svg.classList.toggle("show", show);
+    if (!show) return;
+    const u = plate.viewBox[0] / (svg.clientWidth || 430), P = pivotPos(state.neck), L = look.neck;   // u: plate px per css px
+    for (const [k, h] of Object.entries(HANDLE)) {
+      const [hit, ring, dot] = h.querySelectorAll("circle");
+      hit.setAttribute("r", 24 * u); ring.setAttribute("r", 13 * u); dot.setAttribute("r", 8.5 * u);   // 48 css px to touch
+      h.setAttribute("transform", `translate(${P[k][0].toFixed(2)} ${P[k][1].toFixed(2)})`);
+      const key = k === "cf" ? "depthMm" : "widthMm";
+      h.setAttribute("aria-valuemin", L[key].min); h.setAttribute("aria-valuemax", L[key].max);
+      h.setAttribute("aria-valuenow", Math.round(state.neck[key]));
+      h.setAttribute("aria-valuetext", `${k === "cf" ? "Depth" : "Width"} ${fmt(state.neck[key])}`);
+    }
+  }
+  function applyNeck(rec) {                            // a change of the design record: curves, one frame, handles
+    state.neck = clampNeck({ ...state.neck, ...rec });
+    neckUpload();
+    if (plate) render();
+    pivotsUpdate();
+  }
+  function writeURL() {                                // the record in the URL (for tests and sharing): ?neckDepth=&neckWidth=
+    const q = new URLSearchParams(location.search), L = look.neck;
+    for (const [k, p] of [["depthMm", "neckDepth"], ["widthMm", "neckWidth"]])
+      if (Math.abs(state.neck[k] - L[k].default) < 0.05) q.delete(p); else q.set(p, Math.round(state.neck[k] * 10) / 10);
+    history.replaceState(null, "", `${location.pathname}${q.toString() ? "?" + q : ""}`);
+  }
+  // pointer: one redraw per animation frame at most while dragging (halfway.md step 4.6)
+  let drag = null, dragRaf = 0, dragNext = null;
+  const toPlate = (e) => { const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse()); return [pt.x, pt.y]; };
+  for (const h of Object.values(HANDLE)) {
+    h.addEventListener("pointerdown", (e) => {
+      if (!neckGeo) return;
+      drag = h.dataset.pivot; h.setPointerCapture(e.pointerId); h.classList.add("drag"); h.focus({ preventScroll: true }); e.preventDefault();
+    });
+    h.addEventListener("pointermove", (e) => {
+      if (drag !== h.dataset.pivot) return;
+      dragNext = snap(valueFrom(drag, toPlate(e)));
+      if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; if (dragNext) { applyNeck(dragNext); dragNext = null; } });
+    });
+    const end = () => { if (drag !== h.dataset.pivot) return; drag = null; h.classList.remove("drag"); writeURL(); };
+    h.addEventListener("pointerup", end);
+    h.addEventListener("pointercancel", end);
+    h.addEventListener("keydown", (e) => {
+      if (!neckGeo) return;
+      const pv = h.dataset.pivot, key = pv === "cf" ? "depthMm" : "widthMm", r = look.neck[key];
+      const dir = { cf: { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 },
+                    l: { ArrowLeft: 1, ArrowUp: 1, ArrowRight: -1, ArrowDown: -1 },
+                    r: { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 } }[pv][e.key];
+      let v = state.neck[key];
+      if (dir) v = Math.round((v + dir * (e.shiftKey ? r.bigStep : r.step)) * 10) / 10;
+      else if (e.key === "Home") v = r.min;
+      else if (e.key === "End") v = r.max;
+      else if (e.key === "PageDown") v = r.stops.find((s) => s > v + 0.05) ?? r.max;
+      else if (e.key === "PageUp") v = [...r.stops].reverse().find((s) => s < v - 0.05) ?? r.min;
+      else return;
+      e.preventDefault();
+      applyNeck({ [key]: v });
+      writeURL();
+    });
+  }
+  document.getElementById("neck-reset").addEventListener("click", () => {
+    if (!look) return;
+    applyNeck({ depthMm: look.neck.depthMm.default, widthMm: look.neck.widthMm.default });
+    writeURL();
+  });
+  document.getElementById("neck-snap").addEventListener("click", (e) => {
+    snapOn = !snapOn;
+    e.currentTarget.setAttribute("aria-pressed", String(snapOn));
+  });
+  document.getElementById("neck-snap").setAttribute("aria-pressed", String(snapOn));
+
   async function loadShared() {                        // samplers and swatches: once for all views
     ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat"].forEach((n, i) => gl.uniform1i(U(n), i));
     gl.uniform1f(U("uMipBias"), MIP_BIAS);
@@ -1190,6 +1355,8 @@
       gl.uniform2f(U("uCanvas"), w, h);
     }
     render();
+    railsDraw();
+    pivotsUpdate();
   }
 
   function describe() {
