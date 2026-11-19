@@ -1,6 +1,6 @@
 # Plan: numeric — curves and a `.dat` file in place of the map images
 
-Status: **in progress**. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
+Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
 Compare: **http://localhost:8000** (`polish`), **http://localhost:8100** (`halfway`, the reference for this plan), **http://localhost:8200** (this worktree), each `/testing.html`.
 Background: `DedhD.md` §10. Product: a visualiser, 4 fixed views, **no 3D**.
 
@@ -128,9 +128,9 @@ A float texture is needed for the filter passes. If the phone has no `EXT_color_
 **Do:** the page downloads only `base.jpg` and `plate.dat` for each view. The PNG maps stay in the repo, made by `make_plate.py`, for the tests and `?geom=maps`. The preload (halfway step 1) keeps the `.dat` and the photo blob.
 
 **Accept:**
-- [ ] Network panel: per view only `base.jpg` + `plate.dat`.
-- [ ] First visit, 4 views: ≤ 1.75 MB of plate data (was 3.73 MB).
-- [ ] Journey steps still ≤ 1 s after the first visit (halfway step 7).
+- [x] Network panel: per view only `base.jpg` + `plate.dat`.
+- [x] First visit, 4 views: ≤ 1.75 MB of plate data (was 3.73 MB).
+- [ ] Journey steps still ≤ 1 s after the first visit (halfway step 7): **not verified** (1.4–3.1 s in software rendering).
 
 ### Step 8 (optional): Draw the mesh directly
 
@@ -166,5 +166,5 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 4 Shade on the GPU | done | (step 4) | garment shade identical to ±1 level in 100 % of px (torso, neck); transient ~100 MB GPU; render criterion → checker test |
 | 5 Neck, sleeve, hem | done | (step 5) | all 4 views pass the map tests; sleeve front grid fixed (grain tilt 18.4° → 4.4°); sleeve render changes on purpose |
 | 6 The `.dat` file | done | (step 6) | 21.7 KB raw (8.3 KB gzip) for 4 views, exact; render identical to JSON; no thinning needed |
-| 7 Stop sending the maps | planned | | |
-| 8 Direct mesh draw (optional) | planned | | |
+| 7 Stop sending the maps | done, build time unverified | (step 7) | 1.67 MB first visit (was 3.64 MB); build 1.4–3 s in software rendering, device needed |
+| 8 Direct mesh draw (optional) | not done | | not needed by anything measured |

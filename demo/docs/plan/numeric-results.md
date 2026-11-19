@@ -239,3 +239,50 @@ The plan's target was ≤ 40 KB raw: 21.7 KB. The `.dat` is 72 % smaller than th
 
 - [x] `.dat` for 4 views ≤ 40 KB raw (21.7 KB; gzip 8.3 KB).
 - [x] The render from `.dat` = the render from JSON (identical).
+
+## Step 7: Stop sending the maps
+
+The mesh is now the default (`?geom=maps` gives back the PNG maps: kept as the reference and the fallback). A view downloads **only `base.jpg` and `plate.dat`**; `id.png`, `uv.png`, `uv_trim.png`, `shade.png` and `plate.json` / `zones.json` are not requested. They stay in the repo, made by `make_plate.py`, for the tests and `?geom=maps`. Without `EXT_color_buffer_float` the page still downloads `shade.png` (and only that) for the shade. The preload (halfway step 1) keeps the `.dat` and the photo blob.
+
+**What the page requested** (resource timing, all four views visited, the first visit):
+
+| View | `base.jpg` | `plate.dat` |
+|---|---|---|
+| torso | 288,619 | 14,392 |
+| neck | 464,213 | 1,888 |
+| sleeve | 432,036 | 2,596 |
+| hem | 459,299 | 2,784 |
+| **4 views** | **1,644,167** | **21,660** |
+
+**First visit, 4 views: 1,665,827 B of plate data** (target ≤ 1.75 MB; was 3,639,000: **−54 %**). Per view: 0.31–0.47 MB (was 0.7–1.2 MB). Besides: `looks/straight-kurta.json` (933 B), the swatches and the laces as before.
+
+### What could not be verified: the build time
+
+The maps are built when a view is shown. **In this environment (headless Chrome, software rendering) a view switch with the mesh takes 1.4–3.1 s, of which the build is 1.4–3.0 s (the GPU work, measured with a 1 px readback: `?syncbuild=1`); the PNG maps take 0.3–0.8 s on the same machine.** `performance.now()` around the build alone reads 11–36 ms because the GPU work is queued, and `gl.finish()` does not wait for it in this browser. The numbers of the earlier steps (11–36 ms) were that, and must be read so.
+
+- Software rendering (SwiftShader) runs every full-size pass on the CPU: the build is about 12 zone passes of 1200 × 1600, the trims, and, for the shade, 20 passes with float targets. A real GPU does a pass in about a millisecond; I cannot say what a laptop or a phone does. **The budgets (build ≤ 50 ms laptop, ≤ 250 ms phone) and the journey step time (≤ 1 s after the first visit) are not verified, and the step time is not met in software rendering.**
+- Two attempts to make the build cheaper changed little here (a box scissor on every zone, trim and shade pass; the filter and the fill passes limited to their boxes: the maps and the shade are identical to before in all four map tests): 1.4–3.0 s now against 1.9–3.1 s.
+- **If a device shows the same, the plan's fallbacks apply:** (1) `?geom=maps` (the PNG maps: set `GEOM`'s default back), (2) build the next view in idle time while the current one is shown, (3) keep the shade as a WebP (30–60 KB per view) so that only `id`, `uv`, `uv_trim` are built. None of them is needed on a GPU that does a pass in a millisecond.
+
+### Step 8 (direct mesh draw): not done
+
+It is optional in the plan ("only if phone memory needs it, or the stair-stepped edge is seen"). Neither was measured: the steady GPU memory per view is the same as before (41 MB; the 100 MB of the shade build is transient), and no device has been tried.
+
+- [x] Network: per view only `base.jpg` + `plate.dat`.
+- [x] First visit, 4 views: ≤ 1.75 MB of plate data (1.67 MB).
+- [ ] Journey steps ≤ 1 s after the first visit: **not verified; 1.4–3.1 s in software rendering** (a device is needed).
+
+## Summary
+
+| Step | Result |
+|---|---|
+| 0 | Baseline: maps 2,036 KB, 41 MB GPU per view |
+| 1 | `plate.js`: every vertex within 3 × 10⁻¹¹ px of Python |
+| 2 | zone maps from the mesh; calibrated against the PNG (0.5 px quad bias, 0.5 px edge growth) |
+| 3 | trims as ribbons; the PNG's u and v run 0.5 px ahead |
+| 4 | the shade on the GPU: garment identical to ±1 level in 100 % of px |
+| 5 | all four views; the sleeve grid fixed: grain tilt 18.4° → 4.4° |
+| 6 | `plate.dat`: 21.7 KB for 4 views (8.3 KB gzip), exact, render identical to JSON |
+| 7 | the maps are not sent: 1.67 MB first visit (was 3.64 MB); build time unverified |
+
+**Criteria that were revised** (and why): the uv tolerance of "≤ 0.1 mm" against the PNG (the PNG is a quad centre in 12-bit steps: ±0.5 px, 0.3 mm); the render gate "mean ≤ 0.5 against 8100" (a real fabric differs by the PNG's own uv noise, white noise of about a texel): replaced by the grain checker ≤ 1.0 (an edge shift ≤ 0.1 px); the thinning of the torso trace (not needed). **Open:** the build time on real GPUs, step 8.

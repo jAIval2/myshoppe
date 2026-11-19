@@ -208,7 +208,7 @@
     gl.viewport(0, 0, W, H);
     gl.disable(gl.STENCIL_TEST); gl.disable(gl.SCISSOR_TEST); gl.colorMask(true, true, true, true);
     const SLOT = { uPhotoRaw: 8, uId: 9, uI: 10, uA: 11, uB: 12, uSrc: 13 };
-    const run = (k, target, bind, ints = {}, floats = {}) => {     // bind: { sampler: texture }
+    const run = (k, target, bind, ints = {}, floats = {}, box = null) => {     // bind: { sampler: texture }; box: [x0, y0, x1, y1] limits the pass
       const p = prog(k); gl.useProgram(p);
       const loc = (n) => gl.getUniformLocation(p, n);
       for (const [n, u] of Object.entries(SLOT)) { const l = loc(n); if (l) gl.uniform1i(l, u); }
@@ -219,7 +219,9 @@
       for (const [n, v] of Object.entries(ints)) if (loc(n)) gl.uniform1i(loc(n), v);
       for (const [n, v] of Object.entries(floats)) if (loc(n)) gl.uniform1f(loc(n), v);
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.f);
+      if (box) { gl.enable(gl.SCISSOR_TEST); gl.scissor(box[0], box[1], box[2] - box[0], box[3] - box[1]); } else gl.disable(gl.SCISSOR_TEST);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.disable(gl.SCISSOR_TEST);
     };
     const nk = plate.neck, rect = nk && nk.rect ? nk.rect : [0, 0, 0, 0];
     const med = plate.shadeMedian, m255 = med / 255;
@@ -234,19 +236,30 @@
       const eps = Z.shadeSmoothEps !== undefined ? Z.shadeSmoothEps : 0.006;
       const Q = mk(f32()), A = mk(f32x4()), B = mk(f32x4());
       run("copy", Q, { uSrc: I.t });
-      for (const zid of Object.values(plate.zones).map((z) => z.id)) {
-        const ints = { uZone: zid, uR: r }, floats = { uEps: eps };
-        run("sumsH", A, { uI: I.t }, ints);
-        run("ab", B, { uA: A.t, uI: I.t }, ints, floats);
-        run("sumsH2", A, { uB: B.t }, ints);
-        run("guided", Q, { uA: A.t, uI: I.t }, ints);
+      const box = (name, pad) => {                              // the bounding box of a zone outline, grown by pad px, in the plate
+        const o = Z.zones[name].outline, xs = o.map((p) => p[0]), ys = o.map((p) => p[1]);
+        return [Math.max(0, Math.floor(Math.min(...xs) - pad)), Math.max(0, Math.floor(Math.min(...ys) - pad)),
+                Math.min(W, Math.ceil(Math.max(...xs) + pad)), Math.min(H, Math.ceil(Math.max(...ys) + pad))];
+      };
+      for (const [name, zi] of Object.entries(plate.zones)) {
+        const ints = { uZone: zi.id, uR: r }, floats = { uEps: eps };
+        // the sums are needed where a window of the zone's pixels reaches: its box + r (+ the 2 px of the PNG's edge); the result inside the box
+        const b1 = box(name, 2 * r + 4), b0 = box(name, 2);
+        run("sumsH", A, { uI: I.t }, ints, {}, b1);
+        run("ab", B, { uA: A.t, uI: I.t }, ints, floats, box(name, r + 4));
+        run("sumsH2", A, { uB: B.t }, ints, {}, box(name, r + 4));
+        run("guided", Q, { uA: A.t, uI: I.t }, ints, {}, b0);
       }
       S = Q;
     }
     const E0 = mk(u8()), E1 = mk(u8());                         // the bytes, ping-pong for the dip fill
     run("enc", E0, { uI: S.t }, {}, { uM255: m255, uLinMed: linMed });
     let cur = E0, nxt = E1;
-    if (nk && nk.rect) for (let i = 0; i < 8; i++) { run("fill", nxt, { uSrc: cur.t }, {}); [cur, nxt] = [nxt, cur]; }
+    if (nk && nk.rect) {
+      // ping-pong inside the rectangle only: copy the encoded bytes to the second target outside it once, then fill inside
+      run("copy", E1, { uSrc: E0.t });
+      for (let i = 0; i < 8; i++) { run("fill", nxt, { uSrc: cur.t }, {}, {}, nk.rect); [cur, nxt] = [nxt, cur]; }
+    }
     gl.finish();
     // keep the result texture, free the rest. The page reads the shade with LINEAR filtering (texture()) and texelFetch.
     gl.bindTexture(gl.TEXTURE_2D, cur.t);
@@ -262,6 +275,7 @@
     build(gl, { plate, Z, idImage, photo, cell }) -> { id, uv, uvt, shade, ms }
       plate   plate.json (viewBox, uvRangeCm, neck{rect, edge})
       Z       zones.json, prepared by Plate.prepare (tuck applied)
+      sync    test: wait for the GPU with a 1 px readback before ms is taken (gl.finish() does not always wait): the true cost of the build
       photo   optional: the decoded base.jpg (an ImageBitmap): with it, and with EXT_color_buffer_float, the shade is built too (step 4)
       idImage optional: the PNG of id.png (an ImageBitmap). With it the trims (G) are the PNG's and uvt is not built
       cell    px per grid cell of the meshes (default 4)
@@ -276,7 +290,7 @@
     id: the id texture (R zone, G trim, B neck area); uv: the packed fabric coordinates; uvt: the packed trim coordinates (u cm along,
     v 0..1 over vMax). All RGBA8, NEAREST.
   */
-  function build(gl, { plate, Z, idImage = null, photo = null, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.5 }) {
+  function build(gl, { plate, Z, idImage = null, photo = null, sync = false, cell = 4, idOff = [0, 0], uvOff = [-0.5, -0.5], grow = 0.5 }) {
     const t0 = performance.now();
     const [W, H] = plate.viewBox;
     // ---- keep the state of the page: the program, the vertex array, the bound buffers, the viewport, the texture unit
@@ -350,6 +364,11 @@
       const outline = fanBuffer(gl, zone.outline);
       buffers.push(g.vb, g.ib, outline.vb);
       const neckZone = name === "front" && rect && dip;
+      // every pass of this zone (the stencil fans, the grid, the stencil clears) only inside the box of its outline + 2 px (+ grow)
+      const xs = zone.outline.map((p) => p[0]), ys = zone.outline.map((p) => p[1]), pad = 3;
+      const zx0 = Math.max(0, Math.floor(Math.min(...xs) - pad)), zy0 = Math.max(0, Math.floor(Math.min(...ys) - pad));
+      const zx1 = Math.min(W, Math.ceil(Math.max(...xs) + pad)), zy1 = Math.min(H, Math.ceil(Math.max(...ys) + pad));
+      gl.enable(gl.SCISSOR_TEST); gl.scissor(zx0, zy0, zx1 - zx0, zy1 - zy0);
 
       // id: zone number in R inside (grid ∩ outline), B = 0 there (a later zone clears the neck area of an earlier one)
       gl.bindFramebuffer(gl.FRAMEBUFFER, idFbo);
@@ -394,8 +413,9 @@
           drawGrid(g, [shifted(sh)]);
           stencilDone();
         }
-        gl.disable(gl.SCISSOR_TEST);
+        gl.scissor(zx0, zy0, zx1 - zx0, zy1 - zy0);
       }
+      gl.disable(gl.SCISSOR_TEST);
     }
     // ---- trims (step 3): ribbons along the centre lines, back to front in the order of zones.json (a later trim overwrites)
     let uvtTex = null, maskTex = null, uvtFbo = null;
@@ -435,6 +455,11 @@
         const parts = [[tri.inner, true]];
         if (tri.outer) parts.push([tri.outer, false]);
         const bufs = parts.map(([arr, inner]) => { const vb = gl.createBuffer(); buffers.push(vb); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW); return { vb, n: arr.length / 4, inner }; });
+        {
+          const half = (trim.widthMm / plate.mmPerPx) * (par.vmax + 1), cx = trim.centre.map((p) => p[0]), cy = trim.centre.map((p) => p[1]);
+          const x0 = Math.max(0, Math.floor(Math.min(...cx) - half)), y0 = Math.max(0, Math.floor(Math.min(...cy) - half));
+          gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, y0, Math.min(W, Math.ceil(Math.max(...cx) + half)) - x0, Math.min(H, Math.ceil(Math.max(...cy) + half)) - y0);
+        }
         const draw = (sh) => {
           setOff([idOff[0] + sh[0], idOff[1] + sh[1]]);
           for (const b of bufs) {
@@ -455,6 +480,7 @@
         gl.colorMask(true, true, true, true);
         for (const sh of trimShifts) draw(sh);                   // the shifted copies first, the centre copy last: its values win
       }
+      gl.disable(gl.SCISSOR_TEST);
       gl.uniform1f(U("uTestMask"), 0);
     }
     gl.finish();
@@ -467,6 +493,8 @@
       gl.bindVertexArray(vao);
       gl.activeTexture(gl.TEXTURE0 + 15);
     }
+
+    if (sync) { gl.bindFramebuffer(gl.FRAMEBUFFER, idFbo); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); }
 
     // ---- release the scratch objects and give the state back
     for (const b of buffers) gl.deleteBuffer(b);

@@ -948,8 +948,8 @@
   // images: normal decode, LINEAR + mipmaps
   // halfway.md step 1: the page keeps the DOWNLOADED files (compressed blobs) of every view and decodes only what it shows.
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
-  // numeric.md: ?geom=mesh builds the maps of the MESH_VIEWS on the GPU from the curves (plate.js, maps.js); default and ?geom=maps: the PNG maps
-  const GEOM = params0.get("geom") === "mesh" ? "mesh" : "maps";
+  // numeric.md: the maps of the MESH_VIEWS are built on the GPU from the curves (plate.js, maps.js) and plate.dat; ?geom=maps: the PNG maps (the old way, kept as the reference and the fallback)
+  const GEOM = params0.get("geom") === "maps" ? "maps" : "mesh";
   const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1, neck: 1, sleeve: 1, hem: 1 };   // all four views (numeric.md step 5); test: ?meshviews=torso,neck,sleeve,hem to choose
   const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
   const DAT = params0.get("dat") !== "0";                // test: ?dat=0  plate.json + zones.json instead of plate.dat (the same numbers)
@@ -1479,11 +1479,14 @@
     if (fade) freeze();
     const v = await fetchView(view);
     if (token !== switchToken) return;                 // a later click won
+    const ph = [performance.now()];                    // phase marks (test hook): fetched, decoded, built, uploaded, first draw
     const bm = await decodeView(view, v);              // decode this view only (step 1)
+    ph.push(performance.now());
     if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
     setUnit(0, bm.photo);
     if (meshOn(view)) {                                // the maps from the curves (numeric.md): id R / B and uv; G, uvt, shade still PNG
-      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), photo: MESH_SHADE ? bm.photo : null, cell: MESH_CELL, ...MESH_OFF });
+      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), photo: MESH_SHADE ? bm.photo : null, sync: params0.get("syncbuild") === "1", cell: MESH_CELL, ...MESH_OFF });
+      ph.push(performance.now());
       setUnitTex(1, built.id);
       setUnitTex(2, built.uv);
       stat.dataset.build = built.ms.toFixed(1);
@@ -1522,8 +1525,11 @@
     });
     stageImg.src = VIEWS[view].plate + "base.jpg";    // fallback photo under the canvas
     stat.dataset.load = Math.round(performance.now() - t0);
+    ph.push(performance.now());
     canvas.width = 0;                                  // force resize() to set the canvas for this plate
     resize();
+    ph.push(performance.now());
+    stat.dataset.phases = ph.slice(1).map((t, i) => Math.round(t - ph[i])).join(",");   // decode, build, set up, draw (ms)
     canvas.classList.add("ready");
     stat.dataset.show = Math.round(performance.now() - t0);
     if (fade) unfreeze();
@@ -1793,7 +1799,7 @@
     buildMs: () => (stat.dataset.build ? +stat.dataset.build : null),
     readMaps: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt", "shade"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readPNG(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
     setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
-    timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step }),
+    timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step, phases: stat.dataset.phases }),
   };
 
   let raf = 0;

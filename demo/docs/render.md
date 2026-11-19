@@ -471,6 +471,10 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 
 **Verification:** `tools/cdp_shot.mjs` (headless Chrome through the DevTools protocol) saves the canvas pixels and the console errors, and sends real mouse, touch and key events. The shader compiles. Open: draw time and the frame rate during a drag on a real phone, the memory panel, and a person's walk through the journey.
 
+### 2026-11-20: numeric plates (`docs/plan/numeric.md`, results in `docs/plan/numeric-results.md`)
+
+The page builds `id`, `uv`, `uv_trim` and the shade itself, on the GPU, from the curves (`plate.js`, `maps.js`) in `plate.dat`; the four map images are not sent. First visit, 4 views: 1.67 MB (was 3.64 MB); `plate.dat` 21.7 KB for the 4 views. The built maps match the PNG maps: zones to 1 px at the edges, uv with no bias and a median of 0.35 px (the PNG's own jitter), trims likewise, the garment shade to ±1 level. The sleeve view's front grid was fixed (grain tilt 18.4° → 4.4°). **Open:** the build time on a real GPU (1.4–3 s in software rendering, so the budgets are unverified); `?geom=maps` gives back the PNG maps.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)
