@@ -26,17 +26,26 @@
   "hem": {
    "id": 4,
    "lengthCm": 14.6,
-   "widthMm": 30
+   "widthMm": 30,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5
   },
   "slit-l": {
    "id": 5,
    "lengthCm": 23.5,
-   "widthMm": 8
+   "widthMm": 8,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   },
   "slit-r": {
    "id": 6,
    "lengthCm": 22.8,
-   "widthMm": 8
+   "widthMm": 8,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   }
  },
  "shadeSmoothMm": 1.2,

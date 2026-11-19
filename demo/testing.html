@@ -320,7 +320,9 @@
   uniform float uFabricOn, uFabricCm;
   uniform float uLaceAspect;
   uniform float uTrimOn[7], uTrimWcm[7], uTrimFlip[7];
-  uniform float uTrimFit[7], uTrimU0[7];   // lace scale along each trim (whole repeats), and its start (lace image units)
+  uniform float uTrimFit[7], uTrimU0[7];
+  uniform float uTrimVMax[7], uTrimEdging[7];   // stored V range of each strip (1.5 = edging strip); 1 = lace hangs past the edge
+  uniform float uLaceEdge;      // edgeDepth of the lace: share of its height that hangs past the garment edge
   uniform float uChecker, uPhotoOnly;
   uniform float uMipBias;       // log2 bias on the texture footprint (negative = sharper)
   uniform float uAniso;         // 1 = use plate UV gradients, 0 = round footprint
@@ -404,7 +406,10 @@
     vec4 idt = texelFetch(uId, p, 0);
     int zone = int(idt.r * 255.0 + 0.5);
     int trim = int(idt.g * 255.0 + 0.5);
-    if (zone == 0) { outColor = vec4(uLinear > 0.5 ? toSRGB(photo.rgb) : photo.rgb, 1.0); return; }
+    bool bg = zone == 0;                                             // wall, form, stand: only an edging overhang is drawn here
+    if (bg && !(trim > 0 && uTrimOn[trim] > 0.5 && uTrimEdging[trim] > 0.5)) {
+      outColor = vec4(uLinear > 0.5 ? toSRGB(photo.rgb) : photo.rgb, 1.0); return;
+    }
 
     // Canvas bigger than the plate (k < 1): interpolate between the 4 nearest plate texels,
     // but only when they are all in the same zone (or trim). Otherwise: nearest texel, so
@@ -422,7 +427,8 @@
 
     // soft edge
     float cov = 0.0;
-    if (up) {
+    if (bg) cov = 1.0;                                               // overhang: the lace alpha does the edge
+    else if (up) {
       cov = dot(wq, vec4(i00.r > 0.0 ? 1.0 : 0.0, i10.r > 0.0 ? 1.0 : 0.0, i01.r > 0.0 ? 1.0 : 0.0, i11.r > 0.0 ? 1.0 : 0.0));
     } else {                                                          // share of garment px in a 3x3 block
       for (int dy = -1; dy <= 1; dy++)
@@ -439,7 +445,9 @@
          + wq.z * decode(texelFetch(uUV, q01, 0)) + wq.w * decode(texelFetch(uUV, q11, 0));
 
     vec3 col = photo.rgb;
-    if (uChecker > 0.5) {
+    if (bg) {
+      // the photo stays: the lace and its shadow go on top
+    } else if (uChecker > 0.5) {
       float c = mod(floor(uv.x / 2.0) + floor(uv.y / 2.0), 2.0);
       vec3 a = zone == 1 ? vec3(0.84, 0.28, 0.25) : zone == 4 ? vec3(0.15, 0.62, 0.38)
              : zone == 5 ? vec3(0.42, 0.24, 0.55) : vec3(0.17, 0.36, 0.75);    // 4 back, 5 side back
@@ -460,8 +468,14 @@
       if (up && i00.g == idt.g && i10.g == idt.g && i01.g == idt.g && i11.g == idt.g)
         t = wq.x * decode(texelFetch(uUVT, q00, 0)) + wq.y * decode(texelFetch(uUVT, q10, 0))
           + wq.z * decode(texelFetch(uUVT, q01, 0)) + wq.w * decode(texelFetch(uUVT, q11, 0));
-      float across = t.y / uRange;
-      if (uTrimFlip[trim] > 0.5) across = 1.0 - across;
+      float rawV = t.y / uRange * uTrimVMax[trim];                      // 0 inner side .. 1 garment edge .. vMax tip of the overhang
+      bool edg = uTrimEdging[trim] > 0.5;
+      // the overhang of an edging strip is used only when edging is on for this trim and lace (else: no trim here, as before)
+      if (edg || rawV <= 1.0) {
+      float across = rawV;
+      if (uTrimFlip[trim] > 0.5) across = 1.0 - across;                // old plates only (no outerV)
+      if (edg) across -= uLaceEdge;                                     // the decorative edge crosses the garment edge
+      bool inLace = across >= 0.0 && across <= 1.0;
       float w = uTrimWcm[trim];
       float fit = uTrimFit[trim];
       vec2 lc = vec2(t.x / (w * uLaceAspect * fit) + uTrimU0[trim], across);
@@ -469,16 +483,21 @@
       gradTrim(p, trim, k, w, fit, gx, gy);
       float bias = exp2(uMipBias);
       vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
+      if (!inLace) lace = vec4(0.0);
       if (uShadowStrength > 0.0) {
         // Shadow of the lace on the fabric: the lace alpha read again, shifted right and down on the stage,
         // 1.5 mip levels softer. The shift is a fixed direction on the screen, so it stays lower-right along the
         // curve of the neckline: gx, gy are the lace coordinates per canvas px, from the plate UV.
-        vec2 o = uShadowMm / (uCmPerPx * 10.0) / k;                    // mm -> plate px -> canvas px
+        // on the background (wall, form) the lace is farther in front: a longer, softer shadow (x1.5, +0.5 mip)
+        vec2 o = uShadowMm * (bg ? 1.5 : 1.0) / (uCmPerPx * 10.0) / k;   // mm -> plate px -> canvas px
         vec2 off = gx * o.x + gy * o.y;
-        float sh = textureGrad(uLace, lc - off, gx * bias * 2.8284, gy * bias * 2.8284).a;
+        float soft = bg ? 4.0 : 2.8284;
+        vec2 sc = lc - off;
+        float sh = (sc.y >= 0.0 && sc.y <= 1.0) ? textureGrad(uLace, sc, gx * bias * soft, gy * bias * soft).a : 0.0;
         col *= 1.0 - uShadowStrength * sh * (1.0 - lace.a);           // the lace itself is not darkened
       }
       col = mix(col, lace.rgb * (uLinear > 0.5 ? min(s * 1.124, 1.399) : min(s * 1.05, 1.15)), lace.a);   // 1.05^2.4, 1.15^2.4
+      }
     }
 
     vec3 o = mix(photo.rgb, clamp(col, 0.0, 1.0), cov);
@@ -503,7 +522,7 @@
 
   // ---------- textures
   const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
-  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0  ?lacefit=0
+  const params = new URLSearchParams(location.search);       // test switches: ?bias=0  ?aniso=0  ?shade=0  ?shadow=0  ?linear=0  ?lacefit=0  ?edging=0
   const MIP_BIAS = params.has("bias") ? parseFloat(params.get("bias")) : -0.5;
   if (params.has("stage")) {                                  // test: ?stage=<css px> makes the stage wider
     const st = document.createElement("style");
@@ -514,6 +533,7 @@
   const SHADE_ON = params.get("shade") === "0" ? 0 : 1;           // test: ?shade=0  flat light
   const LINEAR = params.get("linear") === "0" ? 0 : 1;            // test: ?linear=0  the old sRGB maths
   let SRGB_TEX = LINEAR;                                         // SRGB8_ALPHA8 colour textures (falls back to shader decode)
+  const EDGING = params.get("edging") === "0" ? 0 : 1;            // test: ?edging=0  edging trims clipped at the garment edge
   const LACEFIT = params.get("lacefit") === "0" ? 0 : 1;          // test: ?lacefit=0  the old mirrored lace, no fit, no start point
   const SHADOW = params.has("shadow") ? parseFloat(params.get("shadow")) : 0.35;   // test: ?shadow=0 off, ?shadow=0.5 stronger
   // data maps: exact bytes (no colour conversion, no premultiply), NEAREST
@@ -615,10 +635,14 @@
   function laceFit() {
     if (!plate || !lace) return;
     const fit = new Float32Array(7).fill(1), u0 = new Float32Array(7);
+    const vmax = new Float32Array(7).fill(1), edging = new Float32Array(7);
+    const edgeDepth = lace.meta?.edgeDepth ?? 0.35;
     for (const [name, id] of Object.entries(TRIMS)) {
       const t = plate.trims[name];
       if (!t) continue;
       const L = t.lengthCm, w = t.widthMm / 10, tile = w * lace.aspect;   // cm
+      vmax[id] = t.vMax || 1;
+      edging[id] = EDGING && t.type === "edging" && lace.meta?.edging ? 1 : 0;   // only laces with a clean (keyed) edge
       if (!LACEFIT) { fitLog[name] = "off"; continue; }
       if (lace.mirror) {                               // no repeat: a mirror axis at the middle of neck and hem
         if (CENTRED[name]) u0[id] = -L / (2 * tile);
@@ -643,6 +667,9 @@
     }
     gl.uniform1fv(U("uTrimFit"), fit);
     gl.uniform1fv(U("uTrimU0"), u0);
+    gl.uniform1fv(U("uTrimVMax"), vmax);
+    gl.uniform1fv(U("uTrimEdging"), edging);
+    gl.uniform1f(U("uLaceEdge"), edgeDepth);
     document.documentElement.dataset.lacefit = JSON.stringify(fitLog);   // for the harness (--dump-dom)
   }
 
@@ -682,7 +709,8 @@
     const viewFlip = VIEW_FLIP[view] || FLIP;
     for (const [name, id] of Object.entries(TRIMS)) {
       w[id] = (plate.trims[name]?.widthMm ?? 20) / 10;
-      flip[id] = viewFlip[name] || 0;
+      // new plates orient V themselves (outerV = 1: 0 inner side, 1 garment edge); old plates use the FLIP table
+      flip[id] = plate.trims[name]?.outerV !== undefined ? 0 : (viewFlip[name] || 0);
     }
     gl.uniform1fv(U("uTrimWcm"), w);
     gl.uniform1fv(U("uTrimFlip"), flip);

@@ -151,36 +151,73 @@ for name, zone in sorted(Z["zones"].items(), key=lambda kv: kv[1]["order"]):
 
 garment = id_img.split()[0].point(lambda p: 255 if p else 0)
 
-# ---- trims (on top of everything, but only on the garment)
+# ---- trims (on top of everything)
+# polish.md step 5. Every strip is written with V = 0 at its inner side and V = 1 at the side of the garment edge that it
+# follows (plate.json "outerV": 1), so the decorative edge of a lace points outward with no manual FLIP.
+# An EDGING trim ("type": "edging"; default for hem and cuffs) is written wider, to V = vMax (1.5 strip widths): the part past
+# V = 1 lies OUTSIDE the garment (zone 0 in id.png R), where the lace hangs over the photo. That part is clipped only by
+# objects in front ("occluders" in zones.json, e.g. the mannequin arm). The shader shifts each lace by its own edgeDepth.
+EDGING_DEFAULT = {"hem", "cuff-l", "cuff-r"}
+V_MAX_EDGING = 1.5
+occl = Image.new("L", (W, H), 0)
+for poly in Z.get("occluders", []):
+    ImageDraw.Draw(occl).polygon([tuple(q) for q in poly], fill=255)
+free = occl.point(lambda v: 0 if v else 255)
+gpx = garment.load()
 for name, trim in Z["trims"].items():
     c = trim["centre"]
+    ttype = trim.get("type", "edging" if name in EDGING_DEFAULT else "insertion")
+    vmax = V_MAX_EDGING if ttype == "edging" else 1.0
     half = trim["widthMm"] / 2 / MMPX
     n = max(4, round(length(c) / STEP))
     C = resample(c, n)
     len_cm = length(c) * MMPX / 10
-    across = max(8, math.ceil(2 * half))  # one step per px across the trim
-    layer = Image.new("RGB", (W, H), (0, 0, 0))
-    m = Image.new("L", (W, H), 0)
-    dl, dm = ImageDraw.Draw(layer), ImageDraw.Draw(m)
-    for i in range(n):
+    # which side of the centre line is the garment edge: march out along both normals (from the strip edge, up to 60 px)
+    # and take the side where the garment ends first, by the median over the trim. A trim far from any edge on both
+    # sides (none in the 4 plates) keeps +1.
+    dpos, dneg = [], []
+    for i in range(0, n, max(1, n // 60)):
         a, b = C[i], C[i + 1]
         tx, ty = b[0] - a[0], b[1] - a[1]
         ln = math.hypot(tx, ty) or 1
         nx, ny = -ty / ln, tx / ln
-        for k in range(across):
-            v0, v1 = -half + 2 * half * k / across, -half + 2 * half * (k + 1) / across
+        for sgn, acc in ((1, dpos), (-1, dneg)):
+            d = 999
+            for step in range(0, 61):
+                x, y = a[0] + nx * sgn * (half + step), a[1] + ny * sgn * (half + step)
+                if not (0 <= x < W and 0 <= y < H and gpx[int(x), int(y)]):
+                    d = step
+                    break
+            acc.append(d)
+    med = lambda l: sorted(l)[len(l) // 2]
+    sg = -1 if med(dneg) < med(dpos) else 1
+    steps_in = max(8, math.ceil(2 * half))              # one step per px across the strip
+    steps = math.ceil(steps_in * vmax)
+    layer = Image.new("RGB", (W, H), (0, 0, 0))
+    m_in, m_out = Image.new("L", (W, H), 0), Image.new("L", (W, H), 0)
+    dl, di, do = ImageDraw.Draw(layer), ImageDraw.Draw(m_in), ImageDraw.Draw(m_out)
+    for i in range(n):
+        a, b = C[i], C[i + 1]
+        tx, ty = b[0] - a[0], b[1] - a[1]
+        ln = math.hypot(tx, ty) or 1
+        nx, ny = -ty / ln * sg, tx / ln * sg             # now points to the garment edge
+        for k in range(steps):
+            f0, f1 = k / steps_in, min(vmax, (k + 1) / steps_in)   # V in strip widths, 0 = inner side
+            v0, v1 = -half + 2 * half * f0, -half + 2 * half * f1
             quad = [(a[0] + nx * v0, a[1] + ny * v0), (b[0] + nx * v0, b[1] + ny * v0),
                     (b[0] + nx * v1, b[1] + ny * v1), (a[0] + nx * v1, a[1] + ny * v1)]
-            col = pack((i + 0.5) / n * len_cm / CM_RANGE, (k + 0.5) / across)
+            col = pack((i + 0.5) / n * len_cm / CM_RANGE, (f0 + f1) / 2 / vmax)
             dl.polygon(quad, fill=col, outline=col)
-            dm.polygon(quad, fill=255, outline=255)
-    m = ImageChops.multiply(m, garment)
+            (di if k < steps_in else do).polygon(quad, fill=255, outline=255)
+    m_in = ImageChops.multiply(m_in, garment)            # the strip itself: on the garment only (as before)
+    m_out = ImageChops.multiply(m_out, free)             # the overhang: anywhere, except objects in front
+    m = ImageChops.lighter(m_in, m_out)
     uvt_img.paste(layer, (0, 0), m)
     r, g_, b_ = id_img.split()
     g_.paste(TRIM_ID[name], (0, 0), m)
     id_img = Image.merge("RGB", (r, g_, b_))
-    plate["trims"][name] = {"id": TRIM_ID[name], "lengthCm": round(len_cm, 1),
-                            "widthMm": trim["widthMm"]}
+    plate["trims"][name] = {"id": TRIM_ID[name], "lengthCm": round(len_cm, 1), "widthMm": trim["widthMm"],
+                            "type": ttype, "outerV": 1, "vMax": vmax}
 
 # ---- shade: luminance / median inside the garment
 Lum = base.convert("L")

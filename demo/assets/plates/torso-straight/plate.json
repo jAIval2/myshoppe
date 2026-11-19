@@ -26,32 +26,50 @@
   "neck": {
    "id": 1,
    "lengthCm": 18.2,
-   "widthMm": 12
+   "widthMm": 12,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   },
   "cuff-l": {
    "id": 2,
    "lengthCm": 10.1,
-   "widthMm": 25
+   "widthMm": 25,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5
   },
   "cuff-r": {
    "id": 3,
    "lengthCm": 10.3,
-   "widthMm": 25
+   "widthMm": 25,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5
   },
   "hem": {
    "id": 4,
    "lengthCm": 37.6,
-   "widthMm": 30
+   "widthMm": 30,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5
   },
   "slit-l": {
    "id": 5,
    "lengthCm": 24.1,
-   "widthMm": 8
+   "widthMm": 8,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   },
   "slit-r": {
    "id": 6,
    "lengthCm": 23.4,
-   "widthMm": 8
+   "widthMm": 8,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   }
  },
  "shadeSpace": "linear",

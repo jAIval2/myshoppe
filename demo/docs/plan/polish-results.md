@@ -224,3 +224,38 @@ fine      period 183.0 px = 0.410 x band height, 6 periods per image
 | Each lace asset ≤ 600 KB | ✔ (434 / 158 / 326 / 68 KB) |
 
 Backups: `lace-*-2048@4.webp`, `testing@4.html` (untracked).
+
+## Step 5: edging lace past the garment edge (accepted, offline checks only)
+
+**Plates** (`make_plate.py`):
+- Each trim has a `type`: `edging` (default for `hem`, `cuff-*`) or `insertion` (`neck`, `slit-*`); `zones.json` can set it per trim.
+- Every strip is now written with **V = 0 at its inner side and V = 1 at the side of the garment edge it follows**, for every trim (`plate.json` `"outerV": 1`). The side is found by marching out along both normals (up to 60 px) and taking the side where the garment ends first. So the decorative edge of a lace points outward with **no manual `FLIP`** (the page uses `FLIP` only for plates without `outerV`).
+- An edging strip is written to **V = 1.5** (`"vMax"`): the part past V = 1 lies outside the garment, where `id.png` R stays 0 and only G (trim id) and `uv_trim.png` are written. That part is clipped by `"occluders"` in `zones.json`; `annotate_sleeve.py` now writes the mannequin arm below the cuff as one (only that key changed: `base.jpg` and `annotate.png` byte-identical).
+
+**Laces:** the sidecar's `edgeDepth` (share of the band height below the last row with ≥ 80 % alpha cover) and `edging` (true only if the bottom 5 % of the band is mostly open). Measured:
+
+| Lace | edgeDepth | bottom 5 % open | edging |
+|---|---|---|---|
+| pearl | 0.096 | 77 % | **yes** |
+| geometric (turned 180° in step 4) | 0.112 | 75 % | **yes** |
+| fine | 0.0 | 0 % | no: the paper inside the loops was never keyed (alpha 1 everywhere) |
+| leaf | 0.0 | 4 % | no: the tulle ground is partly opaque down to the bottom row |
+
+This is the plan's fallback ("edging only on the laces with a clean key"), but the data picked **pearl and geometric**, not geometric and fine as the plan expected: the fine lace has the worst key of the four. Fine and leaf stay insertion until they are photographed (or keyed) again.
+
+**Shader:** where the trim is edging **and** the lace allows it, the lace is shifted outward by `edgeDepth` (its decorative edge crosses the garment edge). Over the background (`zone == 0`) the lace is drawn over the photo, with its shadow on the photo **×1.5 longer and softer** (+0.5 mip). Outside the edging case the overhang pixels are ignored completely (as before the step). Test switch `?edging=0`.
+
+**Checks (offline, on the plates; `polish_metrics`-style scans of id / uv_trim):**
+
+| Check | Result |
+|---|---|
+| `rebuild_check.sh` | only `id.png`, `uv_trim.png`, `plate.json` differ (neck `id.png` unchanged: no edging trim) ✔ |
+| Overhang written, outside the garment | torso: cuffs 1611 / 1682 px, hem 7287 px on the background; sleeve cuff 1195 px on the background + 3787 px over the bodice (the lace hangs in front of the body); hem view: 44559 px ✔ |
+| Overhang on the mannequin arm (sleeve) | 0 px of overhang; 57 px of the **inner** strip lie on the rasterised edge of the arm polygon (on the garment side of the cuff edge) |
+| Decorative edge outward, no FLIP, all trims | ✔ every edging trim (its V > 1 part lies outside the garment); every insertion trim: the V > 0.85 side is the one next to the garment edge (neck: 1.00 vs 0.02–0.05; hem-view slits: 0.97 vs 0.00–0.01; torso slits: V = 1 on the side away from the centre) |
+| Overhang depth = decorative depth ± 1 mm | by construction: shift = edgeDepth × trim width (pearl on a 30 mm hem: 2.9 mm; geometric: 3.4 mm). **Not checked in a render.** |
+| Holes in the overhang show the photo | by construction (the base colour there is the photo). **Not checked in a render.** |
+| `fabric=off`, all lace off: identical to step 4 | by code: with no trim on, a background pixel returns the photo before any new code. **Not checked in a render.** |
+| Plate data | torso 437, neck 381, sleeve 726, hem 481 KB ✔ |
+
+Backups: `id@5.png`, `uv_trim@5.png`, `plate@5.json`, sleeve `zones@5.json`, `testing@5.html` (untracked).

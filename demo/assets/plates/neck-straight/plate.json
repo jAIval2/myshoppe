@@ -26,7 +26,10 @@
   "neck": {
    "id": 1,
    "lengthCm": 20.7,
-   "widthMm": 12
+   "widthMm": 12,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   }
  },
  "shadeSmoothMm": 1.2,

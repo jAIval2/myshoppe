@@ -21,12 +21,18 @@
   "neck": {
    "id": 1,
    "lengthCm": 17.2,
-   "widthMm": 12
+   "widthMm": 12,
+   "type": "insertion",
+   "outerV": 1,
+   "vMax": 1.0
   },
   "cuff-l": {
    "id": 2,
    "lengthCm": 10.6,
-   "widthMm": 25
+   "widthMm": 25,
+   "type": "edging",
+   "outerV": 1,
+   "vMax": 1.5
   }
  },
  "shadeSmoothMm": 1.2,

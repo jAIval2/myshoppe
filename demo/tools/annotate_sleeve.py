@@ -192,6 +192,8 @@ data = {
     "trims": {"neck": {"order": 3, "widthMm": 12, "centre": neck_trim},
               "cuff-l": {"order": 3, "widthMm": 25, "centre": cuff_trim}},
     "stitches": {"neck-topstitch": neck_stitch, "cuff-topstitch": T(cuff_stitch)},
+    # objects in front of the garment (polish.md step 5): an edging lace hanging past the cuff must not cover the arm
+    "occluders": [T(arm_left + arm_right[1:] + cuff_edge[cuff_edge.index((1040, 1801)) + 1:-1][::-1])],
 }
 json.dump(data, open(f"{D}/zones.json", "w"), indent=1)
 
