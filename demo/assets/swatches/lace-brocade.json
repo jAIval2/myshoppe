@@ -1,0 +1,24 @@
+{
+ "source": "lace-brocade-2048.webp",
+ "bandPx": [
+  1338,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 28.2,
+ "widthMmNote": "measured from the ruler in the photo (18.13 px/mm); 2 pattern periods tall",
+ "edgeDepth": 0.0,
+ "bottomOpen": 0.0,
+ "edging": false,
+ "edgingNote": "woven band, opaque: both edges are straight; insertion only",
+ "periodPx": 223.0,
+ "periods": 6,
+ "periodRatio": 0.5,
+ "motifCentrePx": 111.5,
+ "corr": 0.978,
+ "cutFromPx": 256,
+ "blendPx": 24,
+ "mirror": false,
+ "periodMm": 14.12,
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+}

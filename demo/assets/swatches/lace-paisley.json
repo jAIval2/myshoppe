@@ -1,0 +1,35 @@
+{
+ "source": "lace-paisley-2048.webp",
+ "bandPx": [
+  1107,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 53.4,
+ "widthMmNote": "measured from the ruler in the photo (16.52 px/mm): band 883 px high",
+ "edgeDepth": 0.123,
+ "bottomOpen": 0.695,
+ "edging": true,
+ "periodPx": 238.333,
+ "periods": 3,
+ "periodRatio": 0.53438,
+ "motifCentrePx": 119.17,
+ "corr": 0.879,
+ "cutFromPx": 195,
+ "blendPx": 29,
+ "mirror": false,
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between",
+ "material": {
+  "file": "lace-paisley-mat.webp",
+  "size": [
+   357,
+   223
+  ],
+  "heightRadiusPx": 16.7,
+  "metalCoverPct": 57.81,
+  "metalPixelShare": 0.7,
+  "pearls": 0,
+  "pearlsPerRepeat": 0.0
+ },
+ "periodMm": 28.56
+}

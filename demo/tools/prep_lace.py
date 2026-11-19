@@ -1,6 +1,6 @@
 """Lace photo on plain paper -> horizontal lace band with alpha, for the trim shader.
 
-usage: python3 tools/prep_lace.py <in> <out.webp> <preview.png> [--flip] [--cut-bottom 0.12]
+usage: python3 tools/prep_lace.py <in> <out.webp> <preview.png> [--flip] [--cut-bottom 0.12] [--paper R,G,B] [--key 8]
        python3 tools/prep_lace.py --repeat <band.webp> <out.webp> <out.json> <preview.png> [--width-mm 30] [--flip]
        python3 tools/prep_lace.py --material <tile.webp> <sidecar.json> <out-mat.webp> <preview.png> [--pearls]
 
@@ -32,6 +32,7 @@ REPEAT = "--repeat" in sys.argv
 
 def make_band(src, out, prev):
     flip = "--flip" in sys.argv
+    T = float(sys.argv[sys.argv.index("--key") + 1]) if "--key" in sys.argv else 8.0   # key threshold (noisy dark paper: 20)
     im = Image.open(src).convert("RGB")
     W, H = im.size
 
@@ -39,6 +40,8 @@ def make_band(src, out, prev):
     border = [im.getpixel((x, y)) for x in range(0, W, 8) for y in (2, H - 3)] + \
              [im.getpixel((x, y)) for y in range(0, H, 8) for x in (2, W - 3)]
     paper = tuple(statistics.median(c[i] for c in border) for i in range(3))
+    if "--paper" in sys.argv:                        # lace that runs out of the frame at the sides: the border is not all paper
+        paper = tuple(float(v) for v in sys.argv[sys.argv.index("--paper") + 1].split(","))
 
 
     def distance(img):
@@ -60,7 +63,7 @@ def make_band(src, out, prev):
 
     # 2. mask on a small copy
     small = im.resize((W // 4, H // 4), Image.BILINEAR).filter(ImageFilter.GaussianBlur(2))
-    d = to8(distance(small)).point(lambda v: 255 if v > 8 else 0)
+    d = to8(distance(small)).point(lambda v: 255 if v > T else 0)
     pts = [(x, y) for y in range(d.height) for x in range(d.width) if d.getpixel((x, y))]
     mx = sum(p[0] for p in pts) / len(pts)
     my = sum(p[1] for p in pts) / len(pts)
@@ -72,7 +75,7 @@ def make_band(src, out, prev):
     rot = im.rotate(ang, resample=Image.BICUBIC, expand=True, fillcolor=(0, 0, 0))
     valid = Image.new("L", im.size, 255).rotate(ang, resample=Image.NEAREST, expand=True, fillcolor=0)
     dist = distance(rot)
-    mask = to8(dist).point(lambda v: 255 if v > 8 else 0)
+    mask = to8(dist).point(lambda v: 255 if v > T else 0)
     mask = ImageChops.multiply(mask, valid)
 
     # 4. rows of the band
@@ -90,7 +93,7 @@ def make_band(src, out, prev):
     x0, x1 = x0 + span // 10, x1 - span // 10          # middle 80 %: no curled or cut ends
     # cut the shadow strip: the paper's shadow under the lace picks up a little warm colour.
     # Keep rows down to the last one where strong lace colour (dist > 16) covers > 8 % of the row.
-    strong = to8(dist).point(lambda v: 255 if v > 16 else 0)
+    strong = to8(dist).point(lambda v: 255 if v > 2 * T else 0)
     cov = [sum(1 for x in range(x0, x1, 3) if strong.getpixel((x, y))) / ((x1 - x0) / 3) for y in range(y0, y1)]
     last = max(i for i, c in enumerate(cov) if c > 0.08)
     first = min(i for i, c in enumerate(cov) if c > 0.08)
@@ -101,10 +104,11 @@ def make_band(src, out, prev):
     a = dist.crop((x0, y0, x1, y1))
 
     # 5. alpha: smooth ramp on the colour distance
-    alpha = to8(a).point(lambda v: max(0, min(255, (v - 4) * 24))).filter(ImageFilter.GaussianBlur(0.6))
+    alpha = to8(a).point(lambda v: max(0, min(255, (v - T / 2) * 24))).filter(ImageFilter.GaussianBlur(0.6))
     band.putalpha(alpha)
     if flip:
         band = band.rotate(180)
+    src_h = band.height                             # source px of the band height (for widthMm from a ruler)
     h = 446
     band = band.resize((round(band.width * h / band.height), h), Image.LANCZOS)
     band.save(out, quality=90, method=6)
@@ -112,7 +116,7 @@ def make_band(src, out, prev):
     pv = Image.new("RGB", band.size, (60, 90, 70))
     pv.paste(band, (0, 0), band)
     pv.save(prev)
-    print(f"{src.split('/')[-1]}: paper {tuple(round(c) for c in paper)}, angle {ang:.1f} deg, band {band.size}, aspect {band.width / band.height:.2f}")
+    print(f"{src.split('/')[-1]}: paper {tuple(round(c) for c in paper)}, angle {ang:.1f} deg, band {band.size}, aspect {band.width / band.height:.2f}, source band height {src_h} px")
 
 
 
