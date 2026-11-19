@@ -120,8 +120,8 @@ A float texture is needed for the filter passes. If the phone has no `EXT_color_
 4. Loader in the page. `?dat=0` reads JSON (`zones.json` + `plate.json`) instead, for debugging.
 
 **Accept:**
-- [ ] `.dat` for 4 views ≤ 40 KB raw; sizes raw and gzip in the results.
-- [ ] The render from `.dat` = the render from JSON (identical).
+- [x] `.dat` for 4 views ≤ 40 KB raw; sizes raw and gzip in the results.
+- [x] The render from `.dat` = the render from JSON (identical).
 
 ### Step 7: Stop sending the maps
 
@@ -165,6 +165,6 @@ Only if phone memory needs it, or the stair-stepped edge is seen.
 | 3 Trims as ribbons | done | (step 3) | id G + uv_trim built; bias ≤ 0.11 px; lace fit identical; render ≤ 0.31 after blur |
 | 4 Shade on the GPU | done | (step 4) | garment shade identical to ±1 level in 100 % of px (torso, neck); transient ~100 MB GPU; render criterion → checker test |
 | 5 Neck, sleeve, hem | done | (step 5) | all 4 views pass the map tests; sleeve front grid fixed (grain tilt 18.4° → 4.4°); sleeve render changes on purpose |
-| 6 The `.dat` file | planned | | |
+| 6 The `.dat` file | done | (step 6) | 21.7 KB raw (8.3 KB gzip) for 4 views, exact; render identical to JSON; no thinning needed |
 | 7 Stop sending the maps | planned | | |
 | 8 Direct mesh draw (optional) | planned | | |

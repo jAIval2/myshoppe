@@ -57,6 +57,20 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 
 `make_plate.py` now writes, on the neck and torso plates, the neck area (`id.png` B = 1), the full-grid UV in it, the shade carried 8 px into the dip, and the `neck` block of `plate.json` (edge, trim centre, grid top, CF, reach, fill colours, form patch).
 
+## Numeric plan (`docs/plan/numeric.md`)
+
+The page builds the plate maps itself from the curves: `plate.js` (the maths of `make_plate.py`), `maps.js` (the GPU passes: `id`, `uv`, `uv_trim`, the shade) and `plate.dat` (the curves and decisions of one view, a few KB). `?geom=mesh` turns it on; the PNG maps stay the offline reference.
+
+| Tool | Use |
+|---|---|
+| `make_plate.py <plate> --dump-mesh <prefix>` + `node tools/mesh_check.mjs <plate> <prefix>` | Step 1: every vertex of every zone grid, trim strip and ribbon, and the neck edge, `plate.js` against Python (pass: 0.01 px, 0.001 cm; found 3e-11) |
+| `node tools/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMaps()' "view=torso&geom=mesh"` then `python3 tools/map_diff.py <plate> <out>/log.json [--only id,uv,uvt,shade] [--debug <png>]` | Steps 2-5: the textures that the page built, against `id.png`, `uv.png`, `uv_trim.png`, `shade.png`: edge band, holes, area, uv / uv_trim bias, median and 99 %, shade levels. Criteria in the docstring |
+| `python3 tools/canvas_diff.py <a> <b> [--blur <sigma>]` | Render comparison. A real fabric differs by the PNG maps' own 12-bit uv noise (about a texel); the gate is the grain checker (`?checker=1`, mean <= 1.0) with `?trims=none`; `--blur` shows the structure |
+| `python3 tools/make_dat.py <plate> \| --all` | Step 6: `plate.dat` from `zones.json` + `plate.json` (BSP1, int16 deltas in 0.1 px; format in the docstring) |
+| `node tools/dat_check.mjs <plate> ...` | `parseDat()` gives back plate.json / zones.json exactly |
+
+Test switches of the page: `?geom=mesh`, `?meshviews=torso,neck,sleeve,hem`, `?gpushade=0` (shade from `shade.png`), `?dat=0` (JSON instead of `.dat`), `?cell=<px>` and `?mapoff=idx,idy,uvx,uvy,grow` (mesh calibration), `?checker=1`, `?trims=neck,cuffs,hem,slits|none`.
+
 ## Quality plan (`docs/plan/upscale.md`)
 
 | Tool | Use |

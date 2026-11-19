@@ -952,6 +952,7 @@
   const GEOM = params0.get("geom") === "mesh" ? "mesh" : "maps";
   const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1, neck: 1, sleeve: 1, hem: 1 };   // all four views (numeric.md step 5); test: ?meshviews=torso,neck,sleeve,hem to choose
   const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
+  const DAT = params0.get("dat") !== "0";                // test: ?dat=0  plate.json + zones.json instead of plate.dat (the same numbers)
   const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");   // the shade is built on the GPU only with float render targets (else shade.png)
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
   const decoded = new Set();
@@ -1022,11 +1023,13 @@
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
       const P = VIEWS[view].plate, maps = mapsOf(view);
-      cache[view] = Promise.all([
-        blobOf(P + "plate.json").then((b) => b.text()).then(JSON.parse),
-        meshOn(view) ? blobOf(P + "zones.json").then((b) => b.text()).then(JSON.parse) : null,
-        ...maps.map(([, f]) => blobOf(P + f)),
-      ]).then(([plate, zones, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
+      // a mesh view reads ONE small plate.dat (the curves and the decisions, numeric.md step 6); ?dat=0 reads plate.json + zones.json instead
+      const meta = meshOn(view) && DAT
+        ? blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab))
+        : Promise.all([blobOf(P + "plate.json").then((b) => b.text()).then(JSON.parse), meshOn(view) ? blobOf(P + "zones.json").then((b) => b.text()).then(JSON.parse) : null])
+            .then(([plate, zones]) => ({ plate, zones }));
+      cache[view] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
+        .then(([{ plate, zones }, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
     }
     return cache[view];

@@ -4,7 +4,7 @@
 
   Same names and same arithmetic as make_plate.py, so that the page can calculate what the plate maker calculates:
     resample, coons, tuck, prepare (tuck applied to a copy of zones.json), zoneParams, zoneVertices,
-    trimParams, trimStrip, trimTriangles, neck_edge, offset_poly.
+    trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, parseDat (plate.dat).
   make_plate.py stays the reference. Decisions that it takes by searching the image (which side of a trim is the garment
   edge, the median light, the fill colours, the form patch) are NOT repeated here: they arrive as numbers (plate.json /
   the .dat file), e.g. trims[name].side.
@@ -209,7 +209,37 @@
     });
   }
 
-  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, trimTriangles, neck_edge, offset_poly };
+  // ---- plate.dat (tools/make_dat.py): the curves and the numbers of one plate -> { plate, zones }, the same objects as plate.json / zones.json
+  function parseDat(buf) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "BSP1") throw new Error("plate.dat: wrong magic");
+    const version = dv.getUint16(4, true), unit = dv.getUint16(6, true), hlen = dv.getUint32(8, true);
+    if (version !== 1) throw new Error("plate.dat: version " + version);
+    const head = JSON.parse(new TextDecoder().decode(u8.subarray(12, 12 + hlen)));
+    let off = 12 + hlen;
+    const curves = head.curves.map((n) => {
+      const pts = [];
+      let x = 0, y = 0;
+      for (let i = 0; i < n; i++, off += 4) {
+        x += dv.getInt16(off, true); y += dv.getInt16(off + 2, true);
+        pts.push([(x * unit) / 1000, (y * unit) / 1000]);       // an integer / 1000: the same double as the decimal of the JSON file
+      }
+      return pts;
+    });
+    const plate = { ...head.plate };
+    if (head.neck) plate.neck = { ...head.neck, edge: curves[head.neck.edge], centre: curves[head.neck.centre], top: curves[head.neck.top] };
+    const Z = { view: head.view, mmPerPx: head.mmPerPx, zones: {}, trims: {} };
+    for (const k of ["thetaDeg", "tuck", "shadeSmoothEps", "shadeSmoothMm"]) if (head[k] !== undefined) Z[k] = head[k];
+    for (const [name, z] of Object.entries(head.zones)) {
+      Z.zones[name] = { order: z.order, grid: Object.fromEntries(Object.entries(z.grid).map(([k, i]) => [k, curves[i]])), outline: curves[z.outline] };
+      if (z.widthPx !== undefined) Z.zones[name].widthPx = z.widthPx;
+    }
+    for (const [name, t] of Object.entries(head.trims)) Z.trims[name] = { ...t, centre: curves[t.centre] };
+    if (head.occluders) Z.occluders = head.occluders.map((i) => curves[i]);
+    return { plate, zones: Z };
+  }
+
+  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, parseDat };
   if (typeof module !== "undefined" && module.exports) module.exports = Plate;
   else root.Plate = Plate;
 })(typeof window !== "undefined" ? window : globalThis);

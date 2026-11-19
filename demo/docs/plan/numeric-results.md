@@ -212,3 +212,30 @@ The 12 real-fabric queries against 8100 (sleeve excluded by the grid fix): mean 
 
 - [x] All 4 views pass the map tests and the render comparison (the grain checker ≤ 1.0).
 - [x] Sleeve: grain tilt under the arm ≤ 5° (was 18.4°): 4.4°.
+
+## Step 6: The `.dat` file
+
+`tools/make_dat.py` writes `plate.dat` from `zones.json` + `plate.json` (format in its docstring):
+- `"BSP1"`, version, unit, a JSON header with every number the page needs (scale, ranges, ids, trim lengths and **sides**, the shade median, the neck block with its rectangle, fill colours and form patch; `thetaDeg`, `tuck`, trim widths and types, `shadeSmoothEps`), then all curves as int16, delta-coded.
+- **Unit 0.1 px, not 1/8 px:** every coordinate of the 4 `zones.json` files is a multiple of 0.1 px (checked), so integers of 0.1 px are exact. A 1/8 px unit would have rounded them.
+- Identical curves are stored once (the grid top of the front zone is also the neck's grid top; the neck trim centre is also the neck's centre).
+- `Plate.parseDat()` gives back `{ plate, zones }`; the page code is the same for both sources. `?dat=0` reads `plate.json` + `zones.json` instead.
+
+| Plate | `plate.dat` | gzip | `zones.json` + `plate.json` | gzip |
+|---|---|---|---|---|
+| torso | 14,392 B | 4,293 | 123,115 | 19,611 |
+| neck | 1,888 | 1,055 | 11,189 | 2,432 |
+| sleeve | 2,596 | 1,447 | 18,334 | 3,721 |
+| hem | 2,784 | 1,487 | 19,243 | 3,681 |
+| **4 views** | **21,660 B** | **8,282** | **171,881** | **29,445** |
+
+The plan's target was ≤ 40 KB raw: 21.7 KB. The `.dat` is 72 % smaller than the gzipped JSON (the plan's fallback applies below 30 %).
+
+**The thinning of the torso trace was not done.** The plan asked for Douglas–Peucker at 0.1 px to reach about 7 KB. Without it the 4 views are 21.7 KB raw (8.3 KB gzip), already inside the target, and the data stay exact: thinning would have made the `.dat` and the JSON different curves, and the identity test below could not be exact.
+
+**Tests:**
+- `node tools/dat_check.mjs assets/plates/*-straight`: `parseDat()` equals `plate.json` and the used part of `zones.json` **exactly** (every number `===`) on all 4 plates.
+- The 12 queries (`?geom=mesh`) rendered from `.dat` and from JSON (`?dat=0`): **12 of 12 identical (mean 0.000, max 0)**.
+
+- [x] `.dat` for 4 views ≤ 40 KB raw (21.7 KB; gzip 8.3 KB).
+- [x] The render from `.dat` = the render from JSON (identical).
