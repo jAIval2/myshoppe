@@ -5,7 +5,8 @@
 // usage: node tools/cdp_shot.mjs <out-dir> <port> [--dpr 2] [--win 900x760] [--eval "<js>"] "<query>" ["<query>" ...]
 //   --eval: JavaScript run in the page after the first frame (may return a Promise); its JSON result goes to log.json.
 //           The page exposes window.__studio (see testing.html) for tests: setNeck(), state, timings.
-//   --page: also a screenshot of the whole page (page-<i>.png: the SVG handles, the panel)
+//   --mobile: a phone (mobile viewport, touch); --reduced: prefers-reduced-motion: reduce
+//   --page: also a screenshot of the whole page, below the fold too (page-<i>.png: the SVG handles, the panel)
 //   writes <out>/canvas-<i>.png and <out>/log.json  ({ query, errors, stat, result })
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from "node:fs";
@@ -22,6 +23,8 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === "--budget") opt.budget = parseInt(args[++i]);
   else if (args[i] === "--input") opt.input = JSON.parse(args[++i]);
   else if (args[i] === "--page") opt.page = true;
+  else if (args[i] === "--mobile") opt.mobile = true;
+  else if (args[i] === "--reduced") opt.reduced = true;
   else pos.push(args[i]);
 }
 // the 8 fixed review queries of the polish plan (tools/polish_metrics.py QUERIES); "--polish [extra]" appends extra to each
@@ -74,12 +77,15 @@ listeners.push((m) => {
 });
 await send("Runtime.enable");
 await send("Page.enable");
-await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: opt.dpr, mobile: false });
+await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: opt.dpr, mobile: !!opt.mobile });
+if (opt.mobile) await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+if (opt.reduced) await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
 
 // --input '[...]': real input events through the protocol, run after the first frame and before --eval. Steps:
 //   {"m":"down|move|up", "sel":"#h-cf", "dx":0, "dy":40}   mouse; "sel" (centre of its box) is read on "down" and kept as the base
 //   {"t":"start|move|end", "sel":..., "dx":.., "dy":..}      touch, same rule
 //   {"k":"ArrowDown", "shift":true}                         a key to the focused element;  {"k":"Tab"} moves the focus
+//   {"kd":" "} ... {"ku":" "}                                hold a key down, release it
 //   {"wait": ms}   {"js": "<code>"} (its return value goes to the list)
 // The result lists, after each step, document.activeElement's id and __studio.state.neck (when present).
 async function runInput(steps) {
@@ -94,10 +100,12 @@ async function runInput(steps) {
     const x = base[0] + (s.dx || 0), y = base[1] + (s.dy || 0);
     if (s.m) await send("Input.dispatchMouseEvent", { type: { down: "mousePressed", move: "mouseMoved", up: "mouseReleased" }[s.m], x, y, button: "left", buttons: s.m === "up" ? 0 : 1, clickCount: 1 });
     if (s.t) await send("Input.dispatchTouchEvent", { type: { start: "touchStart", move: "touchMove", end: "touchEnd" }[s.t], touchPoints: s.t === "end" ? [] : [{ x, y, id: 1 }] });
-    if (s.k) {
-      const vk = { ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Tab: 9, Home: 36, End: 35, PageUp: 33, PageDown: 34 }[s.k] || 0;
-      for (const type of ["rawKeyDown", "keyUp"])
-        await send("Input.dispatchKeyEvent", { type, key: s.k, code: s.k, windowsVirtualKeyCode: vk, modifiers: s.shift ? 8 : 0 });
+    const key = s.k || s.kd || s.ku;
+    if (key) {
+      const vk = { ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Tab: 9, Home: 36, End: 35, PageUp: 33, PageDown: 34, " ": 32 }[key] || 0;
+      const types = s.kd ? ["rawKeyDown"] : s.ku ? ["keyUp"] : ["rawKeyDown", "keyUp"];   // kd / ku: hold a key
+      for (const type of types)
+        await send("Input.dispatchKeyEvent", { type, key, code: key === " " ? "Space" : key, windowsVirtualKeyCode: vk, modifiers: s.shift ? 8 : 0 });
     }
     await sleep(s.m === "move" || s.t === "move" ? 60 : 30);
     out.push(await evaluate(`({ step: ${JSON.stringify(JSON.stringify(s))}, focus: document.activeElement && document.activeElement.id, neck: window.__studio && window.__studio.state.neck && { d: +window.__studio.state.neck.depthMm.toFixed(1), w: +window.__studio.state.neck.widthMm.toFixed(1) } })`));
@@ -128,7 +136,12 @@ for (const [i, q] of queries.entries()) {
     entry.stat = await evaluate(`document.getElementById("stat")?.textContent || ""`);
     const data = await evaluate(`document.getElementById("stage").toDataURL("image/png")`);
     writeFileSync(join(out, `canvas-${i}.png`), Buffer.from(data.split(",")[1], "base64"));
-    if (opt.page) writeFileSync(join(out, `page-${i}.png`), Buffer.from((await send("Page.captureScreenshot", { format: "png" })).data, "base64"));
+    if (opt.page) {
+      const m = await send("Page.getLayoutMetrics");
+      const cs = m.cssContentSize || m.contentSize;
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: cs.width, height: cs.height, scale: 1 } });
+      writeFileSync(join(out, `page-${i}.png`), Buffer.from(shot.data, "base64"));
+    }
   } catch (e) { entry.error = String(e.message || e); }
   entry.errors = errors;
   log.push(entry);

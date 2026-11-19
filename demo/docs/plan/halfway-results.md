@@ -182,3 +182,43 @@ To close the 3 mm check, measure the real garment's neck depth (atelier), then r
 
 - [ ] For 3 settings, the neck depth in the torso and neckline views agrees within ±3 mm: **no**, the photos differ by 15.7 mm. Changes agree within 0.3 mm. Fallback applied.
 - [x] Switching views keeps the setting.
+
+## Step 7: Showcase
+
+| Part | What it does |
+|---|---|
+| **Journey bar** | Cloth → Neckline → Sleeves → Hem → Review. Each step opens its view (torso, neck, sleeve, hem, torso) and shows only its controls: cloth; lace with its placements; the neckline shape on the Neckline step; the review. There are Back and Next buttons, and `?step=` is kept in the URL. The test panel shows only with `?test`. |
+| **Cross-fade** | A still of the old view, faded out over 250 ms once the new view is drawn. With `prefers-reduced-motion` the transition is 0 s, checked with emulated media. A token stops a late fade-out from clearing a newer still. |
+| **Highlight** | When a placement is turned on, its trims glow softly: a warm lift that rises and falls over 1 s (a test shows the glow frame differs from the settled one). When a pivot is selected (focus, including by pointer), the band along the live neck edge glows. With reduced motion the glow is on for 1 s, with no pulse. |
+| **Before / after** | Hold the "Hold: before" button (pointer, touch, Space / Enter on it) or the Space key anywhere outside a control to see the plain garment (the photo). The handles hide meanwhile. Holding Space was checked with a held key. |
+| **Cards** | Swatch cards with the real tile and its name (as before). Lace cards with a strip of the lace. |
+| **Review** | The torso view large; below it a strip of the 3 close views (neck, sleeve, hem), drawn from the same record on the stage canvas behind a still of the torso and copied to the strip; the list of choices (cloth, lace, placements, neckline depth and width). The strip is rebuilt only when a choice changes. |
+| **Share image** | One 1080 × 1500 PNG (`toBlob`): the torso, the choices, and the 3 close views. **Share** uses the system share sheet (WhatsApp) where the browser can share files; otherwise it downloads, and says so. **Download** always saves `my-kurta.png`. |
+| **Phone** | One column at ≤ 760 px (stage on top). The 5 steps share one row; the numbers are hidden at ≤ 440 px. The sleeve note keeps clear of the before button. |
+
+Fixed on the way:
+1. The first phone run lost a fabric download ("Failed to fetch") on the busy local server, and the swatch cache then kept the failed promise. Downloads now retry once, and a failed swatch or material is not cached.
+2. The journey bar first scrolled sideways on a phone, and the Review step was off screen.
+
+Checked with real input events (`tools/cdp_shot.mjs --input`):
+
+| Check | Result |
+|---|---|
+| Desktop journey: mocha → Next → drag depth and width → lace geometric → Sleeves (note shows) → Next → slits → Review | review list = "Mocha Chikan / Woven Diamond Border / neckline, sleeve cuffs, hem border, chaak slits / 79 mm deep, 175 mm wide"; no console error |
+| The review image shows the same choices as the page | yes: the same list, and the 79 mm neckline in the torso and neck images (`img/halfway-step7-share.png`) |
+| Step times after the first visit (SwiftShader, so slower than a real GPU) | cloth 1–481 ms, neck 158–370, sleeve 448, hem 463, review 530 ms (strip cached). The first review shows the torso at 358 ms; the strip fills in by 2.1 s. |
+| Phone (390 × 844, touch taps): each of the 5 steps | every step opens; page width = window width (no sideways scroll); no error (`img/halfway-step7-phone.png`) |
+| Default render, 8 queries vs port 8000 | PASS, unchanged from step 5 (mean ≤ 0.19) |
+
+- [x] The review image shows the same choices as the page.
+- [x] No step takes more than 1 s to show its view after the first visit (SwiftShader: ≤ 0.53 s).
+- **Open (a person on a phone):** goes through the whole journey without help. The layout and every step work with touch on a phone-sized viewport; a real person on a real phone is still to do.
+- **Known:** in the share image and on the sleeve step the turned sleeve view shows the photographed neckline (step 6, phase 1). The stage note says so; the image does not.
+
+## Open checks (all need a real browser, phone or person)
+
+1. Draw time ≤ 5 ms in a normal browser, and ≥ 30 frames per second while dragging on a mid-range phone (SwiftShader timings are not real).
+2. Decoded image memory in the browser's memory panel (step 1: the page's own count says 0 MB after switches).
+3. A person cannot point to the old neckline within 10 s at the range ends (step 3: by my own look, and the edge-step number).
+4. A person goes through the journey on a phone without help (step 7).
+5. Step 6: measure the real neck depth (atelier), then re-annotate the torso neckline or re-shoot one view, so that the views agree in absolute depth.

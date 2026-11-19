@@ -457,6 +457,20 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 - **Pearl lace on the hem view:** the hem is 3.4 repeats long; not fitted (a motif is cut at one end).
 - The scale values (`repeatCm`, lace `widthMm`) are still assumptions.
 
+### 2026-11-19: live neckline and the showcase (`docs/plan/halfway.md`, results in `docs/plan/halfway-results.md`)
+
+| Step | What changed | Measured |
+|---|---|---|
+| 1 Decode | blobs kept for all views, one view decoded at a time, bitmaps closed after upload | 0 MB decoded after 12 switches (was 161 MB) |
+| 2 Live curve | neck area in `id.png` B, full-grid UV, `plate.json neck`; design record in mm (`assets/looks/`); 24-point live edge | default mean ≤ 0.009; ±20 mm moves the CF edge by mm ÷ mmPerPx (±0.08 px) |
+| 3 Reveal fills | edge band follows the live edge; smooth shade for new fabric; form fill (local light, hex-tiled form patch, CF tape, contact shade) | step across the old edge = the light's own change; no repeat |
+| 4 Pivots | 3 SVG handles on rails, snap stops, mouse / touch / keys, ARIA sliders | checked with real input events |
+| 5 Live trim | neck lace from the live centre line; fit to the live length | median 0.3 px against the baked trim |
+| 6 Torso | one record, per-view mapping; sleeve view keeps its neckline with a note | changes agree within 0.3 mm; the photos' absolute depths differ by 15.7 mm (fallback) |
+| 7 Showcase | journey bar, cross-fade, glow, hold for before, lace cards, review with 3 close views, share PNG, phone layout | each step shows its view in < 0.6 s (SwiftShader) after the first visit |
+
+**Verification:** `tools/cdp_shot.mjs` (headless Chrome through the DevTools protocol) saves the canvas pixels and the console errors, and sends real mouse, touch and key events. The shader compiles. Open: draw time and the frame rate during a drag on a real phone, the memory panel, and a person's walk through the journey.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)

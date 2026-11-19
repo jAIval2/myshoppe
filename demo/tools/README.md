@@ -46,6 +46,17 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 
 `shoot_views.sh` takes `DPR`, `WIN`, `JOBS`, `TMO` and `PORT`. Two runs on the same port kill each other's server.
 
+## Halfway plan (`docs/plan/halfway.md`)
+
+| Tool | Use |
+|---|---|
+| `node tools/cdp_shot.mjs <out> <port> [--dpr 2] [--win 900x760] [--page] [--mobile] [--reduced] [--input '<json>'] [--eval '<js>'] "<query>" ...` or `--polish [extra]` | Headless Chrome through the DevTools protocol: saves the **canvas** (`canvas-<i>.png`, exact pixels once the frame is drawn) and every console error, including the shader compile log (`log.json`). `--input` sends real mouse / touch / key events (`{"m":"down","sel":"#h-cf"}`, `{"t":"move","dx":10}`, `{"k":"ArrowDown","shift":true}`, `{"kd":" "}` / `{"ku":" "}`, `{"js":"..."}`, `{"wait":ms}`); `--page` adds a full-page screenshot; `--mobile` a phone; `--reduced` prefers-reduced-motion. 5–10 s per query. |
+| `canvas_diff.py <run-a> <run-b> [--diff <out>]` | Two runs canvas by canvas: mean \|difference\|, share > 8 levels, max. PASS at mean ≤ 0.5 ("pixel-identical" in the plan). |
+| `reveal_metrics.py <canvas.png> <plate-dir>` | Step 3: the step across the old neck edge against the light's own change, and the repeat peak of the form fill |
+| `trim_match.py <plate-dir> <sent.json>` | Step 5: the live neck trim (the shader's 24 points) against `uv_trim.png`, in px along and across |
+
+`make_plate.py` now writes, on the neck and torso plates, the neck area (`id.png` B = 1), the full-grid UV in it, the shade carried 8 px into the dip, and the `neck` block of `plate.json` (edge, trim centre, grid top, CF, reach, fill colours, form patch).
+
 ## Quality plan (`docs/plan/upscale.md`)
 
 | Tool | Use |
@@ -61,3 +72,5 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
   Polish plan, kept for before / after comparisons (each one gives back the old behaviour of its step):
   `?shade=0` (flat light, for the fold contrast), `?shadow=0|<strength>` (lace shadow), `?linear=0` (sRGB maths), `?lacefit=0` (mirrored lace, no fit),
   `?edging=0` (no lace past the edge), `?relief=0` (no lace relief, metal, pearl), `?displace=0`, `?sheen=0|test` (old 0.15 highlight | a test sheen), `?antitile=0`.
+  Halfway plan: `?decode=all` (keep the decoded images: the old memory use), `?neck=baked` (the baked neckline and trim, no handles), `?revealfill=0` (plain colours where a change reveals fabric or form),
+  `?neckDepth=<mm>&neckWidth=<mm>` (the design record), `?snap=0` (no snap stops), `?step=cloth|neck|sleeve|hem|review` (the journey step; `?view=` still picks the step of that view), `?test` (shows the test panel).

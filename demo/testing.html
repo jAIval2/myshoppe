@@ -28,7 +28,8 @@
     color: var(--ink);
     font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, sans-serif;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
   }
   .studio-shell {
     display: grid;
@@ -42,6 +43,30 @@
     body { padding: 16px; }
     .studio-shell { grid-template-columns: 1fr; gap: 24px; }
   }
+  /* JOURNEY BAR (halfway.md step 7) */
+  .journey { width: 100%; max-width: 860px; margin: -12px 0 22px; }
+  .journey ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .journey li { flex: 1 0 auto; }
+  .journey button {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+    color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+    transition: background 0.16s, color 0.16s, border-color 0.16s;
+  }
+  .journey .num {
+    width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center;
+    font-size: 11px; background: rgba(29, 26, 22, 0.07); color: var(--ink);
+  }
+  .journey button[aria-current="step"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .journey button[aria-current="step"] .num { background: var(--card); color: var(--ink); }
+  .journey button.done:not([aria-current="step"]) { color: var(--ink); }
+  .journey button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  @media (max-width: 760px) {                         /* phone: the five steps share one row */
+    .journey { margin: -4px 0 14px; }
+    .journey li { flex: 1 1 0; min-width: 0; }
+    .journey button { padding: 8px 4px; gap: 5px; font-size: 11.5px; }
+  }
+  @media (max-width: 440px) { .journey .num { display: none; } }
   /* STUDIO STAGE */
   .stage-frame {
     position: relative;
@@ -61,6 +86,22 @@
     display: block;
   }
   .stage-frame canvas { visibility: hidden; }        /* the photo shows until the first frame */
+  .stage-frame canvas#fade { visibility: visible; opacity: 0; pointer-events: none; }   /* the old view, faded out on a step change */
+  .stage-frame canvas#fade.fading { transition: opacity 250ms ease-out; }
+  @media (prefers-reduced-motion: reduce) { .stage-frame canvas#fade.fading { transition: none; } }
+  .stage-col { display: grid; gap: 14px; align-content: start; }
+  .before-btn {
+    position: absolute; top: 14px; right: 14px; padding: 7px 12px; border-radius: 999px; border: 0;
+    background: rgba(251, 248, 243, 0.9); backdrop-filter: blur(8px); color: var(--ink); font: inherit; font-size: 11px;
+    letter-spacing: 0.04em; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .before-btn[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+  .before-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .review-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .review-strip[hidden] { display: none; }
+  .review-strip figure { margin: 0; }
+  .review-strip canvas { width: 100%; aspect-ratio: 3 / 4; display: block; border-radius: 10px; background: #e5ddd0; }
+  .review-strip figcaption { font-size: 10.5px; color: var(--muted); margin-top: 5px; text-align: center; }
   .stage-frame canvas.ready { visibility: visible; }
   .stage-caption {
     position: absolute;
@@ -93,7 +134,7 @@
   }
   .stage-note.show { display: block; }
   .stage-badge {
-    position: absolute; top: 14px; left: 14px; max-width: 70%; margin: 0;
+    position: absolute; top: 14px; left: 14px; max-width: calc(100% - 136px); margin: 0;   /* clear of the before button */
     padding: 6px 11px; border-radius: 999px; background: rgba(251, 248, 243, 0.9); backdrop-filter: blur(8px);
     font-size: 11px; line-height: 1.35; color: var(--ink); display: none;
   }
@@ -193,6 +234,21 @@
     outline: 2px solid var(--ink);
     outline-offset: 2px;
   }
+  .lace-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .lace-card {
+    display: grid; gap: 7px; padding: 8px 10px 9px; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+    color: var(--ink); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: border-color 0.18s;
+  }
+  .lace-card strong { font-weight: 500; }
+  .lace-card[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .lace-card:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .lace-strip { height: 26px; border-radius: 6px; background-color: #8f7a66; background-size: auto 100%; background-repeat: repeat-x; }
+  .pill.primary { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .step-nav { display: flex; justify-content: space-between; gap: 8px; }
+  .review-list { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 14px; font-size: 13px; }
+  .review-list dt { color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 2px; }
+  .review-list dd { margin: 0; }
+  .panel [hidden] { display: none !important; }
   .stat {
     font-size: 11px;
     color: var(--muted);
@@ -203,11 +259,24 @@
 </head>
 <body>
 
+<!-- JOURNEY (halfway.md step 7): one step = one fixed view -->
+<nav class="journey" aria-label="Design steps">
+  <ol>
+    <li><button data-step="cloth"><span class="num">1</span>Cloth</button></li>
+    <li><button data-step="neck"><span class="num">2</span>Neckline</button></li>
+    <li><button data-step="sleeve"><span class="num">3</span>Sleeves</button></li>
+    <li><button data-step="hem"><span class="num">4</span>Hem</button></li>
+    <li><button data-step="review"><span class="num">5</span>Review</button></li>
+  </ol>
+</nav>
+
 <div class="studio-shell">
   <!-- LEFT: STAGE — photo underneath (fallback), WebGL canvas on top -->
+  <div class="stage-col">
   <div class="stage-frame">
     <img src="assets/plates/torso-straight/base.jpg" alt="" width="1200" height="1600">
     <canvas id="stage" role="img" aria-label="Straight kurta on a dress form"></canvas>
+    <canvas id="fade" aria-hidden="true"></canvas>
     <svg class="pivots" id="pivots" viewBox="0 0 1200 1600" preserveAspectRatio="none">
       <g id="rails"></g>
       <g class="handle" id="h-cf" data-pivot="cf" role="slider" tabindex="0" aria-label="Neckline depth at the centre front" aria-orientation="vertical">
@@ -218,27 +287,24 @@
         <circle class="hit"/><circle class="ring"/><circle class="dot"/></g>
     </svg>
     <p class="stage-badge" id="badge" aria-live="polite"></p>
+    <button class="before-btn" id="before" aria-pressed="false" title="Hold (or hold the space key) to see the plain garment">Hold: before</button>
     <p class="stage-note" id="note"></p>
     <div class="stage-caption">
       <span id="caption-fabric">Sage Embroidered Organza</span>
       <span id="caption-trim">Pearl Guipure Lace</span>
     </div>
   </div>
+  <div class="review-strip" id="review-strip" hidden>
+    <figure><canvas data-thumb="neck" width="300" height="400"></canvas><figcaption>Neckline</figcaption></figure>
+    <figure><canvas data-thumb="sleeve" width="300" height="400"></canvas><figcaption>Shoulder &amp; sleeve</figcaption></figure>
+    <figure><canvas data-thumb="hem" width="300" height="400"></canvas><figcaption>Hem &amp; slit</figcaption></figure>
+  </div>
+  </div>
 
-  <!-- RIGHT: CONTROLS -->
+  <!-- RIGHT: CONTROLS (the sections of the current step) -->
   <div class="panel">
-    <div>
-      <p class="eyebrow">00 · View</p>
-      <div class="pill-row" data-group="view" role="group" aria-label="View">
-        <button class="pill" aria-pressed="true" data-view="torso">Full torso</button>
-        <button class="pill" aria-pressed="false" data-view="neck">Neckline</button>
-        <button class="pill" aria-pressed="false" data-view="sleeve">Shoulder &amp; sleeve</button>
-        <button class="pill" aria-pressed="false" data-view="hem">Hem &amp; slit</button>
-      </div>
-    </div>
-
-    <div>
-      <p class="eyebrow">01 · Textile</p>
+    <div data-section="fabric">
+      <p class="eyebrow">Cloth</p>
       <div class="swatch-grid" data-group="fabric">
         <button class="swatch-card" aria-pressed="false" data-fabric="off">
           <span class="swatch-dot" style="background:#f4f1ec"></span>
@@ -259,25 +325,25 @@
       </div>
     </div>
 
-    <div>
-      <p class="eyebrow">02 · Lace</p>
-      <div class="pill-row" data-group="lace" style="margin-bottom:10px">
-        <button class="pill" aria-pressed="true" data-lace="pearl">Pearl guipure</button>
-        <button class="pill" aria-pressed="false" data-lace="geometric">Woven diamond</button>
-        <button class="pill" aria-pressed="false" data-lace="leaf">Resham bel</button>
-        <button class="pill" aria-pressed="false" data-lace="fine">Kiran zari</button>
+    <div data-section="lace">
+      <p class="eyebrow">Lace</p>
+      <div class="lace-grid" data-group="lace">
+        <button class="lace-card" aria-pressed="true" data-lace="pearl"><span class="lace-strip" style="background-image:url('assets/swatches/lace-pearl-2048.webp')"></span><strong>Pearl guipure</strong></button>
+        <button class="lace-card" aria-pressed="false" data-lace="geometric"><span class="lace-strip" style="background-image:url('assets/swatches/lace-geometric-2048.webp')"></span><strong>Woven diamond</strong></button>
+        <button class="lace-card" aria-pressed="false" data-lace="leaf"><span class="lace-strip" style="background-image:url('assets/swatches/lace-leaf-2048.webp')"></span><strong>Resham bel</strong></button>
+        <button class="lace-card" aria-pressed="false" data-lace="fine"><span class="lace-strip" style="background-image:url('assets/swatches/lace-fine-2048.webp')"></span><strong>Kiran zari</strong></button>
       </div>
-      <p class="eyebrow" style="margin-bottom:8px">Placement</p>
+      <p class="eyebrow" style="margin:16px 0 8px">Placement</p>
       <div class="pill-row">
         <button class="pill" aria-pressed="true" data-trim="neck">Neckline</button>
-        <button class="pill" aria-pressed="true" data-trim="cuffs">Sleeve Cuffs</button>
-        <button class="pill" aria-pressed="true" data-trim="hem">Hem Border</button>
-        <button class="pill" aria-pressed="false" data-trim="slits">Chaak Slits</button>
+        <button class="pill" aria-pressed="true" data-trim="cuffs">Sleeve cuffs</button>
+        <button class="pill" aria-pressed="true" data-trim="hem">Hem border</button>
+        <button class="pill" aria-pressed="false" data-trim="slits">Chaak slits</button>
       </div>
     </div>
 
-    <div id="neck-panel">
-      <p class="eyebrow">03 · Neckline</p>
+    <div id="neck-panel" data-section="neckline">
+      <p class="eyebrow">Neckline shape</p>
       <p class="neck-values" aria-live="polite"><span id="neck-depth">Depth — mm</span> · <span id="neck-width">Width — mm</span></p>
       <div class="pill-row">
         <button class="pill" id="neck-reset">Reset</button>
@@ -286,8 +352,23 @@
       <p class="hint" id="neck-hint"></p>
     </div>
 
-    <div>
-      <p class="eyebrow">04 · Test</p>
+    <div data-section="review" id="review-panel">
+      <p class="eyebrow">Your kurta</p>
+      <dl class="review-list" id="review-list"></dl>
+      <div class="pill-row">
+        <button class="pill primary" id="share">Share image</button>
+        <button class="pill" id="download">Download image</button>
+      </div>
+      <p class="hint" id="share-hint"></p>
+    </div>
+
+    <div class="step-nav">
+      <button class="pill" id="prev-step">Back</button>
+      <button class="pill primary" id="next-step">Next</button>
+    </div>
+
+    <div data-section="test" id="test-panel">
+      <p class="eyebrow">Test</p>
       <div class="pill-row">
         <button class="pill" aria-pressed="false" data-test="checker">Grain checker</button>
         <button class="pill" aria-pressed="false" data-test="photo">Show photo only</button>
@@ -390,6 +471,9 @@
   uniform float uRevealFill;    // step 3: 1 = fills from the photo, 0 = plain colours
   uniform vec4  uFormPatch;     // a clean square of the dress form in the photo (x0, y0, x1, y1 plate px): its fine detail
   uniform vec2  uCfX;           // x of the centre front (plate px), and 1 / mm per plate px
+  uniform float uGlow;          // step 7: the selected part glows softly (0..1, animated over about 1 s)
+  uniform float uGlowTrim[7];   // which trims glow (a placement was selected)
+  uniform float uGlowNeck;      // 1 = the band along the live neck edge glows (a pivot was selected)
   out vec4 outColor;
   const float HL_LIN = 0.05;
 
@@ -814,6 +898,11 @@
     }
 
     vec3 res = mix(under, clamp(col, 0.0, 1.0), cov);
+    if (uGlow > 0.0) {                                               // step 7: a soft, warm lift of the selected part
+      float gm = (trim > 0 && uTrimOn[trim] > 0.5 && uGlowTrim[trim] > 0.5) ? 1.0 : 0.0;
+      if (uGlowNeck > 0.5 && neckA) gm = max(gm, (1.0 - smoothstep(0.0, 7.0 / (uCmPerPx * 10.0), abs(dL))) * cov);
+      res = mix(res, min(res * 1.3 + vec3(0.07, 0.06, 0.04), vec3(1.0)), gm * uGlow);
+    }
     outColor = vec4(uLinear > 0.5 ? toSRGB(res) : res, 1.0);
   }`;
 
@@ -859,10 +948,15 @@
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
   const decoded = new Set();
-  async function blobOf(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${url}: ${res.status}`);
-    return res.blob();
+  async function blobOf(url, tries = 2) {            // one retry: a busy local server sometimes drops a connection
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${url}: ${res.status}`);
+      return await res.blob();
+    } catch (err) {
+      if (tries > 1) { await new Promise((r) => setTimeout(r, 250)); return blobOf(url, tries - 1); }
+      throw err;
+    }
   }
   async function decode(blob, data) {
     const b = await createImageBitmap(blob, data
@@ -937,7 +1031,7 @@
   }
 
   const swatchCache = {};                              // url -> Promise of the swatch blob (decoded when it is put on the GPU)
-  const swatch = (src) => (swatchCache[src] ||= blobOf(src));
+  const swatch = (src) => (swatchCache[src] ||= blobOf(src).catch((err) => { delete swatchCache[src]; throw err; }));
   swatch.decoded = async (src) => decode(await swatch(src), false);
 
   async function setFabric(key) {                      // fabric on unit 5 (no-op for "off")
@@ -960,7 +1054,7 @@
 
   async function setLace(key) {                        // lace on unit 6
     const [img, meta, matBlob] = await Promise.all([swatch.decoded(LACES[key].src), laceMetaOf(LACES[key].meta),
-      LACES[key].mat ? (matCache[LACES[key].mat] ||= blobOf(LACES[key].mat).catch(() => null)) : null]);
+      LACES[key].mat ? (matCache[LACES[key].mat] ||= blobOf(LACES[key].mat).catch(() => { delete matCache[LACES[key].mat]; return null; })) : null]);
     const mat = matBlob ? await decode(matBlob, true) : null;
     if (state.lace !== key) { release(img); release(mat); return; }
     // a lace with a measured repeat tiles with REPEAT; a lace without one (or ?lacefit=0) keeps the mirror
@@ -1279,6 +1373,7 @@
       dragNext = snap(valueFrom(drag, toPlate(e)));
       if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; if (dragNext) { applyNeck(dragNext); dragNext = null; } });
     });
+    h.addEventListener("focus", () => glow({ neck: true }));   // step 7: the neckline glows when a pivot is selected
     const end = () => { if (drag !== h.dataset.pivot) return; drag = null; h.classList.remove("drag"); writeURL(); };
     h.addEventListener("pointerup", end);
     h.addEventListener("pointercancel", end);
@@ -1332,9 +1427,32 @@
   }
 
   let switchToken = 0;
-  async function showView(view) {
+  // step 7: a step change cross-fades (250 ms) from a still of the old view; none with prefers-reduced-motion
+  const fadeCv = document.getElementById("fade");
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let freezeToken = 0;                                 // a newer still wins over a fade-out that is still pending
+  function freeze() {                                  // the current frame, held above the canvas
+    freezeToken++;
+    if (!canvas.classList.contains("ready") || !canvas.width) return;
+    fadeCv.width = canvas.width; fadeCv.height = canvas.height;
+    fadeCv.getContext("2d").drawImage(canvas, 0, 0);
+    fadeCv.classList.remove("fading");
+    fadeCv.style.opacity = "1";
+  }
+  function unfreeze() {
+    if (fadeCv.style.opacity !== "1") return;
+    const tok = freezeToken;
+    requestAnimationFrame(() => {
+      if (tok !== freezeToken) return;
+      if (REDUCED.matches) { fadeCv.style.opacity = "0"; return; }
+      fadeCv.classList.add("fading");
+      fadeCv.style.opacity = "0";
+    });
+  }
+  async function showView(view, { fade = true } = {}) {
     const token = ++switchToken;
     const t0 = performance.now();
+    if (fade) freeze();
     const v = await fetchView(view);
     if (token !== switchToken) return;                 // a later click won
     const bm = await decodeView(view, v);              // decode this view only (step 1)
@@ -1373,11 +1491,16 @@
     canvas.width = 0;                                  // force resize() to set the canvas for this plate
     resize();
     canvas.classList.add("ready");
+    stat.dataset.show = Math.round(performance.now() - t0);
+    if (fade) unfreeze();
   }
 
   async function load() {
     await loadShared();
-    await showView(state.view);
+    state.view = STEPS[state.step].view;               // the step decides the view (?view= still works: it picks the step)
+    await showView(state.view, { fade: false });
+    visited.add(state.step);
+    if (state.step === "review") await buildReview();
     // preload the other views in idle time
     const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300));
     idle(() => {
@@ -1424,14 +1547,170 @@
     return `View: ${VIEWS[state.view].name}. ` + parts.join(", with ") + ".";
   }
 
-  document.querySelector('[data-group="view"]').addEventListener("click", (e) => {
-    const b = e.target.closest("[data-view]");
-    if (!b || b.dataset.view === state.view) return;
-    state.view = b.dataset.view;
-    b.parentElement.querySelectorAll("[data-view]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    showView(state.view).catch((err) => { console.error(err); fail("The view did not load: " + err.message); });
+  // ---------- journey (halfway.md step 7): one step = one fixed view; the panel shows the sections of the step
+  const STEPS = {
+    cloth:  { view: "torso",  sections: ["fabric"] },
+    neck:   { view: "neck",   sections: ["lace", "neckline"] },
+    sleeve: { view: "sleeve", sections: ["lace"] },
+    hem:    { view: "hem",    sections: ["lace"] },
+    review: { view: "torso",  sections: ["review"] },
+  };
+  const STEP_OF_VIEW = { torso: "cloth", neck: "neck", sleeve: "sleeve", hem: "hem" };
+  const ORDER = Object.keys(STEPS);
+  const SHOW_TEST = params0.has("test");
+  state.step = STEPS[params0.get("step")] ? params0.get("step") : STEP_OF_VIEW[state.view];
+  const visited = new Set();
+  function stepUI() {
+    document.querySelectorAll("[data-step]").forEach((b) => {
+      if (b.dataset.step === state.step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", visited.has(b.dataset.step));
+    });
+    const secs = STEPS[state.step].sections;
+    document.querySelectorAll("[data-section]").forEach((d) => { d.hidden = d.dataset.section === "test" ? !SHOW_TEST : !secs.includes(d.dataset.section); });
+    document.getElementById("review-strip").hidden = state.step !== "review";
+    const i = ORDER.indexOf(state.step);
+    document.getElementById("prev-step").hidden = i === 0;
+    const next = document.getElementById("next-step");
+    next.hidden = i === ORDER.length - 1;
+    next.textContent = i === ORDER.length - 2 ? "Review" : `Next: ${document.querySelector(`[data-step="${ORDER[i + 1]}"]`)?.textContent.replace(/^\d/, "") || ""}`;
+  }
+  async function setStep(step) {
+    if (!STEPS[step]) return;
+    visited.add(state.step);
+    state.step = step;
+    stepUI();
+    const view = STEPS[step].view;
+    const t0 = performance.now();
+    if (view !== state.view || !plate) {
+      state.view = view;
+      await showView(view);
+    } else pivotsUpdate();
+    if (step === "review") await buildReview();
+    stat.dataset.step = Math.round(performance.now() - t0);
+    const q = new URLSearchParams(location.search);    // the step in the URL (a reload opens it again)
+    q.delete("view"); q.set("step", step);
+    history.replaceState(null, "", `${location.pathname}?${q}`);
+  }
+  document.querySelector(".journey").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-step]");
+    if (b && b.dataset.step !== state.step) setStep(b.dataset.step).catch((err) => { console.error(err); fail("The view did not load: " + err.message); });
   });
-  document.querySelectorAll("[data-view]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.view === state.view)));
+  document.getElementById("next-step").addEventListener("click", () => setStep(ORDER[ORDER.indexOf(state.step) + 1]));
+  document.getElementById("prev-step").addEventListener("click", () => setStep(ORDER[ORDER.indexOf(state.step) - 1]));
+  stepUI();
+
+  // ---------- highlight (step 7): the part that was just selected glows softly for about 1 s
+  let glowRaf = 0;
+  function glow({ trims = [], neck = false }) {
+    if (!plate) return;
+    const on = new Float32Array(7);
+    trims.forEach((n) => { if (TRIMS[n]) on[TRIMS[n]] = 1; });
+    gl.uniform1fv(U("uGlowTrim"), on);
+    gl.uniform1f(U("uGlowNeck"), neck ? 1 : 0);
+    cancelAnimationFrame(glowRaf);
+    const t0 = performance.now();
+    const step = () => {
+      const t = (performance.now() - t0) / 1000;
+      // a soft rise and fall; with reduced motion: on for 1 s, then off (two frames)
+      const a = t >= 1 ? 0 : REDUCED.matches ? 0.6 : 0.75 * Math.sin(Math.PI * Math.min(1, t));
+      gl.uniform1f(U("uGlow"), a);
+      render();
+      if (t < 1) glowRaf = REDUCED.matches ? setTimeout(() => requestAnimationFrame(step), 1000) : requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  // ---------- before / after (step 7): hold the button or the space key to see the plain garment (the photo)
+  const beforeBtn = document.getElementById("before");
+  function before(on) {
+    if (state.photo === on) return;
+    state.photo = on;
+    beforeBtn.setAttribute("aria-pressed", String(on));
+    svg.style.visibility = on ? "hidden" : "";
+    if (plate) render();
+  }
+  beforeBtn.addEventListener("pointerdown", (e) => { beforeBtn.setPointerCapture(e.pointerId); before(true); e.preventDefault(); });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) beforeBtn.addEventListener(t, () => before(false));
+  beforeBtn.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { before(true); e.preventDefault(); } });
+  beforeBtn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") before(false); });
+  document.addEventListener("keydown", (e) => {        // the space key anywhere that is not a control
+    if (e.key !== " " || e.repeat || e.target.closest("button, input, [role=slider], a, textarea, select")) return;
+    e.preventDefault(); before(true);
+  });
+  document.addEventListener("keyup", (e) => { if (e.key === " " && !e.target.closest("button, input, textarea, select")) before(false); });
+
+  // ---------- review (step 7): the torso view large, the 3 close views from the same record, the list of choices
+  let reviewKey = "";
+  const choicesText = () => {
+    const on = Object.entries(state.trims).filter(([, v]) => v).map(([k]) => ({ neck: "neckline", cuffs: "sleeve cuffs", hem: "hem border", slits: "chaak slits" })[k]);
+    return [
+      ["Cloth", state.fabric === "off" ? "Original white toile" : FABRICS[state.fabric].name],
+      ["Lace", on.length ? LACES[state.lace].name : "No lace"],
+      ["Placement", on.length ? on.join(", ") : "none"],
+      ["Neckline", state.neck ? `${fmt(state.neck.depthMm)} deep, ${fmt(state.neck.widthMm)} wide` : "as photographed"],
+    ];
+  };
+  async function buildReview() {
+    const list = document.getElementById("review-list");
+    list.textContent = "";
+    for (const [k, v] of choicesText()) { const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; list.append(dt, dd); }
+    const key = JSON.stringify([state.fabric, state.lace, state.trims, state.neck]);
+    if (key === reviewKey) return;
+    // the 3 close views: drawn one after the other on the stage canvas (behind a still of the torso), copied to the strip.
+    // First let the step's own cross-fade finish (the torso shows at once; the strip fills in after).
+    await new Promise((r) => setTimeout(r, REDUCED.matches ? 0 : 280));
+    freeze();
+    for (const v of ["neck", "sleeve", "hem"]) {
+      state.view = v;
+      await showView(v, { fade: false });
+      const th = document.querySelector(`[data-thumb="${v}"]`);
+      th.getContext("2d").drawImage(canvas, 0, 0, th.width, th.height);
+    }
+    state.view = "torso";
+    await showView("torso", { fade: false });
+    unfreeze();
+    reviewKey = key;
+  }
+  // share image: one PNG of the review (torso large, the 3 close views, the choices), from the canvases (toBlob)
+  async function reviewImage() {
+    if (state.step !== "review") await setStep("review");
+    const W = 1080, H = 1500, M = 48, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = "#f6f1e9"; x.fillRect(0, 0, W, H);
+    const big = [M, 112, 600, 800];
+    x.drawImage(canvas, ...big);
+    x.fillStyle = "#1d1a16"; x.font = "500 40px Helvetica Neue, Arial, sans-serif"; x.fillText("Your kurta", M, 78);
+    let y = 150;
+    for (const [k, v] of choicesText()) {
+      x.fillStyle = "#6f675d"; x.font = "500 20px Helvetica Neue, Arial, sans-serif"; x.fillText(k.toUpperCase(), 680, y);
+      x.fillStyle = "#1d1a16"; x.font = "28px Helvetica Neue, Arial, sans-serif";
+      const words = v.split(" "); let line = "";
+      for (const w of words) { const t = line ? line + " " + w : w; if (x.measureText(t).width > W - 680 - M) { x.fillText(line, 680, y + 38); y += 36; line = w; } else line = t; }
+      x.fillText(line, 680, y + 38); y += 110;
+    }
+    const tw = (W - 2 * M - 2 * 24) / 3, th = tw * 4 / 3;
+    ["neck", "sleeve", "hem"].forEach((v, i) => x.drawImage(document.querySelector(`[data-thumb="${v}"]`), M + i * (tw + 24), 112 + 800 + 40, tw, th));
+    x.fillStyle = "#6f675d"; x.font = "20px Helvetica Neue, Arial, sans-serif";
+    x.fillText("Atelier Studio · live preview from the studio photographs", M, H - 40);
+    return new Promise((res) => c.toBlob(res, "image/png"));
+  }
+  async function saveBlob(blob) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "my-kurta.png";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  document.getElementById("download").addEventListener("click", async () => saveBlob(await reviewImage()));
+  document.getElementById("share").addEventListener("click", async () => {
+    const blob = await reviewImage(), file = new File([blob], "my-kurta.png", { type: "image/png" });
+    const hint = document.getElementById("share-hint");
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "My kurta" }); hint.textContent = ""; }
+      catch (err) { if (err.name !== "AbortError") hint.textContent = "Sharing did not work here; the image was downloaded instead."; if (err.name !== "AbortError") saveBlob(blob); }
+    } else { saveBlob(blob); hint.textContent = "This browser cannot share files: the image was downloaded (send it on WhatsApp from there)."; }
+  });
+
   document.querySelectorAll("[data-fabric]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.fabric === state.fabric)));
   document.querySelectorAll("[data-lace]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.lace === state.lace)));
   document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : FABRICS[state.fabric].name;
@@ -1461,7 +1740,7 @@
     b.setAttribute("aria-pressed", String(state.trims[k]));
     const any = Object.values(state.trims).some(Boolean);
     document.getElementById("caption-trim").textContent = any ? LACES[state.lace].name : "No Lace";
-    if (plate) render();
+    if (plate) { if (state.trims[k]) glow({ trims: GROUP[k] }); else render(); }
   }));
   document.querySelectorAll("[data-test]").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.test;
@@ -1477,6 +1756,8 @@
     neckCurves: () => neckGeo && neckCurves(state.neck), neckGeo: () => neckGeo, neckSent: () => neckGeo && neckGeo.sent,
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
+    setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
+    timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step }),
   };
 
   let raf = 0;

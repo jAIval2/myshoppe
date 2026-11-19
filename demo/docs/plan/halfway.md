@@ -1,6 +1,6 @@
 # Plan: halfway — live neckline with pivot points, then the showcase
 
-Status: **in progress**. Branch `halfway`, worktree `../myshoppe-halfway`.
+Status: **steps 1–7 done** (step 6 with its fallback); open checks need a real phone and a person: see `halfway-results.md`. Branch `halfway`, worktree `../myshoppe-halfway`.
 Compare: **http://localhost:8000/testing.html** (branch `polish`, the reference) and **http://localhost:8100/testing.html** (this worktree).
 Product: a **visualiser** for customers, and an easier life for the owner. Not a factory tool. **4 fixed views, no 3D.**
 
@@ -127,8 +127,8 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 
 **Accept:**
 - [ ] A person goes through the whole journey on a phone without help.
-- [ ] The review image shows the same choices as the page.
-- [ ] No step takes more than 1 s to show its view after the first visit (views are preloaded as blobs, step 1).
+- [x] The review image shows the same choices as the page.
+- [x] No step takes more than 1 s to show its view after the first visit (views are preloaded as blobs, step 1).
 
 ## 4. Exit strategy
 
@@ -157,4 +157,4 @@ Out of scope here: new swatch and lace photos, deep-neckline photos, hem and sle
 | 4 Pivot points and drag | done | (step 4) | mouse, touch, keys checked with real input events; phone fps open |
 | 5 Lace and stitch follow the curve | done | (step 5) | default trim match median 0.3 px; whole motifs, CF within 2.1 mm |
 | 6 Torso view shows the same neckline | done, fallback | (step 6) | changes agree within 0.3 mm; absolute depth: the photos differ by 15.7 mm → neckline view is the reference |
-| 7 Showcase | not started | | |
+| 7 Showcase | done | (step 7) | journey, fade, glow, before/after, review, share PNG, phone layout; steps ≤ 0.53 s; person test open |
