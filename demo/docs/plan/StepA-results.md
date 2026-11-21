@@ -79,3 +79,61 @@ The rim is a real one: at 4× the slit edges of the hem show a light line betwee
 - [x] `git diff` on a changed `plate.dat` shows text.
 
 Note: the 8200 server had stopped during this step; it was restarted on the `numeric` worktree (`python3 -m http.server 8200 --bind 127.0.0.1 --directory demo`).
+
+## Step 2: The torso, measured
+
+**Done:**
+1. `assets/torso-base.png` → `assets/plates/torso-straight/source.png` (`git mv`).
+2. `tools/annotate_torso.py` (from the template of `annotate_neck.py`): `base()` is the old `make_base.py` (sparkle patch, 1792 × 2389 cut, 1200 × 1600), and the rebuilt `base.jpg` is byte-identical to the committed one. Every edge was read on gridded crops of `source.png` (2–3×, 10 px grid, true colour and raised contrast). The edges against the wall and the sleeve / body creases were then placed on the strongest luminance step within 6 px of the reading (a measuring aid; where the step is weak the reading stays) and checked again on overlay crops. From the reading only: the neck edge (the white front meets the grey band of the back neckline inside the opening: the aid jumped to the form's edge, 4–5 px higher), the right armhole (a faint line on lit white: the aid drifted 5 px), the right sleeve's inner edge below y 1200 (the gap to the body is 3–8 px and the aid put both on the body), the left cuff. How it was done is in the script's docstring.
+   - Zones: `front` (shoulders free, `neck` cut, the armholes and then the sleeves' inner edges down to where the wall gap opens: **shared seams** with each sleeve (after review 3), the body sides free from there, the hem free); `sleeve-l`, `sleeve-r` (outer edge free, cuff free, inner edge free against the wall gap). The torso has no `under` run any more.
+   - **A wall gap between each cuff and the body** (left from y 1185 source px, up to 23 px wide; right from y 1190, up to 16 px) was not in the traced plate: there the old front covered the wall (the body-side strip of numeric step 11 was the other half of that error).
+   - Trims from the measured edges: neck 6 mm inside the neck edge, cuffs 12.5 mm above the cuff edges, slits 4 mm inside the body sides from the slit tops, hem 15 mm above the hem; the grid (until step 4): the shoulder runs as its top, the side edges 6 px outside the body sides (the outline cuts), the sleeves with their cap as a point and `widthPx` = area ÷ mean side length.
+   - `make_base.py` is removed. `tools/rebuild_check.sh` now rebuilds the folders that have a `source.png`.
+3. **The scale.** Measured: neck-l → neck-r 180.1 plate px, shoulder-l → shoulder-r 388.4 plate px. 
+   | Scale from | mm/px | Neck width | Shoulder width |
+   |---|---|---|---|
+   | the old assumption, shoulder width 370 mm | 0.9526 | 171.6 mm (the neck view says 158) | 370 mm |
+   | **the neck view's agreed neck width, 158 mm (used)** | **0.8773** | 158 mm | 340.7 mm |
+   | (the imported plate) | 0.8978 | | |
+   The neck view's own shoulder-to-neck ratio (1137.5 ÷ 518.7 = 2.19) agrees with the torso's (388.4 ÷ 180.1 = 2.16) within 2 %, so the two front views agree with each other at 158 mm, and both disagree with 370 mm by 8 %. The torso now uses the neck width (so that a 2 cm square is the same size in both front views, §1 item 4); 370 mm stays an assumption to check against a real garment. **To confirm with you** (below).
+4. `?torso=v1` (until step 7): the page reads `assets/plates/torso-v1/plate.dat` (the imported plate of step 1, frozen) with the same `base.jpg`.
+
+**Landmarks** (plate px; mirror difference = left mirrored about the centre front x 600.7, minus right):
+
+| Pair | Left | Right | dx | dy |
+|---|---|---|---|---|
+| shoulder-l / shoulder-r | 405.1, 298.7 | 793.5, 295.4 | +2.8 | +3.3 |
+| neck-l / neck-r | 510.3, 253.2 | 690.4, 251.8 | +0.7 | +1.4 |
+| underarm-l / underarm-r | 430.6, 502.3 | 771.4, 472.2 | −0.6 | **+30.1** |
+| cuff-out-l / cuff-out-r | 271.2, 894.8 | 926.8, 897.4 | +3.4 | −2.6 |
+| cuff-in-l / cuff-in-r | 383.7, 922.2 | 818.3, 920.2 | −0.6 | +2.0 |
+| slit-l / slit-r | 388.4, 1329.4 | 812.9, 1252.4 | +0.1 | **+77.0** |
+| hem-l / hem-r | 389.7, 1439.9 | 811.6, 1439.9 | +0.1 | 0.0 |
+
+The photo differs from a mirror at the slit tops (the right slit opens 77 px = 68 mm higher) and the underarms (at the top of the underarm fold, where the sleeve leaves the body: the right fold starts 30 px higher). Against the imported plate the landmarks moved 0.4–5.5 px, except `slit-l` 112.7 px and `slit-r` 35.9 px (the imported ones were the mirror of one guess, 10 px outside the zone), `underarm-r` 32.9 px, and the hem corners 12–13 px (the imported hem corners were the corner of the traced outline, not of the garment).
+
+**Results** (the old grid method still makes the fabric coordinates):
+
+| Check | Imported (step 0) | Measured |
+|---|---|---|
+| `annotate_torso.py` checks (§9.1: top → bottom, wall gaps ≥ −1.6 px, grid corners, 0 self-crossings, trims inside, front grid bulge) | | all pass (bulge 2.1 / 1.6 %; gaps left 0.8–23.0 px, right −0.3–15.9 px) |
+| `plate_invariants.py` closure | 0.138 %, wide pieces 339 px | first build 0.037 %, a 16 px wide piece (the right body side); after the reviews: **PASS** (all invariants PASS) |
+| `plate_invariants.py` landmarks | FAIL (`slit-l`, `slit-r` outside) | PASS |
+| `plate_invariants.py` trim smooth | PASS | first build: FAIL `slit-r` 2.63 px, `cuff-r` 1.06 px (plain offsets of the measured points); after review 4: PASS (true parallels of the smoothed edges) |
+| `fringe.py` (render, mocha) uncovered | 1,221 px = 0.209 %, 794 px in wide pieces | **679 px = 0.117 %**, 186 px in wide pieces (118 px at x 811–814, y 1271–1323) |
+| `fringe.py` rim, mocha / sage | 12.3 % / 16.3 % | 22.8 % / 31.8 % (more free edge: the sleeves' inner edges and the gaps; the outlines now lie on the photo's own edge pixel. Steps 3 and 6) |
+| `rebuild_check.sh` | | ALL IDENTICAL (4 plates from their sources) |
+| `?torso=v1` against 8200 | | identical (no pixel differs) |
+
+- [x] The automatic checks of `annotate.md` §9.1 pass.
+- [x] **A person approves the review image `annotate.png`**: `demo/review/torso-straight/annotate.png` and `crops.png` (made by `make_plate.py assets/plates/torso-straight --review`).
+  - Review 1 (2026-11-22): **not yet**. "The left side arm has expanded outside the edge." Found: the left sleeve's outer edge lay 10–18 px out on the wall over most of its length (the shaded sleeve against the light wall is a weak step, so the first reading had stood, and the measuring aid kept it). Read again on 2.5–3× crops every 25–50 px; now within about 1 px of the photo's edge (the overlay crops). Corrected at the same time, found on my own 2× look: the right body side below y 1902 (a zig-zag: the aid had jumped between the front panel's edge and the back panel's strip; the outer silhouette is kept) and a 6 px hook at the left hem corner. After these: `plate_invariants.py` closure **PASS** (the only FAILs left are the smoothness of the `cuff-r` and `hem` centre lines, 1.06 and 0.81 px, which step 3 rebuilds).
+  - Review 2 (2026-11-22): "the right side armhole anchor has to sit higher up". The right underarm had been put where the sleeve / body crease turns out (source (1150, 880)); the photo's underarm fold (the dark wedge where the sleeve leaves the body) starts at (1152, 705), as on the left (y 720–750). Moved there: the right armhole seam now ends at the fold, and the sleeve's inner edge continues from it. The underarms now differ from a mirror by 30 px (was 87).
+  - Review 3 (2026-11-22): "the dotted red lines on both sides need rework". They were the body's runs hidden under the sleeves, drawn as a guessed diagonal through each sleeve (underarm → one guessed point → the gap top). Reworked: from the underarm down to where the wall gap opens, the body now ends on the sleeve's inner edge, the one measured line, shared by the front and the sleeve (`sleeve-body-l`, `sleeve-body-r`, seams); below that the sleeve's inner edge is free against the gap (`sleeve-gap-l/r`). No guessed point is left in an outline (the grid, until step 4, still passes under each sleeve through one point). Validator PASS, closure PASS.
+  - Review 4 (2026-11-22): "the right and left sleeve-end lace lines are irregular; the purple line on the neck is misaligned; the left sleeve has an unusual curve between the anchors; have the hem lace line end at the anchors". Found and fixed:
+    - the trim centre lines were vertex-normal offsets of a few measured points, then extended along their last segment: not parallel, with hooks at the ends. Now every trim is a true parallel (the edge densified every 2 px, each normal averaged over ±8 px of curve), cut where it leaves its zone; the hem lace and the neck lace end above / below their corner anchors (`hem-l`–`hem-r`, `neck-l`–`neck-r`; they had run on up the steep ends of the edge, past the anchors).
+    - the armholes and the cuff folds were the measured points as they were (1–3 px wobble; the left armhole had a visible bump between the shoulder and underarm anchors). A seam and a cuff fold are smooth: each is now a least-squares fit through its measured points (armholes: cubic in y; cuffs: quadratic in x), the shared end points kept. It moved the points by 2.0–2.5 px on average (at most 6.2 px on the armholes, 5.1 px on the right cuff).
+    - `plate_invariants.py` on the torso: **ALL PASS** (trim smoothness too).
+  - Review 5 (2026-11-22): **approved**.
+- [x] Every landmark of the torso is measured. The left and right landmarks differ from a mirror where the photo differs (table).
+- [x] The plate builds from its source (`rebuild_check.sh`) and renders with the old grid method. `?torso=v1` gives back the imported plate.

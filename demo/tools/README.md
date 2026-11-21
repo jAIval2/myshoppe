@@ -4,8 +4,7 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 
 ## Plates (StepA step 1: one file per view)
 
-A plate folder ships `base.jpg` + `plate.dat`; its source is `source.png` + `tools/annotate_<view>.py` (the torso: its imported
-`plate.dat` until StepA step 2). Nothing in a plate is edited by hand: change the annotate script (or a tool), then rebuild.
+A plate folder ships `base.jpg` + `plate.dat`; its source is `source.png` + `tools/annotate_<view>.py`. Nothing in a plate is edited by hand: change the annotate script (or a tool), then rebuild.
 `git diff` shows a `plate.dat` as text once per clone: `git config diff.dat.textconv "python3 demo/tools/platedat.py --dump"`
 (`.gitattributes`: `demo/assets/plates/*/plate.dat diff=dat`).
 
@@ -13,8 +12,7 @@ A plate folder ships `base.jpg` + `plate.dat`; its source is `source.png` + `too
 |---|---|
 | `make_plate.py <plate> [--review] [--no-check] [--dump-mesh <prefix>]` | The build: source → decisions (trim sides, shade median, neck block, sizes) → `base.jpg` + `plate.dat`, deterministic. The maps only in memory. `--review`: `annotate.png`, `check.png` and the edge crops into `demo/review/<plate>/`. Runs `plate_invariants.py`. As a module: `build()`, `maps_of(plate)` (the maps of a plate.dat, in memory), `rasterise()` |
 | `platedat.py --dump <plate>` / `--check <plate> ...` | `plate.dat` version 2 (`BSP2`): reader, writer, validator, text dump. Format and the data model in its docstring: typed edges (`free`, `seam`, `frame`, `cut`), zone outlines as chains of edges, trims, settings, decisions |
-| `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` | One per view: `base()`, `measure()` (typed edges, zones, trims, landmarks), `review()`. Run alone: the automatic checks. Templates for new views |
-| `make_base.py` | Torso only, until StepA step 2: sparkle patch, 3:4 cut, 1200 × 1600 |
+| `annotate_torso.py`, `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` | One per view: `base()`, `measure()` (typed edges, zones, trims, landmarks), `review()`. Run alone: the automatic checks. Templates for new views |
 | `rebuild_check.sh [plate ...]` | Rebuild every plate from its source into a scratch copy: `base.jpg` and `plate.dat` must be byte-identical |
 | `plate_invariants.py <plate> [--debug png]` | The plate's own invariants, PASS / FAIL (closure against the photo, hairline gaps, symmetry, trim offset and smoothness, landmarks, `plate_checks.py`). Plate `invariants`: `openings`, `skipTrimOffset` |
 | `plate_checks.py <plate>` | Grid bulge, grain tilt, UV rate, block ratio, shipped size (replaced by frame rules in StepA step 4, removed in step 7) |

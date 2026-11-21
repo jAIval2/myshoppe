@@ -3,8 +3,8 @@
 usage: python3 tools/make_plate.py <plate-dir> [--review] [--dump-mesh <prefix>] [--no-check]
 
   source     source.png + tools/annotate_<view>.py (the measured points, typed edges, trims; base(), measure(), review()).
-             A plate without an annotate script (the torso until StepA step 2) is rebuilt from the source part of its own plate.dat
-             (the "imported" data) and keeps its base.jpg.
+             A plate without an annotate script is rebuilt from the source part of its own plate.dat (the "imported" data) and keeps
+             its base.jpg (the torso used this from StepA step 1 to step 2; no plate does now).
   build      the data -> the maps IN MEMORY (rasterise: id, uv, uv_trim, shade, as the page builds them) -> the decisions that are
              taken from the image (each trim's side, the shade median, the neck block's colours and form patch, zone sizes) ->
              plate.dat (tools/platedat.py). No map file is written.

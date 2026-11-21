@@ -2,11 +2,11 @@
 # The plate is what its source makes (StepA step 1): rebuild every plate from its source (source.png + tools/annotate_<view>.py, or
 # the torso's imported data until StepA step 2) into a scratch copy, and compare base.jpg and plate.dat byte for byte.
 # Read-only for the real plates.
-# usage: tools/rebuild_check.sh [plate ...]        (default: every folder in assets/plates)
+# usage: tools/rebuild_check.sh [plate ...]        (default: every folder in assets/plates that has a source.png)
 set -u
 cd "$(dirname "$0")/.."
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-plates=("$@"); [ ${#plates[@]} -eq 0 ] && plates=($(ls assets/plates))
+plates=("$@"); [ ${#plates[@]} -eq 0 ] && plates=($(cd assets/plates && for d in */; do [ -f "$d/source.png" ] && echo "${d%/}"; done))
 fail=0
 for p in "${plates[@]}"; do
   mkdir -p "$TMP/$p"

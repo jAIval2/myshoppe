@@ -1027,7 +1027,10 @@
     if (!cache[view]) {
       const P = VIEWS[view].plate, maps = mapsOf(view);
       // every view reads ONE small plate.dat (version 2, StepA step 1): the curves, the typed edges and the decisions
-      const meta = blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
+      // test: ?torso=v1  the torso as imported from the numeric plate (traced, one affine per zone, the left side mirrored; StepA
+      // step 2 measured it again). Its own plate.dat, the same base.jpg. Until StepA step 7.
+      const datOf = view === "torso" && params0.get("torso") === "v1" ? "assets/plates/torso-v1/plate.dat" : P + "plate.dat";
+      const meta = blobOf(datOf).then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
       cache[view] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
         .then(([{ plate, zones }, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
