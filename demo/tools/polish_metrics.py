@@ -1,7 +1,7 @@
 """Numbers for docs/plan/polish.md. Pillow only.
 
 usage:
-  python3 tools/polish_metrics.py fd   [plate ...]            fine detail of shade.png (step 0, 3)
+  python3 tools/polish_metrics.py fd   [plate ...]            fine detail of the plate's shade (step 0, 3)
   python3 tools/polish_metrics.py crops <shot-dir> <out-dir>  cut the fixed review crops from a shoot_views.sh run (DPR=2)
   python3 tools/polish_metrics.py fcr  <shot-dir> [flat-dir]  fold contrast retention for queries 2, 3, 4 (step 0, 2); flat-dir = run of FLAT_QUERIES
   python3 tools/polish_metrics.py shadow <old-dir> <new-dir>   step 1: what changed, and how dark
@@ -11,13 +11,15 @@ usage:
 FD  (fine detail): variance of shade in the band below 1.5 mm = shade - G(1.5 mm), and in the fold band 2..30 mm =
     G(2 mm) - G(30 mm), as a share of the variance of the whole shade, inside the garment (zone mask), away from its
     edges (normalised blur: the 128 grey outside the garment never enters). G is a Gaussian blur; sigma = mm / mmPerPx.
-    The shade is read as stored (shade.png), decoded by plate.json "shadeEncoding" when present.
+    The shade is read as stored (the plate's shade map, in memory), decoded by the plate's "shadeEncoding" when present.
 FCR (fold contrast retention): (std/mean of L in the render) / (std/mean of L of the photo base.jpg), same plate box,
     both blurred by 8 mm first. The blur removes the pattern of the fabric (3-10 mm), so only the folds (> 20 mm) count.
     1.0 = the folds of the photo are kept exactly. The photo is the reference because shade = photo L / median, so the two
     have the same std/mean (std/mean does not change with the scale of a signal).
 """
 import json, math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plate, platedat
 from PIL import Image, ImageChops, ImageFilter, ImageMath, ImageStat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +41,7 @@ QUERIES = [
 PLATE_OF = {"torso": "torso-straight", "neck": "neck-straight", "sleeve": "sleeve-straight", "hem": "hem-straight"}
 # the canvas of the stage in a DPR 2 screenshot of a 900 x 760 window: x 64, y 64, 860 px wide (plate 1200 -> 0.7167)
 CANVAS_X, CANVAS_Y, CANVAS_W = 64, 64, 860
-# fixed crops, in PLATE px (x0, y0, x1, y1): name -> (query index, box). Set from the trim bounding boxes in id.png,
+# fixed crops, in PLATE px (x0, y0, x1, y1): name -> (query index, box). Set from the trim bounding boxes in the id map,
 # above the caption pill of the stage (it covers plate y > ~1466). Frozen at step 0: never changed.
 CROPS = {
     "neck-lace-q3": (2, (300, 350, 910, 560)),        # neckline lace, mustard + leaf
@@ -57,7 +59,17 @@ FCR_PLATE = {"bodice-q2": "torso", "bodice-q3": "neck", "bodice-q4": "neck"}
 
 
 def plate_json(p):
-    return json.load(open(os.path.join(PLATES, p, "plate.json")))
+    """The plate header (StepA step 1: from plate.dat)."""
+    return platedat.legacy(platedat.read(os.path.join(PLATES, p)))[0]
+
+
+_MAPS = {}
+
+
+def maps(p):
+    """The maps of a plate, in memory (make_plate.maps_of)."""
+    if p not in _MAPS: _MAPS[p] = make_plate.maps_of(os.path.join(PLATES, p))
+    return _MAPS[p]
 
 
 def decode_shade(img, pj):
@@ -92,8 +104,8 @@ def fd(plate):
     pj = plate_json(plate)
     mm = pj["mmPerPx"]
     d = os.path.join(PLATES, plate)
-    shade = decode_shade(Image.open(os.path.join(d, "shade.png")).convert("L"), pj)
-    idr = Image.open(os.path.join(d, "id.png")).convert("RGB").split()[0]
+    shade = decode_shade(maps(plate)["shade"].convert("L"), pj)
+    idr = maps(plate)["id"].split()[0]
     garment = idr.point(lambda v: 255 if v else 0)
     # evaluate only where a 30 mm blur is made of garment (> 98 %): no edge effects
     s30 = 30 / mm
@@ -171,7 +183,7 @@ def cmd_fcr(shots, flat=None):
 def trim_mask(view, ids, grow_mm):
     """Stage-sized 0/255 mask of the trims (G channel ids), grown by grow_mm. For 'did anything change outside the trims'."""
     pj = plate_json(PLATE_OF[view])
-    g = Image.open(os.path.join(PLATES, PLATE_OF[view], "id.png")).convert("RGB").split()[1]
+    g = maps(PLATE_OF[view])["id"].split()[1]
     m = g.point(lambda v: 255 if v in ids else 0)
     k = CANVAS_W / 1200
     m = m.resize((CANVAS_W, round(1600 * k)), Image.NEAREST)

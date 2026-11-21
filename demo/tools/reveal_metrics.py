@@ -9,13 +9,15 @@ step:   mean luminance (canvas, a 5 px window) at 6 mm below the photographed ed
 repeat: the largest normalised autocorrelation of the fine detail (luminance minus a 9 px blur) at lags of 6-40 canvas px,
         in a square of the fill, against a square of the real form. A visible repeat is a clear peak (> 0.5).
 """
-import json, math, sys
+import json, math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import platedat
 from PIL import Image, ImageFilter, ImageStat
 
 img = Image.open(sys.argv[1]).convert("L")
 pd = sys.argv[2]
 cw = float(sys.argv[sys.argv.index("--canvas-w") + 1]) if "--canvas-w" in sys.argv else img.width
-plate = json.load(open(f"{pd}/plate.json"))
+plate = platedat.legacy(platedat.read(pd))[0]
 k = cw / plate["viewBox"][0]
 mm = plate["mmPerPx"]
 edge = plate["neck"]["edge"]

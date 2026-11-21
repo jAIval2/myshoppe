@@ -41,3 +41,41 @@ The rim is a real one: at 4× the slit edges of the hem show a light line betwee
 
 - [x] Baseline table (invariants, fringe, rim) and 4 crop sheets in the results.
 - [x] `fringe.py` finds the known defects: the torso body-side strip, the hem's 43 px piece, the shoulder slivers (and the neck-corner speck).
+
+## Step 1: One plate file (`plate.dat` version 2) with typed edges
+
+**Done:**
+1. `tools/platedat.py`: `BSP2`. "BSP2", u16 version 2, u16 unit (100 = 0.1 px), u32 header length, a JSON header, int16 curve deltas. In the header every polyline is `{"@c": index}` and identical curves are stored once (the same rule as `BSP1`, now for any list of points: edges, grids, trims, stitches, occluders, the neck block). Reader, writer, validator (`--check`), `--dump` (one value per line, curves one point per line, sorted keys) and `legacy()`: the plate header and the zone data in the shapes the map code reads. The data model is in its docstring.
+   - **edges** `{name: {type, points, zones (a seam), under (a hidden run)}}`; **zones** `{id, order, outline: [[edge, ±1], ...], grid, widthPx}`; **trims** `{id, order, widthMm, type, edge, offsetMm, join, centre}` in drawing order; **stitches, occluders, landmarks, invariants, settings** (`thetaDeg`, `tuck`, `shadeSmoothMm`), **decisions** (`shadeMedian`, `shadeSmoothMm/Px`, `shadeSpace`, `shadeEncoding`, the neck block, each trim's `side` / `lengthCm` / `vMax`, each zone's size in cm).
+2. `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` are modules: `base(plate)`, `measure()`, `review(P, base)`; run alone they run their checks and write nothing. The measured lists did not change; each outline is now written as a chain of named, typed edges. The hem's `hem-bl` / `hem-br` (made in numeric step 10 by `snap_outline.py edge-trim`) and the trim order (`trim-order`: the hem laces after the slit trims) are trim data in `annotate_hem.py`, as are the plate's `invariants`. The `edge` of each trim names the edge it hangs on (step 3 derives the centre lines from it).
+3. `tools/make_plate.py <plate> [--review] [--no-check] [--dump-mesh]` is the build: source → maps in memory (`rasterise`, the old arithmetic unchanged) → decisions → `base.jpg` + `plate.dat`. The base is encoded once as JPEG and the decisions are taken from the decoded JPEG, as the page sees it (taking them from the image before the JPEG moved the neck block's fill colours by 1 level). `--review` writes `annotate.png`, `check.png` and the edge crops (cut from `check.png`) into `demo/review/<plate>/`. As a module: `build()`, `maps_of(plate)` (the maps of a committed `plate.dat`, in memory), `rasterise()`.
+4. The torso: a one-off converter (in the scratchpad, never committed) read its `zones.json` + `plate.json` and split each outline into typed edges by the geometry of step 0: front = `front-0` (left shoulder, free), `neck` (cut), `front-2` (right shoulder, free), `front-3` (under `sleeve-r`), `front-4` (body sides and hem, free), `front-5` (under `sleeve-l`); each sleeve one free edge. `make_plate.py` rebuilds the torso from this imported data (and keeps its `base.jpg`) until step 2.
+5. Readers moved to `platedat.py` / `make_plate.maps_of`: `plate_invariants.py`, `plate_checks.py` (its size rule now counts what ships: `base.jpg` + `plate.dat`), `polish_metrics.py`, `reveal_metrics.py`, `map_diff.py`, `trim_match.py`, `mesh_check.mjs` (through `Plate.parseDat`), `plate_edges.py` (the typed edges in place of step 0's geometry), and the page: `Plate.parseDat` reads `BSP2` and gives the same `{ plate, zones }` as before; every view (the `?geom=maps` path too) reads `plate.dat`. Removed: `BSP1`, `make_dat.py`, `dat_check.mjs`, the page's `?dat=0`; `snap_outline.py` keeps only its helpers (its commands wrote `zones.json`). `extract_zones.py` and `fit_zones.py` (planned for step 2) are removed here: they wrote `zones.json` and cannot run any more.
+6. Removed from the 4 plate folders: `zones.json`, `plate.json`, `annotate.png`, `check.png`. The map PNGs stay for `?geom=maps` until step 7 (they are frozen: the build no longer writes them).
+7. `.gitattributes`: `demo/assets/plates/*/plate.dat diff=dat`; `tools/README.md` gives `git config diff.dat.textconv "python3 demo/tools/platedat.py --dump"`.
+8. `tools/rebuild_check.sh`: every plate rebuilt from its source into a scratch copy; `base.jpg` and `plate.dat` compared byte for byte.
+
+**One rule added to the plan's edge types** (the outlines had to stay the same points): a lower zone's run that lies hidden under a later zone is a `seam` with `"under": <the later zone>`, used by that one lower zone (the validator checks it is lower). There are 4: the sleeve view's `front-under-cuff` and `front-under-sleeve`, the torso's `front-3` and `front-5` (the tucked sides). Where an upper zone's contour lies over a lower zone (a sleeve's inner edge over the body), the contour is `free`. A visible-in-the-photo seam that two zones share is `seam` with `zones` (the armholes of the neck and sleeve views; the hem view's side seam and left seam). The torso has no shared seam until it is measured (step 2).
+
+**Results:**
+
+| Check | Result |
+|---|---|
+| One-time comparison (scratchpad, deleted): the build's `legacy()` of each new `plate.dat` against the old `zones.json` + `plate.json`: outlines (a repeated closing point aside), grids, orders, `widthPx`, trims (order, width, type, centre), landmarks, stitches, occluders, settings, invariants, and every number of `plate.json` | **0 differences** on all 4 plates (first run: neck fill colours ±1 level, fixed by deciding on the decoded JPEG) |
+| Rebuilt `base.jpg` against the committed one | byte-identical (neck, sleeve, hem) |
+| `platedat.py --check` | PASS on all 4: every seam used by exactly two zones (or one lower zone, `under`), every run typed, chains closed, frame points on the border |
+| `rebuild_check.sh` | ALL IDENTICAL (`base.jpg` + `plate.dat`, 4 plates; the torso from its imported data) |
+| Render 8300 against 8200, the 12 `--numeric` queries (`canvas_diff.py`) | mean 0.000, max 0 on all 12; `?geom=maps` (hem, neck) also 0.000 |
+| `mesh_check.mjs` (plate.js against Python, through `parseDat` v2) | PASS on all 4 |
+| `plate_invariants.py` | the same numbers as step 0 on all 4 (now from the maps in memory) |
+| `plate.dat` sizes | torso 17,166 B, neck 3,544 B, sleeve 4,278 B, hem 4,902 B: 29.9 KB (`BSP1`: 24.8 KB; the typed edges, the grids and the decisions are stored separately) |
+| `grep -lE "zones\.json|plate\.json"` over `tools/` and the page code | nothing |
+
+- [x] Each plate folder holds `source.png`, `base.jpg`, `plate.dat` (and the map PNGs until step 7), nothing else. (The torso has no `source.png` until step 2.)
+- [x] `--dump` of each new `plate.dat` gives back every number of the old `zones.json` + `plate.json` (the test compared them once, then was deleted).
+- [x] The render at 8300 = 8200 (mean 0.000).
+- [x] Each seam is referenced by exactly two zones (or is a hidden `under` run of one lower zone); each run of each outline has a type; the validator passes on all 4 plates.
+- [x] `rebuild_check.sh`: neck, sleeve and hem byte-identical from their sources; torso from its imported data.
+- [x] `git diff` on a changed `plate.dat` shows text.
+
+Note: the 8200 server had stopped during this step; it was restarted on the `numeric` worktree (`python3 -m http.server 8200 --bind 127.0.0.1 --directory demo`).

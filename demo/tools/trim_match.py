@@ -1,18 +1,20 @@
 """halfway.md step 5.4: does the live neck trim (the 24-point centre line the shader gets) match the baked trim of the plate?
-For every baked neck-trim px (id.png G = 1) the live u (cm along the centre line) and v (0..1 across) are computed as the
-shader does, and compared with uv_trim.png. Errors in plate px.
+For every baked neck-trim px (id G = 1) the live u (cm along the centre line) and v (0..1 across) are computed as the
+shader does, and compared with the plate's uv_trim (in memory). Errors in plate px.
 
 usage: python3 tools/trim_match.py <plate-dir> <sent.json>    sent.json = {"nc": [[x, y] x 24]} (cdp_shot --eval __studio.neckSent())
 """
-import json, math, sys
-from PIL import Image
+import json, math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plate
 
 pd, sent = sys.argv[1], json.load(open(sys.argv[2]))
-P = json.load(open(f"{pd}/plate.json"))
+M = make_plate.maps_of(pd)
+P = M["plate"]
 R, mm, tw = P["uvRangeCm"], P["mmPerPx"], P["trims"]["neck"]["widthMm"] / P["mmPerPx"]
 c = sent["nc"]
-uvt = Image.open(f"{pd}/uv_trim.png").convert("RGB").load()
-idm = Image.open(f"{pd}/id.png").convert("RGB")
+uvt = M["uvt"].load()
+idm = M["id"]
 W, H = idm.size
 idp = idm.load()
 du, dv, miss = [], [], 0

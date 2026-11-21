@@ -8,18 +8,18 @@ Prints, with PASS / FAIL:
   grain tilt   front zone: tilt of constant-U lines from the vertical                  95 % of points <= 10 deg
   UV rate      cm of fabric per plate px, along U and V, median (face-on = mmPerPx/10)  within 0.8 .. 1.6 x face-on
   block ratio  fabric UV equal to the right neighbour                                  <= 0.05
-  plate data   id + uv + uv_trim + shade                                               <= 1.0 MB
+  plate data   what ships: base.jpg + plate.dat                                        <= 1.0 MB
 Limits come from the plates that are good: torso (side bulge 3.9 %, tilt 10.0 deg) and neck (2.6 %, 8.7 deg).
 The sleeve plate of 2026-11-18 fails here (10.7 %, 18.4 deg): its front grid edge follows the armhole bulge.
 """
-import json, math, os, sys
-from PIL import Image
+import math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plate
 
 D = sys.argv[1].rstrip("/") + "/"
-Z = json.load(open(D + "zones.json"))
-P = json.load(open(D + "plate.json"))
-uv = Image.open(D + "uv.png").convert("RGB")
-idm = Image.open(D + "id.png").convert("RGB")
+M = make_plate.maps_of(D)                # the maps of plate.dat, in memory (StepA step 1)
+Z, P = M["zones"], M["plate"]
+uv, idm = M["uv"], M["id"]
 up, ip = uv.load(), idm.load()
 W, H = idm.size
 R = P["uvRangeCm"]
@@ -89,6 +89,6 @@ for y in range(H):
             same += up[x, y] == up[x + 1, y]
 report("block ratio", f"{same / tot:.3f}", same / tot <= 0.05)
 
-kb = sum(os.path.getsize(D + f) for f in ("id.png", "uv.png", "uv_trim.png", "shade.png")) / 1024
+kb = sum(os.path.getsize(D + f) for f in ("base.jpg", "plate.dat")) / 1024
 report("plate data", f"{kb:.0f} KB", kb <= 1024)
 print("ALL PASS" if ok_all else "SOME CHECKS FAIL")

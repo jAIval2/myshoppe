@@ -6,7 +6,7 @@ A plate must be right in itself, not only equal to its maps: the maps carry the 
 
   closure       garment pixels of the PHOTO (low colour saturation: the wall and the mannequin are warm) that no zone covers, within
                 10 px of a zone: <= 0.05 % of the zone area, and no piece wider than 2 px (it survives a 3 x 3 erosion).
-                zones.json "invariants": {"openings": [[x0, y0, x1, y1], ...]} leaves out regions where bare garment is right
+                the plate's "invariants": {"openings": [[x0, y0, x1, y1], ...]} leaves out regions where bare garment is right
                 (an underskirt seen through a slit).
   no gaps       R = 0 pixels that the outside cannot reach (flood fill from every border pixel): the THIN parts of them (what an erosion and
                 a dilation by 3 x 3 removes: a hairline between zones) <= 8 px. Wide ones are real openings (the wall between arm and body).
@@ -16,18 +16,21 @@ A plate must be right in itself, not only equal to its maps: the maps carry the 
                 the strip: mean within 1.5 px, std <= 1.0 px (the 10 % at each end left out).
   trim smooth   residual of local quadratic fits (31 px windows) along the centre line: <= 0.8 px. A quadratic follows a bend, so
                 curvature does not count as wobble; hand-traced noise does (a traced slit trim: about 1 px, a sloppy one: 3-4 px).
-                zones.json "invariants": {"skipTrimOffset": [names]} leaves out a trim whose strip is wider than its piece.
+                the plate's "invariants": {"skipTrimOffset": [names]} leaves out a trim whose strip is wider than its piece.
   trim joins    information: the distance between the ends of each trim and the nearest other trim's centre line.
-  landmarks     every landmark of zones.json lies on a zone or within 6 px of one.
+  landmarks     every landmark of the plate lies on a zone or within 6 px of one.
   plate_checks  tools/plate_checks.py (grain, bulge, UV rate, block ratio): no FAIL.
 """
 import json, math, os, subprocess, sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plate
 
 pd = sys.argv[1].rstrip("/")
-Z = json.load(open(pd + "/zones.json")); P = json.load(open(pd + "/plate.json"))
+MAPS = make_plate.maps_of(pd)                 # the maps of plate.dat, in memory (StepA step 1)
+Z, P = MAPS["zones"], MAPS["plate"]
 W, H = P["viewBox"]; MM = P["mmPerPx"]
-ID = Image.open(pd + "/id.png").convert("RGB"); R = ID.split()[0]
+ID = MAPS["id"]; R = ID.split()[0]
 photo = Image.open(pd + "/base.jpg").convert("RGB")
 inv = Z.get("invariants", {})
 results = []
@@ -126,7 +129,7 @@ for name, tr in Z["trims"].items():
             if not (0 <= x < W and 0 <= y < H) or rp[x, y] == 0: d = step; break
         if d is not None and d < 199: ds.append(d)
     if name in inv.get("skipTrimOffset", []):
-        report("trim offset", f"{name}: not tested (zones.json invariants.skipTrimOffset: the strip is wider than its piece)", True, info=True)
+        report("trim offset", f"{name}: not tested (invariants.skipTrimOffset: the strip is wider than its piece)", True, info=True)
     elif len(ds) > 10 and info.get("type") == "edging":
         m = sum(ds) / len(ds); sd = math.sqrt(sum((v - m) ** 2 for v in ds) / len(ds))
         report("trim offset", f"{name}: centre to the edge {m:.1f} px (half strip {half:.1f}), std {sd:.2f} px", abs(m - half) <= 1.5 and sd <= 1.0)

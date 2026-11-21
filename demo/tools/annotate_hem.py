@@ -1,26 +1,27 @@
-"""Annotate the hemline-and-slit view (hem-straight) from points measured on source.png.
+"""The hemline-and-slit view (hem-straight): points measured on source.png, as typed edges (StepA step 1).
 
-Source points are in source.png pixels (2048 x 2048). The plate is the 3:4 crop x 214..1750,
-resized to 1200 x 1600 (factor 0.78125). The garment is 1583 px wide, the crop 1536: the crop keeps the whole
-back panel and its hem tip on the right, and cuts at most 47 px of the shaded left panel (at the border).
-The sparkle mark (x 1920-2010) is outside the crop: no patch needed.
+Source points are in source.png pixels (2048 x 2048). The plate is the 3:4 crop x 214..1750, resized to 1200 x 1600 (factor
+0.78125). The garment is 1583 px wide, the crop 1536: the crop keeps the whole back panel and its hem tip on the right, and cuts at
+most 47 px of the shaded left panel (at the border). The sparkle mark (x 1920-2010) is outside the crop: no patch needed.
+As a module (tools/make_plate.py): base(plate_dir), measure(), review(P, base). Run alone: python3 tools/annotate_hem.py
+(the automatic checks of annotate.md 9.1; writes nothing).
 
 Every list below was read on gridded crops of source.png (tools/gridcrop.py), or scanned and then confirmed on a crop:
   silhouettes: colour distance to the wall on the same row (blur 1.5)
   slit edges, form, hem edges, bar tack, stitches: gridded true-colour and high-contrast crops, x1.2 .. x3
 Zones (back to front): back-l (shaded left panel, order 1), back (panel right of the slit, order 1), front (order 2).
 Left outside every zone: the dress form in the slit, the pale inside of the far wall below the form, the stand.
-usage: python3 tools/annotate_hem.py assets/plates/hem-straight
 """
-import json, math, sys
+import math
 from PIL import Image, ImageDraw
 
-D = sys.argv[1]
 X0, K = 214, 1200 / 1536
 XMAX = X0 + 1536
-src = Image.open(f"{D}/source.png").convert("RGB")
-base = src.crop((X0, 0, XMAX, 2048)).resize((1200, 1600), Image.LANCZOS)
-base.save(f"{D}/base.jpg", quality=94, subsampling=0)
+
+
+def base(D):
+    src = Image.open(f"{D}/source.png").convert("RGB")
+    return src.crop((X0, 0, XMAX, 2048)).resize((1200, 1600), Image.LANCZOS)
 
 
 def C(pts):
@@ -79,30 +80,12 @@ hem_stitch = [(520, 1651), (548, 1653), (607, 1660), (690, 1668), (800, 1676), (
               (1090, 1683), (1180, 1682), (1273, 1681)]
 left_hem_stitch = [(214, 1560), (300, 1560), (400, 1556), (485, 1553)]
 
-# ---- zones (source px)
-front_top = [(566, 0), (1479, 0)]
-front_left = e_fl
-front_right = seam_top + slit_front[1:]
-front_bottom = front_hem
-front_outline = front_top + front_right[1:] + front_bottom[::-1][1:] + front_left[::-1][1:-1]
-
-back_top = [(1479, 0), (1637, 0)]
-back_left = seam_top + slit_back[1:]
-back_right_e = back_right
-back_bottom = back_hem
-back_outline = back_top + back_right_e[1:] + back_bottom[::-1][1:] + back_left[::-1][1:-1]
-
-bl_top = [(264, 0), (566, 0)]
-bl_left = left_edge
-bl_right = e_fl[:i_join + 1]
-bl_bottom = left_hem
-bl_outline = bl_top + bl_right[1:] + bl_bottom[::-1][1:] + bl_left[::-1][1:-1]
-
-# ---- landmarks and scale
-P = {"slit-top": SLIT_TOP, "hem-slit": HEM_SLIT, "hem-slit-back": HEM_SLIT_BACK, "hem-l": HEM_L,
-     "hem-l-back": (214, 1613), "hem-back-r": (1750, 1653)}
-L = {k: T([v])[0] for k, v in P.items()}
-mm_per_px = 240 / math.dist(L["slit-top"], L["hem-slit"])      # scale: slit-top -> hem-slit = 240 mm
+# The hem lace of the two side pieces (numeric step 10, made then by snap_outline.py edge-trim from each piece's bottom outline,
+# moved inward by half the strip and smoothed), in plate px. StepA step 3 derives them from the edges.
+HEM_BL = [[-8.2, 1192.1], [25.4, 1194.0], [41.1, 1194.6], [56.6, 1194.9], [84.0, 1195.0], [102.2, 1194.9], [116.1, 1194.6],
+          [163.5, 1192.7], [179.5, 1192.2], [194.5, 1191.9], [214.1, 1191.9]]
+HEM_BR = [[1099.0, 1280.5], [1114.5, 1271.0], [1124.7, 1264.5], [1131.9, 1259.6], [1137.5, 1255.2], [1142.6, 1250.7],
+          [1149.1, 1244.5], [1184.1, 1209.5]]
 
 
 def offset(pts, d, away):
@@ -144,112 +127,118 @@ def clip_extend(centre, outline, reach=90):
     return c
 
 
-def poly_area(pts):
-    return abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1]))) / 2
+def measure():
+    P = {"slit-top": SLIT_TOP, "hem-slit": HEM_SLIT, "hem-slit-back": HEM_SLIT_BACK, "hem-l": HEM_L,
+         "hem-l-back": (214, 1613), "hem-back-r": (1750, 1653)}
+    L = {k: T([v])[0] for k, v in P.items()}
+    mm_per_px = 240 / math.dist(L["slit-top"], L["hem-slit"])      # scale: slit-top -> hem-slit = 240 mm
+    edges = {
+        "front-top": {"type": "frame", "points": T([(566, 0), (1479, 0)])},
+        "side-seam": {"type": "seam", "zones": ["front", "back"], "points": T(seam_top)},          # above the slit
+        "slit-front": {"type": "free", "points": T(slit_front)},
+        "hem-front": {"type": "free", "points": T(front_hem)},
+        "front-left-low": {"type": "free", "points": T(e_fl[i_join:])},                            # below the left panel's hem
+        "left-seam": {"type": "seam", "zones": ["front", "back-l"], "points": T(e_fl[:i_join + 1])},
+        "back-top": {"type": "frame", "points": T([(1479, 0), (1637, 0)])},
+        "back-right": {"type": "free", "points": T(back_right)},
+        "hem-back": {"type": "free", "points": T(back_hem)},
+        "slit-back": {"type": "free", "points": T(slit_back)},
+        "left-top": {"type": "frame", "points": T([(264, 0), (566, 0)])},
+        "hem-left": {"type": "free", "points": T(left_hem)},
+        "left-frame": {"type": "frame", "points": T(left_edge[-2:])},                              # cut by the crop border
+        "left-edge": {"type": "free", "points": T(left_edge[:-1])},
+    }
+    front_outline = T([(566, 0), (1479, 0)] + (seam_top + slit_front[1:])[1:] + front_hem[::-1][1:] + e_fl[::-1][1:-1])
+    back_outline = T([(1479, 0), (1637, 0)] + back_right[1:] + back_hem[::-1][1:] + (seam_top + slit_back[1:])[::-1][1:-1])
+    below_hem = T([(900, 2000)])[0]                    # outside the garment, below the hem (on the stand)
+    in_slit_f = T([(1500, 900)])[0]                    # inside the slit, right of the front edge (on the form)
+    in_slit_b = T([(1450, 900)])[0]                    # inside the slit, left of the back edge
+    # clip_extend reach = half the trim width: a slit trim must not run past the slit top, a hem trim stops at the corners
+    hem_trim = clip_extend(offset(T(front_hem), 15 / mm_per_px, below_hem), front_outline, 15 / mm_per_px)      # 15 mm above the edge
+    slit_l_trim = clip_extend(offset(T(slit_front), 4 / mm_per_px, in_slit_f), front_outline, 4 / mm_per_px)   # 4 mm inside the front edge
+    slit_r_trim = clip_extend(offset(T(slit_back), 4 / mm_per_px, in_slit_b), back_outline, 4 / mm_per_px)     # 4 mm inside the back edge
+    apex_y = L["slit-top"][1]                          # a slit trim starts at the slit top (clip_extend reached up along the seam)
+    slit_l_trim = [p for p in slit_l_trim if p[1] >= apex_y]
+    slit_r_trim = [p for p in slit_r_trim if p[1] >= apex_y]
+    zones = {
+        "back-l": {"order": 1, "outline": [["left-top", 1], ["left-seam", 1], ["hem-left", -1], ["left-frame", -1], ["left-edge", -1]],
+                   "grid": {"top": T([(264, 0), (566, 0)]), "left": T(left_edge), "right": T(e_fl[:i_join + 1]), "bottom": T(left_hem)}},
+        "back": {"order": 1, "outline": [["back-top", 1], ["back-right", 1], ["hem-back", -1], ["slit-back", -1], ["side-seam", -1]],
+                 "grid": {"top": T([(1479, 0), (1637, 0)]), "left": T(seam_top + slit_back[1:]), "right": T(back_right), "bottom": T(back_hem)}},
+        "front": {"order": 2, "outline": [["front-top", 1], ["side-seam", 1], ["slit-front", 1], ["hem-front", -1], ["front-left-low", -1], ["left-seam", -1]],
+                  "grid": {"top": T([(566, 0), (1479, 0)]), "left": T(e_fl), "right": T(seam_top + slit_front[1:]), "bottom": T(front_hem)}},
+    }
+    # trims in drawing order (a later trim wins): the hem laces after the slit trims (numeric step 10), so the hem lace runs to the corner
+    trims = {
+        "slit-l": {"order": 3, "widthMm": 8, "type": "insertion", "edge": "slit-front", "offsetMm": 4, "centre": slit_l_trim},
+        "slit-r": {"order": 3, "widthMm": 8, "type": "insertion", "edge": "slit-back", "offsetMm": 4, "centre": slit_r_trim},
+        "hem": {"order": 3, "widthMm": 30, "type": "edging", "edge": "hem-front", "offsetMm": 15, "join": "over the slit trims", "centre": hem_trim},
+        "hem-bl": {"order": 3, "widthMm": 30, "type": "edging", "edge": "hem-left", "offsetMm": 15, "join": "flush at the left seam", "centre": HEM_BL},
+        "hem-br": {"order": 3, "widthMm": 30, "type": "edging", "edge": "hem-back", "offsetMm": 15, "join": "over the slit trim", "centre": HEM_BR},
+    }
+    return {
+        "view": "hem", "variant": "straight-kurta", "viewBox": [1200, 1600], "mmPerPx": round(mm_per_px, 4), "uvRangeCm": 32,
+        "scaleNote": "slit-top -> hem-slit = 240 mm (agreed value, hem view)",
+        "source": "source.png crop x 214..1750, resized x0.78125. Points measured on source.png by Claude. "
+                  "Sparkle mark (x 1920-2010, y 1850-1950) is outside the crop.",
+        "landmarks": L, "edges": edges, "zones": zones, "trims": trims,
+        "stitches": {"slit-facing": T(facing_stitch), "bar-tack": T(bar_tack), "bar-tack-box": T(bar_tack_box),
+                     "hem-topstitch": T(hem_stitch), "hem-topstitch-left-panel": T(left_hem_stitch)},
+        # openings: the slit interior (the underskirt, bare garment on purpose); skipTrimOffset: hem-br, whose strip is wider than its piece
+        "invariants": {"openings": [[880, 250, 1130, 1330]], "skipTrimOffset": ["hem-br"]},
+        "settings": {"thetaDeg": {"front": 45, "back": 60, "back-l": 65}},
+    }
 
-
-def plen(pts):
-    return sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
-
-
-O = {"front": T(front_outline), "back": T(back_outline), "back-l": T(bl_outline)}
-below_hem = T([(900, 2000)])[0]                    # outside the garment, below the hem (on the stand)
-in_slit_f = T([(1500, 900)])[0]                    # inside the slit, right of the front edge (on the form)
-in_slit_b = T([(1450, 900)])[0]                    # inside the slit, left of the back edge
-# clip_extend reach = half the trim width: a slit trim must not run past the slit top, a hem trim stops at the corners
-hem_trim = clip_extend(offset(T(front_hem), 15 / mm_per_px, below_hem), O["front"], 15 / mm_per_px)      # centre 15 mm above the edge
-slit_l_trim = clip_extend(offset(T(slit_front), 4 / mm_per_px, in_slit_f), O["front"], 4 / mm_per_px)   # centre 4 mm inside the front edge
-slit_r_trim = clip_extend(offset(T(slit_back), 4 / mm_per_px, in_slit_b), O["back"], 4 / mm_per_px)     # centre 4 mm inside the back edge
-
-# a slit trim starts at the slit top: cut it at the apex row (clip_extend reached up along the shared seam)
-apex_y = L["slit-top"][1]
-slit_l_trim = [p for p in slit_l_trim if p[1] >= apex_y]
-slit_r_trim = [p for p in slit_r_trim if p[1] >= apex_y]
-
-data = {
-    "view": "hem",
-    "variant": "straight-kurta",
-    "viewBox": [1200, 1600],
-    "base": "base.jpg",
-    "mmPerPx": round(mm_per_px, 4),
-    "scaleNote": "slit-top -> hem-slit = 240 mm (agreed value, hem view)",
-    "source": "source.png crop x 214..1750, resized x0.78125. Points measured on source.png by Claude. "
-              "Sparkle mark (x 1920-2010, y 1850-1950) is outside the crop.",
-    "thetaDeg": {"front": 45, "back": 60, "back-l": 65},
-    "uvRangeCm": 32,   # close view: 0.22 mm/px needs a finer UV step than the default 128 cm range gives
-    "landmarks": L,
-    "zones": {
-        "back-l": {"order": 1, "grid": {"top": T(bl_top), "left": T(bl_left), "right": T(bl_right), "bottom": T(bl_bottom)},
-                   "outline": O["back-l"]},
-        "back": {"order": 1, "grid": {"top": T(back_top), "left": T(back_left), "right": T(back_right_e), "bottom": T(back_bottom)},
-                 "outline": O["back"]},
-        "front": {"order": 2, "grid": {"top": T(front_top), "left": T(front_left), "right": T(front_right), "bottom": T(front_bottom)},
-                  "outline": O["front"]},
-    },
-    "trims": {"hem": {"order": 3, "widthMm": 30, "centre": hem_trim},
-              "slit-l": {"order": 3, "widthMm": 8, "centre": slit_l_trim},
-              "slit-r": {"order": 3, "widthMm": 8, "centre": slit_r_trim}},
-    "stitches": {"slit-facing": T(facing_stitch), "bar-tack": T(bar_tack), "bar-tack-box": T(bar_tack_box),
-                 "hem-topstitch": T(hem_stitch), "hem-topstitch-left-panel": T(left_hem_stitch)},
-}
-json.dump(data, open(f"{D}/zones.json", "w"), indent=1)
 
 # ---- annotate.png: colour code on the exact base
 RED, BLUE, GOLD, TEAL, GREY, GREEN = (229, 57, 53), (30, 99, 233), (199, 145, 0), (0, 137, 123), (97, 97, 97), (46, 125, 50)
-img = base.copy()
-d = ImageDraw.Draw(img)
 
 
-def line(pts, col, w=3):
-    d.line([tuple(p) for p in pts], fill=col, width=w, joint="curve")
+def review(P, base_img):
+    img = base_img.copy()
+    d = ImageDraw.Draw(img)
 
+    def line(pts, col, w=3):
+        d.line([tuple(p) for p in pts], fill=col, width=w, joint="curve")
 
-def dashed(pts, col, w=2, on=9, off=7):
-    acc, draw = 0.0, True
-    for a, b in zip(pts, pts[1:]):
-        seg = math.dist(a, b)
-        t = 0.0
-        while t < seg:
-            step = min((on if draw else off) - acc, seg - t)
-            if draw:
-                p0 = (a[0] + (b[0] - a[0]) * t / seg, a[1] + (b[1] - a[1]) * t / seg)
-                p1 = (a[0] + (b[0] - a[0]) * (t + step) / seg, a[1] + (b[1] - a[1]) * (t + step) / seg)
-                d.line([p0, p1], fill=col, width=w)
-            t += step
-            acc += step
-            if acc >= (on if draw else off):
-                acc, draw = 0.0, not draw
-
-
-front_ref = T([(900, 800)])[0]
-shared_l = T(e_fl[:i_join + 1])                  # front / left panel
-line(offset(shared_l, -2.5, front_ref), RED)
-line(offset(shared_l, 2.5, front_ref), BLUE)
-line(T(e_fl[i_join:]), RED)                      # front left edge below the left panel's hem
-shared_s = T(seam_top)                           # front / back, above the slit
-line(offset(shared_s, -2.5, T([(1700, 700)])[0]), RED)
-line(offset(shared_s, 2.5, T([(1700, 700)])[0]), BLUE)
-z = data["zones"]
-for k in ("top",):
-    line(z["front"]["grid"][k], RED)
-    line(z["back"]["grid"][k], BLUE)
-    line(z["back-l"]["grid"][k], BLUE)
-line(T(slit_front), RED)                         # front slit edge
-line(z["front"]["grid"]["bottom"], RED)
-line(T(slit_back), BLUE)                         # back slit edge
-line(z["back"]["grid"]["right"], BLUE)
-line(z["back"]["grid"]["bottom"], BLUE)
-line(z["back-l"]["grid"]["left"], BLUE)
-line(z["back-l"]["grid"]["bottom"], BLUE)
-line(hem_trim, GOLD)
-line(slit_l_trim, TEAL)
-line(slit_r_trim, TEAL)
-for name, pts in data["stitches"].items():
-    dashed(pts, GREY)
-line([L["slit-top"], L["hem-slit"]], GREEN, 2)
-for x, y in L.values():
-    d.ellipse((x - 6, y - 6, x + 6, y + 6), fill="black", outline="white", width=2)
-img.save(f"{D}/annotate.png", optimize=True)
+    def dashed(pts, col, w=2, on=9, off=7):
+        acc, draw = 0.0, True
+        for a, b in zip(pts, pts[1:]):
+            seg = math.dist(a, b)
+            t = 0.0
+            while t < seg:
+                step = min((on if draw else off) - acc, seg - t)
+                if draw:
+                    d.line([(a[0] + (b[0] - a[0]) * t / seg, a[1] + (b[1] - a[1]) * t / seg),
+                            (a[0] + (b[0] - a[0]) * (t + step) / seg, a[1] + (b[1] - a[1]) * (t + step) / seg)], fill=col, width=w)
+                t += step
+                acc += step
+                if acc >= (on if draw else off):
+                    acc, draw = 0.0, not draw
+    front_ref = T([(900, 800)])[0]
+    shared_l = T(e_fl[:i_join + 1])                  # front / left panel
+    line(offset(shared_l, -2.5, front_ref), RED)
+    line(offset(shared_l, 2.5, front_ref), BLUE)
+    line(T(e_fl[i_join:]), RED)                      # front left edge below the left panel's hem
+    shared_s = T(seam_top)                           # front / back, above the slit
+    line(offset(shared_s, -2.5, T([(1700, 700)])[0]), RED)
+    line(offset(shared_s, 2.5, T([(1700, 700)])[0]), BLUE)
+    z = P["zones"]
+    line(z["front"]["grid"]["top"], RED)
+    line(z["back"]["grid"]["top"], BLUE)
+    line(z["back-l"]["grid"]["top"], BLUE)
+    line(T(slit_front), RED)
+    line(z["front"]["grid"]["bottom"], RED)
+    line(T(slit_back), BLUE)
+    for k in ("right", "bottom"): line(z["back"]["grid"][k], BLUE)
+    for k in ("left", "bottom"): line(z["back-l"]["grid"][k], BLUE)
+    for n, t in P["trims"].items(): line(t["centre"], TEAL if n.startswith("slit") else GOLD)
+    for pts in P["stitches"].values(): dashed(pts, GREY)
+    L = P["landmarks"]
+    line([L["slit-top"], L["hem-slit"]], GREEN, 2)
+    for x, y in L.values():
+        d.ellipse((x - 6, y - 6, x + 6, y + 6), fill="black", outline="white", width=2)
+    return img
 
 
 # ---- checks (annotate.md 9.1)
@@ -259,53 +248,50 @@ def xat(pts, y):
             return a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1])
 
 
-def mono(pts):
-    return all(b[1] >= a[1] for a, b in zip(pts, pts[1:]))
-
-
-for nm, e in (("front.left", front_left), ("front.right", front_right), ("back.left", back_left), ("back.right", back_right_e),
-              ("back-l.left", bl_left), ("back-l.right", bl_right)):
-    assert mono(e), f"{nm}: left/right edges must go top -> bottom"
-worst = max(xat(front_right, y) - xat(back_left, y) for y in range(10, 1740, 10)
-            if xat(front_right, y) is not None and xat(back_left, y) is not None)
-print("front right edge minus back left edge (must be <= 1.6 where they touch; negative = the slit gap):", round(worst, 1))
-assert worst <= 1.6
-for y in range(0, 1612, 10):                     # shared edge between front and left panel: the same line
-    assert abs(xat(front_left, y) - xat(bl_right, y)) < 1e-6
-for zn, zv in z.items():
-    g = zv["grid"]
-    for a, b in ((g["top"][0], g["left"][0]), (g["top"][-1], g["right"][0]),
-                 (g["bottom"][0], g["left"][-1]), (g["bottom"][-1], g["right"][-1])):
-        assert math.dist(a, b) < 0.05, (zn, a, b)
-print("corners meet: yes")
-
-
 def segs_cross(p1, p2, p3, p4):
     def o(a, b, c): return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
     return o(p1, p2, p3) * o(p1, p2, p4) < 0 and o(p3, p4, p1) * o(p3, p4, p2) < 0
 
 
-for zn, zv in z.items():
-    o = zv["outline"]
-    n = len(o)
-    X = sum(1 for i in range(n) for j in range(i + 2, n) if not (i == 0 and j == n - 1)
-            and segs_cross(o[i], o[(i + 1) % n], o[j], o[(j + 1) % n]))
-    print(f"outline {zn}: {n} points, {X} self-crossings")
-    assert X == 0
-for tn, tv in data["trims"].items():
-    zone = "back" if tn == "slit-r" else "front"
-    bad = [p for p in tv["centre"] if not inside(p, z[zone]["outline"])]
-    print(f"trim {tn}: {len(bad)} of {len(tv['centre'])} centre points outside the {zone} outline")
-    assert not bad
-for side in ("left", "right"):                    # front side edges smooth: bulge from the chord <= 5 %
-    e = z["front"]["grid"][side]
-    a, b = e[0], e[-1]
-    Ln = math.dist(a, b)
-    dev = max(abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Ln for p in e)
-    print(f"front.{side} bulge {dev:.0f} px = {100 * dev / Ln:.1f} % (must be <= 5 %)")
-    assert dev / Ln <= 0.05
-width_cm = (T([(566, 0)])[0][0], T([(1479, 0)])[0][0])
-print("scale mm/px", round(mm_per_px, 4), "| slit-top->hem-slit px", round(math.dist(L["slit-top"], L["hem-slit"]), 1),
-      "| slit length mm", round(math.dist(L["slit-top"], L["hem-slit"]) * mm_per_px, 1),
-      "| front panel width at the top (cm)", round((width_cm[1] - width_cm[0]) * mm_per_px / 10, 1),
-      "| all visible garment (cm)", round((1750 - 214) * K * mm_per_px / 10, 1))
+def checks(P):
+    import platedat
+    front_left, front_right, back_left = e_fl, seam_top + slit_front[1:], seam_top + slit_back[1:]
+    mono = lambda pts: all(b[1] >= a[1] for a, b in zip(pts, pts[1:]))
+    for nm, e in (("front.left", front_left), ("front.right", front_right), ("back.left", back_left), ("back.right", back_right),
+                  ("back-l.left", left_edge), ("back-l.right", e_fl[:i_join + 1])):
+        assert mono(e), f"{nm}: left/right edges must go top -> bottom"
+    worst = max(xat(front_right, y) - xat(back_left, y) for y in range(10, 1740, 10)
+                if xat(front_right, y) is not None and xat(back_left, y) is not None)
+    print("front right edge minus back left edge (must be <= 1.6 where they touch; negative = the slit gap):", round(worst, 1))
+    assert worst <= 1.6
+    z = P["zones"]
+    for zn, zv in z.items():
+        g = zv["grid"]
+        for a, b in ((g["top"][0], g["left"][0]), (g["top"][-1], g["right"][0]), (g["bottom"][0], g["left"][-1]), (g["bottom"][-1], g["right"][-1])):
+            assert math.dist(a, b) < 0.05, (zn, a, b)
+    print("corners meet: yes")
+    O = {zn: platedat.outline(P, zn) for zn in z}
+    for zn, o in O.items():
+        n = len(o)
+        X = sum(1 for i in range(n) for j in range(i + 2, n) if not (i == 0 and j == n - 1) and segs_cross(o[i], o[(i + 1) % n], o[j], o[(j + 1) % n]))
+        print(f"outline {zn}: {n} points, {X} self-crossings")
+        assert X == 0
+    for tn in ("hem", "slit-l", "slit-r"):
+        zone = "back" if tn == "slit-r" else "front"
+        bad = [p for p in P["trims"][tn]["centre"] if not inside(p, O[zone])]
+        print(f"trim {tn}: {len(bad)} of {len(P['trims'][tn]['centre'])} centre points outside the {zone} outline")
+        assert not bad
+    for side in ("left", "right"):                    # front side edges smooth: bulge from the chord <= 5 %
+        e = z["front"]["grid"][side]
+        a, b = e[0], e[-1]
+        Ln = math.dist(a, b)
+        dev = max(abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Ln for p in e)
+        print(f"front.{side} bulge {dev:.0f} px = {100 * dev / Ln:.1f} % (must be <= 5 %)")
+        assert dev / Ln <= 0.05
+    L, mm = P["landmarks"], P["mmPerPx"]
+    print("scale mm/px", mm, "| slit-top->hem-slit px", round(math.dist(L["slit-top"], L["hem-slit"]), 1),
+          "| slit length mm", round(math.dist(L["slit-top"], L["hem-slit"]) * mm, 1))
+
+
+if __name__ == "__main__":
+    checks(measure())

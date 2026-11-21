@@ -10,8 +10,10 @@ const Plate = createRequire(import.meta.url)("../plate.js");
 
 const [dir, prefix] = process.argv.slice(2);
 if (!dir || !prefix) { console.error("usage: node tools/mesh_check.mjs <plate-dir> <prefix>"); process.exit(2); }
-const Z = Plate.prepare(JSON.parse(readFileSync(`${dir}/zones.json`, "utf8")));
-const P = JSON.parse(readFileSync(`${dir}/plate.json`, "utf8"));
+const datBuf = readFileSync(`${dir}/plate.dat`);
+const dat = Plate.parseDat(datBuf.buffer.slice(datBuf.byteOffset, datBuf.byteOffset + datBuf.byteLength));   // plate.dat version 2 (StepA step 1)
+const Z = Plate.prepare(dat.zones);
+const P = dat.plate;
 const meta = JSON.parse(readFileSync(`${prefix}.json`, "utf8"));
 const raw = readFileSync(`${prefix}.bin`);
 const bin = new Float64Array(raw.buffer, raw.byteOffset, raw.byteLength / 8);
@@ -44,7 +46,7 @@ for (const [name, m] of Object.entries(meta.trims)) {
   const trim = Z.trims[name], par = Plate.trimParams(name, trim, Z);
   if (par.n !== m.n || par.steps !== m.steps || par.vmax !== m.vmax) { console.log(`FAIL  trim ${name}: n ${par.n}/${m.n} steps ${par.steps}/${m.steps}`); ok = false; continue; }
   const side = P.trims[name].side;
-  if (side !== m.side) { console.log(`FAIL  trim ${name}: plate.json side ${side} vs ${m.side}`); ok = false; continue; }
+  if (side !== m.side) { console.log(`FAIL  trim ${name}: plate side ${side} vs ${m.side}`); ok = false; continue; }
   const s = Plate.trimStrip(trim, par, side);
   const [dp, du, dv] = cmp(s, m.offset, m.count, 4);      // stride 4: x y u v of each corner
   rep(`trim ${name}`, m.count / 4, dp, du, dv, { pos: 0.01, u: 0.001, v: 0.0001 });

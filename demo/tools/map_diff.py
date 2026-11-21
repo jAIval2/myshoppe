@@ -19,13 +19,16 @@ missing is skipped. Tests (numeric.md section 2):
           the dip (neck area without garment, carried 8 px outward): mean |d| <= 2.5 levels.
 Exit code 0 = all pass.
 """
-import base64, io, json, math, sys
+import base64, io, json, math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plate
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 pd, logp = sys.argv[1], sys.argv[2]
 only = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
 tol_px = float(sys.argv[sys.argv.index("--tol-px") + 1]) if "--tol-px" in sys.argv else 0.5
-plate = json.load(open(f"{pd}/plate.json"))
+REF = make_plate.maps_of(pd)                  # the reference maps: make_plate.py, in memory, from plate.dat (StepA step 1)
+plate = REF["plate"]
 RANGE, MM = plate["uvRangeCm"], plate["mmPerPx"]
 W, H = plate["viewBox"]
 log = json.load(open(logp))
@@ -64,7 +67,7 @@ def unpack(img):
 
 
 want = lambda n: (only is None or n in only) and n in res
-ref_id = Image.open(f"{pd}/id.png").convert("RGB")
+ref_id = REF["id"]
 if want("id"):
     mid = load(res["id"])
     for ci, nm in enumerate("RGB"):
@@ -89,7 +92,7 @@ if want("id"):
     say("id area", abs(cov2 - cov1) <= 0.002 * cov1, f"garment pixels: PNG {cov1}, built {cov2} ({(cov2 - cov1) / cov1 * 100:+.3f} %)")
 
 if want("uv"):
-    ref = Image.open(f"{pd}/uv.png").convert("RGB")
+    ref = REF["uv"]
     mine = load(res["uv"])
     rid = ref_id.split()[0]
     inside = ImageChops.multiply(rid.point(lambda v: 255 if v else 0), band(rid, 5).point(lambda v: 0 if v else 255))   # in a zone, 2 px from any edge
@@ -136,7 +139,7 @@ if want("uv"):
         say(f"uv {nm}", passed, f"{len(d)} px: median {q(.5) / pxe:.2f} px ({q(.5) * 10:.2f} mm), 99 % {q(.99) / pxe:.2f} px, 99.9 % {q(.999) / pxe:.2f} px, max {d[-1] / pxe:.1f} px of fabric; bias {bias:.2f} px; limits {lim_med:.2f} / {lim_99:.2f} px / 0.15")
 if want("uvt"):
     mid = load(res["id"])
-    ref = Image.open(f"{pd}/uv_trim.png").convert("RGB")
+    ref = REF["uvt"]
     mine = load(res["uvt"])
     gref, gmine = ref_id.split()[1], mid.split()[1]
     inside = ImageChops.multiply(gref.point(lambda v: 255 if v else 0), band(gref, 5).point(lambda v: 0 if v else 255))
@@ -165,7 +168,7 @@ if want("uvt"):
             say(f"uvt {names[tid][:5]} {nm}", q(0.5) <= lim_med and q(0.99) <= lim_99 and bias <= 0.15,
                 f"{n} px: median {q(.5):.2f} px, 99 % {q(.99):.2f} px, max {d[-1]:.1f} px; bias {bias:.2f} px; limits {lim_med:.2f} / {lim_99:.2f} px / 0.15")
 if want("shade"):
-    ref = Image.open(f"{pd}/shade.png").convert("RGB").split()[0]
+    ref = REF["shade"]
     mine = load(res["shade"]).split()[0]
     d = ImageChops.difference(ref, mine)
     R = ref_id.split()[0]

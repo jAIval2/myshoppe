@@ -32,7 +32,7 @@
   uniform float uTestMask;  // 1 = draw only where the garment is (the inner part of a trim strip)
   uniform float uMode;      // 0 = a constant colour (id), 1 = the 12-bit packed (u, v) in cm (uv)
   uniform vec4  uCol;
-  uniform float uRange;     // UV range in cm (plate.json uvRangeCm)
+  uniform float uRange;     // UV range in cm (the plate's uvRangeCm)
   out vec4 outColor;
   void main() {
     if (uTestMask > 0.5 && texelFetch(uMask, ivec2(gl_FragCoord.xy), 0).r == 0.0) discard;
@@ -87,8 +87,8 @@
   // ---------------------------------------------------------------------------------------------------------------
   // Step 4: the shade (folds) from the photo. tools/make_plate.py does, in this order:
   //   Lum = base.convert("L") (Pillow: (299 R + 587 G + 114 B) with 16 bit fixed point and rounding), shade = Lum / median (the median
-  //   is a number from plate.json: decided offline), the guided filter of each zone (box windows of radius r, eps, masked by the
-  //   zone; off when plate.json has no shadeSmoothPx), the linear light encoding stored = sqrt(shade_lin / 2) * 255 (truncated),
+  //   is a number of the plate: decided offline), the guided filter of each zone (box windows of radius r, eps, masked by the
+  //   zone; off when the plate has no shadeSmoothPx), the linear light encoding stored = sqrt(shade_lin / 2) * 255 (truncated),
   //   the value 180 (shade 1.0) outside the garment, and in the neck area the garment's shade carried 8 px outward (the dip).
   // Float textures are needed for the filter (var = s2 / n - mean^2): EXT_color_buffer_float. shadePasses() returns null without it.
   const FULL_VS = `#version 300 es
@@ -273,8 +273,8 @@
 
   /*
     build(gl, { plate, Z, idImage, photo, cell }) -> { id, uv, uvt, shade, ms }
-      plate   plate.json (viewBox, uvRangeCm, neck{rect, edge})
-      Z       zones.json, prepared by Plate.prepare (tuck applied)
+      plate   the plate header (Plate.parseDat: viewBox, uvRangeCm, neck{rect, edge})
+      Z       the zone data (Plate.parseDat), prepared by Plate.prepare (tuck applied)
       sync    test: wait for the GPU with a 1 px readback before ms is taken (gl.finish() does not always wait): the true cost of the build
       photo   optional: the decoded base.jpg (an ImageBitmap): with it, and with EXT_color_buffer_float, the shade is built too (step 4)
       idImage optional: the PNG of id.png (an ImageBitmap). With it the trims (G) are the PNG's and uvt is not built
@@ -417,7 +417,7 @@
       }
       gl.disable(gl.SCISSOR_TEST);
     }
-    // ---- trims (step 3): ribbons along the centre lines, back to front in the order of zones.json (a later trim overwrites)
+    // ---- trims (step 3): ribbons along the centre lines, back to front in the order of the plate (a later trim overwrites)
     let uvtTex = null, maskTex = null, uvtFbo = null;
     const trimList = idImage || !Z.trims ? [] : Object.entries(Z.trims);
     if (trimList.length) {
@@ -449,7 +449,7 @@
       const trimShifts = grow > 0 ? [[grow, 0], [-grow, 0], [0, grow], [0, -grow], [0, 0]] : [[0, 0]];   // the centre copy last: its values win
       for (const [name, trim] of trimList) {
         const info = plate.trims[name];
-        if (!info || info.side === undefined) throw new Error(`maps.js: plate.json has no side for trim ${name}`);
+        if (!info || info.side === undefined) throw new Error(`maps.js: the plate has no side for trim ${name}`);
         const par = root.Plate.trimParams(name, trim, Z);
         const tri = root.Plate.trimTriangles(trim, par, info.side, (TRIM_BIAS_PX * plate.mmPerPx) / 10, plate.uvRangeCm, TRIM_V_BIAS_PX / (par.vmax * 2 * par.half));
         const parts = [[tri.inner, true]];

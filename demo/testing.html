@@ -464,8 +464,8 @@
   uniform vec2  uShadowMm;       // shadow offset on the stage in mm: right, down (key light at the upper left)
   uniform float uLinear;        // 1 = light maths in linear light (polish.md step 2), 0 = the old sRGB maths (?linear=0)
   uniform float uSrgbTex;       // 1 = colour textures are SRGB8_ALPHA8 (the GPU decodes), 0 = decode here (fallback)
-  uniform float uShadeSqrt;     // plate.json shadeEncoding == "sqrt": shade = 2 * stored^2, linear light
-  uniform float uShadeMed;      // plate.json shadeMedian / 255 (to convert between the two shade spaces)
+  uniform float uShadeSqrt;     // the plate's shadeEncoding == "sqrt": shade = 2 * stored^2, linear light
+  uniform float uShadeMed;      // the plate's shadeMedian / 255 (to convert between the two shade spaces)
   // ---- live neckline (halfway.md steps 2, 3, 5). In the neck area (id.png B = 1) the garment edge, the reveal fills and the
   // neck trim come from curves, not from the baked maps. All curves in plate px, 24 points, corner to corner (left to right).
   uniform float uNeckLive;      // 1 = live neckline, 0 = the baked maps (?neck=baked)
@@ -956,7 +956,6 @@
   const GEOM = params0.get("geom") === "maps" ? "maps" : "mesh";
   const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1, neck: 1, sleeve: 1, hem: 1 };   // all four views (numeric.md step 5); test: ?meshviews=torso,neck,sleeve,hem to choose
   const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
-  const DAT = params0.get("dat") !== "0";                // test: ?dat=0  plate.json + zones.json instead of plate.dat (the same numbers)
   const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");   // the shade is built on the GPU only with float render targets (else shade.png)
   const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
   const decoded = new Set();
@@ -1027,11 +1026,8 @@
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
       const P = VIEWS[view].plate, maps = mapsOf(view);
-      // a mesh view reads ONE small plate.dat (the curves and the decisions, numeric.md step 6); ?dat=0 reads plate.json + zones.json instead
-      const meta = meshOn(view) && DAT
-        ? blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab))
-        : Promise.all([blobOf(P + "plate.json").then((b) => b.text()).then(JSON.parse), meshOn(view) ? blobOf(P + "zones.json").then((b) => b.text()).then(JSON.parse) : null])
-            .then(([plate, zones]) => ({ plate, zones }));
+      // every view reads ONE small plate.dat (version 2, StepA step 1): the curves, the typed edges and the decisions
+      const meta = blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
       cache[view] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
         .then(([{ plate, zones }, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
@@ -1153,7 +1149,7 @@
   const REVEAL_FILL = params0.get("revealfill") === "0" ? 0 : 1;     // test: ?revealfill=0  plain colours in the revealed areas
   const NECK_N = 24;
   let look = null;                                     // assets/looks/<look>.json
-  let neckGeo = null;                                  // geometry of the current view (from plate.json "neck")
+  let neckGeo = null;                                  // geometry of the current view (the plate's "neck" block)
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const at = (pts, f) => { const i = Math.min(Math.floor(f), pts.length - 2), t = f - i; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; };
   function segDist(p, a, b) {
@@ -1213,7 +1209,7 @@
     const keep = pickIdx(pts, n);                      // (all integer here: the dense list is longer than n)
     return keep;
   }
-  function neckSetup() {                               // per view, from plate.json "neck"
+  function neckSetup() {                               // per view, from the plate's "neck" block
     neckGeo = null;
     const n = plate.neck;
     if (!n || !look) return;

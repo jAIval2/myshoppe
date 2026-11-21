@@ -3,11 +3,11 @@
   A classic script: in the page it sets window.Plate; in Node (tools/mesh_check.mjs) it is `require`d.
 
   Same names and same arithmetic as make_plate.py, so that the page can calculate what the plate maker calculates:
-    resample, coons, tuck, prepare (tuck applied to a copy of zones.json), zoneParams, zoneVertices,
-    trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, parseDat (plate.dat).
+    resample, coons, tuck, prepare (tuck applied to a copy of the zone data), zoneParams, zoneVertices,
+    trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, outlineOf, parseDat (plate.dat version 2).
   make_plate.py stays the reference. Decisions that it takes by searching the image (which side of a trim is the garment
-  edge, the median light, the fill colours, the form patch) are NOT repeated here: they arrive as numbers (plate.json /
-  the .dat file), e.g. trims[name].side.
+  edge, the median light, the fill colours, the form patch) are NOT repeated here: they arrive as numbers (the
+  decisions of plate.dat), e.g. trims[name].side.
 
   Differences from Python on purpose:
   - a zone / trim vertex carries its OWN (u, v) (the value at the vertex); make_plate.py paints one constant (u, v) for each
@@ -89,7 +89,7 @@
     return [x + (x > t.cx ? d : -d), y];
   }
 
-  function prepare(Z) {                                  // a copy of zones.json with "tuck" applied to the front grid and outline
+  function prepare(Z) {                                  // a copy of the zone data with "tuck" applied to the front grid and outline
     const C = JSON.parse(JSON.stringify(Z));
     if (C.tuck) {
       const fz = C.zones.front;
@@ -101,7 +101,7 @@
     return C;
   }
 
-  // ---- zones. Z is a prepared zones.json.
+  // ---- zones. Z is the prepared zone data.
   function zoneParams(name, zone, Z, cell) {             // cell: px per quad (STEP = the plate maker's own grid)
     const g = zone.grid, mmpx = Z.mmPerPx;
     const th = ((Z.thetaDeg && Z.thetaDeg[name]) ?? THETA_DEFAULT[name]) * Math.PI / 180;
@@ -217,12 +217,26 @@
     });
   }
 
-  // ---- plate.dat (tools/make_dat.py): the curves and the numbers of one plate -> { plate, zones }, the same objects as plate.json / zones.json
+  // ---- plate.dat version 2 (tools/platedat.py): every number of one view -> { plate, zones, P }. P is the file as written (typed
+  // edges, zone outlines as chains of edges, trims, decisions); plate and zones are the shapes the map code reads: the plate header
+  // (viewBox, ids, sizes, trim sides, the shade median, the neck block) and the zone data (outlines as points, grids, trims, settings),
+  // exactly as tools/platedat.py legacy() makes them.
+  function outlineOf(P, zone) {                          // the chain of edges, a join point written once
+    const out = [];
+    for (const [name, d] of P.zones[zone].outline) {
+      let pts = P.edges[name].points;
+      if (d < 0) pts = pts.slice().reverse();
+      const same = out.length && out[out.length - 1][0] === pts[0][0] && out[out.length - 1][1] === pts[0][1];
+      for (let i = same ? 1 : 0; i < pts.length; i++) out.push([pts[i][0], pts[i][1]]);
+    }
+    if (out.length > 1 && out[0][0] === out[out.length - 1][0] && out[0][1] === out[out.length - 1][1]) out.pop();
+    return out;
+  }
   function parseDat(buf) {
     const dv = new DataView(buf), u8 = new Uint8Array(buf);
-    if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "BSP1") throw new Error("plate.dat: wrong magic");
+    if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "BSP2") throw new Error("plate.dat: not BSP2");
     const version = dv.getUint16(4, true), unit = dv.getUint16(6, true), hlen = dv.getUint32(8, true);
-    if (version !== 1) throw new Error("plate.dat: version " + version);
+    if (version !== 2) throw new Error("plate.dat: version " + version);
     const head = JSON.parse(new TextDecoder().decode(u8.subarray(12, 12 + hlen)));
     let off = 12 + hlen;
     const curves = head.curves.map((n) => {
@@ -230,24 +244,38 @@
       let x = 0, y = 0;
       for (let i = 0; i < n; i++, off += 4) {
         x += dv.getInt16(off, true); y += dv.getInt16(off + 2, true);
-        pts.push([(x * unit) / 1000, (y * unit) / 1000]);       // an integer / 1000: the same double as the decimal of the JSON file
+        pts.push([(x * unit) / 1000, (y * unit) / 1000]);       // an integer / 1000: the same double as Python's x * unit / 1000
       }
       return pts;
     });
-    const plate = { ...head.plate };
-    if (head.neck) plate.neck = { ...head.neck, edge: curves[head.neck.edge], centre: curves[head.neck.centre], top: curves[head.neck.top] };
-    const Z = { view: head.view, mmPerPx: head.mmPerPx, zones: {}, trims: {} };
-    for (const k of ["thetaDeg", "tuck", "shadeSmoothEps", "shadeSmoothMm"]) if (head[k] !== undefined) Z[k] = head[k];
-    for (const [name, z] of Object.entries(head.zones)) {
-      Z.zones[name] = { order: z.order, grid: Object.fromEntries(Object.entries(z.grid).map(([k, i]) => [k, curves[i]])), outline: curves[z.outline] };
-      if (z.widthPx !== undefined) Z.zones[name].widthPx = z.widthPx;
+    delete head.curves;
+    const walk = (v) => {
+      if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === "object") {
+        const k = Object.keys(v);
+        if (k.length === 1 && k[0] === "@c") return curves[v["@c"]].map((p) => p.slice());
+        return Object.fromEntries(k.map((key) => [key, walk(v[key])]));
+      }
+      return v;
+    };
+    const P = walk(head), D = P.decisions || {}, S = P.settings || {};
+    const plate = { viewBox: P.viewBox, mmPerPx: P.mmPerPx, uvRangeCm: P.uvRangeCm ?? 128, zones: {}, trims: {} };
+    for (const [n, z] of Object.entries(P.zones)) plate.zones[n] = { id: z.id, ...((D.zones || {})[n] || {}) };
+    for (const [n, t] of Object.entries(P.trims || {})) plate.trims[n] = { id: t.id, widthMm: t.widthMm, type: t.type, outerV: 1, ...((D.trims || {})[n] || {}) };
+    for (const k of ["shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck"]) if (D[k] !== undefined) plate[k] = D[k];
+    const Z = { view: P.view, mmPerPx: P.mmPerPx, viewBox: P.viewBox, zones: {}, trims: {} };
+    for (const k of ["thetaDeg", "tuck", "shadeSmoothEps", "shadeSmoothMm", "shadeSpace"]) if (S[k] !== undefined) Z[k] = S[k];
+    if (P.uvRangeCm !== undefined) Z.uvRangeCm = P.uvRangeCm;
+    for (const [n, z] of Object.entries(P.zones)) {
+      Z.zones[n] = { order: z.order, grid: z.grid, outline: outlineOf(P, n) };
+      if (z.widthPx !== undefined) Z.zones[n].widthPx = z.widthPx;
     }
-    for (const [name, t] of Object.entries(head.trims)) Z.trims[name] = { ...t, centre: curves[t.centre] };
-    if (head.occluders) Z.occluders = head.occluders.map((i) => curves[i]);
-    return { plate, zones: Z };
+    for (const [n, t] of Object.entries(P.trims || {})) Z.trims[n] = { order: t.order, widthMm: t.widthMm, type: t.type, centre: t.centre };
+    for (const k of ["landmarks", "stitches", "occluders", "invariants"]) if (P[k] !== undefined) Z[k] = P[k];
+    return { plate, zones: Z, P };
   }
 
-  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, parseDat };
+  const Plate = { STEP, pyRound, length, resample, coons, tuck, prepare, zoneParams, zoneVertices, trimParams, trimStrip, trimTriangles, neck_edge, offset_poly, outlineOf, parseDat };
   if (typeof module !== "undefined" && module.exports) module.exports = Plate;
   else root.Plate = Plate;
 })(typeof window !== "undefined" ? window : globalThis);

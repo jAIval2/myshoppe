@@ -2,19 +2,32 @@
 
 Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.md` (pipeline) and `docs/annotate.md` (measuring).
 
-## Plates
+## Plates (StepA step 1: one file per view)
 
-| Tool | Step | Job |
-|---|---|---|
-| `make_base.py` | 3 | Torso only: sparkle patch, 3:4 cut, 1200 × 1600 |
-| `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` | 3–4 | One per view: base crop, measured points, `zones.json`, `annotate.png`, automatic checks. Templates for new views. |
-| `extract_zones.py` | 4 | Read an **aligned** colour annotation (Path B) |
-| `fit_zones.py` | — | Legacy, torso only |
-| `make_plate.py` | 5 | `id`, `uv`, `uv_trim`, `shade` maps, `plate.json`, `check.png` |
-| `plate_checks.py` | 6 | Acceptance numbers, PASS / FAIL |
-| `plate_invariants.py <plate> [--debug png]` | numeric step 11: the plate's own invariants, PASS / FAIL (closure of the garment against the photo, hairline gaps, symmetry, trim offset and smoothness, landmarks, `plate_checks.py`). Run by `make_plate.py`. zones.json `invariants`: `openings`, `skipTrimOffset` |
-| `snap_outline.py <plate> shoulders [--dry] [--preview png]` | numeric step 9: the front's shoulder run (and the grid's top edge) snapped to the photo's garment edge; writes `tuck.exempt` and a measured `tuck.profile` into `zones.json`. Run once; it refuses a second run |
-| `snap_outline.py <plate> trim-order` / `edge-trim <zone> <name> <x0> <x1> [--extend-start px] [--extend-end px]` / `hem [--dry]` | numeric step 10: hem trims drawn after the slit trims; a new edging trim along another zone's bottom edge (the side pieces of the hem view); `hem --dry` measures a trim's wobble and its offset to the hem edge against a derived centre line |
+A plate folder ships `base.jpg` + `plate.dat`; its source is `source.png` + `tools/annotate_<view>.py` (the torso: its imported
+`plate.dat` until StepA step 2). Nothing in a plate is edited by hand: change the annotate script (or a tool), then rebuild.
+`git diff` shows a `plate.dat` as text once per clone: `git config diff.dat.textconv "python3 demo/tools/platedat.py --dump"`
+(`.gitattributes`: `demo/assets/plates/*/plate.dat diff=dat`).
+
+| Tool | Job |
+|---|---|
+| `make_plate.py <plate> [--review] [--no-check] [--dump-mesh <prefix>]` | The build: source → decisions (trim sides, shade median, neck block, sizes) → `base.jpg` + `plate.dat`, deterministic. The maps only in memory. `--review`: `annotate.png`, `check.png` and the edge crops into `demo/review/<plate>/`. Runs `plate_invariants.py`. As a module: `build()`, `maps_of(plate)` (the maps of a plate.dat, in memory), `rasterise()` |
+| `platedat.py --dump <plate>` / `--check <plate> ...` | `plate.dat` version 2 (`BSP2`): reader, writer, validator, text dump. Format and the data model in its docstring: typed edges (`free`, `seam`, `frame`, `cut`), zone outlines as chains of edges, trims, settings, decisions |
+| `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` | One per view: `base()`, `measure()` (typed edges, zones, trims, landmarks), `review()`. Run alone: the automatic checks. Templates for new views |
+| `make_base.py` | Torso only, until StepA step 2: sparkle patch, 3:4 cut, 1200 × 1600 |
+| `rebuild_check.sh [plate ...]` | Rebuild every plate from its source into a scratch copy: `base.jpg` and `plate.dat` must be byte-identical |
+| `plate_invariants.py <plate> [--debug png]` | The plate's own invariants, PASS / FAIL (closure against the photo, hairline gaps, symmetry, trim offset and smoothness, landmarks, `plate_checks.py`). Plate `invariants`: `openings`, `skipTrimOffset` |
+| `plate_checks.py <plate>` | Grid bulge, grain tilt, UV rate, block ratio, shipped size (replaced by frame rules in StepA step 4, removed in step 7) |
+| `snap_outline.py` | Helpers only (garment mask, robust cubic); its one-off commands went with the JSON files. Removed in StepA step 7 |
+
+## StepA review set (`docs/plan/StepA.md`)
+
+| Tool | Use |
+|---|---|
+| `node tools/cdp_shot.mjs <out> <port> "view=<v>&fabric=mocha&trims=none&stage=600"` | At DPR 2, `stage=600` gives a 1200 × 1600 canvas: one canvas px = one plate px. Shoot `fabric=off` too (the photo as the page draws it) |
+| `fringe.py <canvas> <plate> [--photo <off>] [--debug png] [--json]` | Closure in the render: photo garment the page still shows (count, share, pieces wider than 1 px) and the bright rim along the free edges (share of their length) |
+| `edge_crops.py <canvas> <plate> <out.png> [--photo <off>]` | The review set: a crop at each landmark and every 150 px along each free edge, photo and render side by side, 3× |
+| `plate_edges.py` | Module: the outline samples of a plate with their edge types and outward normals (used by the two above) |
 
 ## Measuring and review (the middleware we keep reusing)
 
@@ -24,7 +37,6 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 | `sample.py <image> label=x,y ... [--blur 1.5]` | RGB / HSV / luminance / chromaticity at points, to set mask thresholds |
 | `align_check.py <annotated> <source> [boxes]` | Is an annotation drawn on the exact base, or regenerated? Exit 0 = aligned |
 | `zoom.py <out> x0,y0,x1,y1 <img> [img ...] [--scale 2] [--nearest]` | 2× review crop, or the same area of several images side by side |
-| `rebuild_check.sh [plate ...]` | After a `make_plate.py` change: rebuild every plate in a scratch copy, compare byte for byte |
 | `shoot_views.sh <out> ["view=hem&fabric=mocha&lace=leaf" ...]` | Headless screenshots of `testing.html`, in parallel, plus `sheet.png` |
 
 ## Swatches
@@ -56,9 +68,9 @@ Python 3 with Pillow only. Run every tool from `demo/`. Procedures: `docs/plate.
 | `node tools/cdp_shot.mjs <out> <port> [--dpr 2] [--win 900x760] [--page] [--mobile] [--reduced] [--input '<json>'] [--eval '<js>'] "<query>" ...` or `--polish [extra]` | Headless Chrome through the DevTools protocol: saves the **canvas** (`canvas-<i>.png`, exact pixels once the frame is drawn) and every console error, including the shader compile log (`log.json`). `--input` sends real mouse / touch / key events (`{"m":"down","sel":"#h-cf"}`, `{"t":"move","dx":10}`, `{"k":"ArrowDown","shift":true}`, `{"kd":" "}` / `{"ku":" "}`, `{"js":"..."}`, `{"wait":ms}`); `--page` adds a full-page screenshot; `--mobile` a phone; `--reduced` prefers-reduced-motion. 5–10 s per query. |
 | `canvas_diff.py <run-a> <run-b> [--diff <out>]` | Two runs canvas by canvas: mean \|difference\|, share > 8 levels, max. PASS at mean ≤ 0.5 ("pixel-identical" in the plan). |
 | `reveal_metrics.py <canvas.png> <plate-dir>` | Step 3: the step across the old neck edge against the light's own change, and the repeat peak of the form fill |
-| `trim_match.py <plate-dir> <sent.json>` | Step 5: the live neck trim (the shader's 24 points) against `uv_trim.png`, in px along and across |
+| `trim_match.py <plate-dir> <sent.json>` | Step 5: the live neck trim (the shader's 24 points) against the plate's uv_trim (in memory), in px along and across |
 
-`make_plate.py` now writes, on the neck and torso plates, the neck area (`id.png` B = 1), the full-grid UV in it, the shade carried 8 px into the dip, and the `neck` block of `plate.json` (edge, trim centre, grid top, CF, reach, fill colours, form patch).
+`make_plate.py` makes, on the neck and torso plates, the neck area (id B = 1), the full-grid UV in it, the shade carried 8 px into the dip, and the `neck` block of the decisions (edge, trim centre, grid top, CF, reach, fill colours, form patch).
 
 ## Numeric plan (`docs/plan/numeric.md`)
 
@@ -66,13 +78,11 @@ The page builds the plate maps itself from the curves: `plate.js` (the maths of 
 
 | Tool | Use |
 |---|---|
-| `make_plate.py <plate> --dump-mesh <prefix>` + `node tools/mesh_check.mjs <plate> <prefix>` | Step 1: every vertex of every zone grid, trim strip and ribbon, and the neck edge, `plate.js` against Python (pass: 0.01 px, 0.001 cm; found 3e-11) |
+| `make_plate.py <plate> --dump-mesh <prefix>` + `node tools/mesh_check.mjs <plate> <prefix>` (reads `plate.dat` through `Plate.parseDat`) | Step 1: every vertex of every zone grid, trim strip and ribbon, and the neck edge, `plate.js` against Python (pass: 0.01 px, 0.001 cm; found 3e-11) |
 | `node tools/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMaps()' "view=torso&geom=mesh"` then `python3 tools/map_diff.py <plate> <out>/log.json [--only id,uv,uvt,shade] [--debug <png>]` | Steps 2-5: the textures that the page built, against `id.png`, `uv.png`, `uv_trim.png`, `shade.png`: edge band, holes, area, uv / uv_trim bias, median and 99 %, shade levels. Criteria in the docstring |
 | `python3 tools/canvas_diff.py <a> <b> [--blur <sigma>]` | Render comparison. A real fabric differs by the PNG maps' own 12-bit uv noise (about a texel); the gate is the grain checker (`?checker=1`, mean <= 1.0) with `?trims=none`; `--blur` shows the structure |
-| `python3 tools/make_dat.py <plate> \| --all` | Step 6: `plate.dat` from `zones.json` + `plate.json` (BSP1, int16 deltas in 0.1 px; format in the docstring) |
-| `node tools/dat_check.mjs <plate> ...` | `parseDat()` gives back plate.json / zones.json exactly |
 
-Test switches of the page: `?geom=mesh`, `?meshviews=torso,neck,sleeve,hem`, `?gpushade=0` (shade from `shade.png`), `?dat=0` (JSON instead of `.dat`), `?cell=<px>` and `?mapoff=idx,idy,uvx,uvy,grow` (mesh calibration), `?checker=1`, `?trims=neck,cuffs,hem,slits|none`.
+Test switches of the page: `?geom=mesh`, `?meshviews=torso,neck,sleeve,hem`, `?gpushade=0` (shade from `shade.png`), `?cell=<px>` and `?mapoff=idx,idy,uvx,uvy,grow` (mesh calibration), `?checker=1`, `?trims=neck,cuffs,hem,slits|none`.
 
 ## Quality plan (`docs/plan/upscale.md`)
 
