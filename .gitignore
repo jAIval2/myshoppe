@@ -15,3 +15,6 @@ playwright-report/
 web/public/uploads/
 SPRINT_PLAN.md
 STLING_GUIDE.md
+
+# StepA: review images made on demand (make_plate.py --review, edge_crops.py, fringe.py)
+demo/review/

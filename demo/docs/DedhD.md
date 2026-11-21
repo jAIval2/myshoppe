@@ -160,6 +160,7 @@ Decide with the atelier before photography.
 4. "Worn with": (a), (b) or (c).
 5. Anarkali lengths as cuts: acceptable or not.
 6. Numeric plates (§10): build the mesh from the curves, beside the current renderer, before polish step 5 (edging lace) starts.
+7. The direction after the current silhouette: options A–E in §11.7.
 
 ## 10. Numeric plates: curves in place of coordinate images
 
@@ -242,3 +243,166 @@ Kept from it: separate textile coordinates (u, v in cm) from screen position, an
 2. Shade from the photo; compare with `shade.png`.
 3. Port neckline, sleeve, hem; same comparisons.
 4. Stop shipping the 4 maps. Keep `make_plate.py` as the offline reference and the test.
+
+## 11. Review: tools, cost, the 2.5D proposal, the Amber model, and the direction
+
+Date: 2026-11-21. Status: findings and options, no plan. Scope: the 4 fixed views. **No 3D, no pan, no zoom in the product.**
+
+Agreed order: close the current silhouette (straight kurta) → perfect the swatches and laces on its 4 views → merge to `main` → more clothes.
+
+### 11.1 Facts that change the reading of earlier sections
+
+1. **All images are AI-generated:** the 4 base images, the swatches and the laces. They work well in the renderer. Consequences:
+   - The neck-depth mismatch between the torso and the neckline views (25.2 mm against 40.9 mm, `plan/halfway-results.md` step 6) does not come from the camera height. Two generated images disagree. Fix it by editing or regenerating one view to agree with the other. No re-shoot is needed.
+   - The swatches have no measured scale. "1024 px per 30 cm" and each lace's `widthMm` are assumptions. A real swatch needs a flat scan with a ruler, and a colour card.
+   - §5 still holds: AI images redraw the form and the light, so bands joined at fixed lines (§5 A) are risky with them.
+2. **The fabric has no shared frame.** `make_plate.py` starts each zone's (u, v) at the zone's own grid corner (u along the top edge with the cylinder correction, v downward). So:
+   - the same point of the garment has different fabric coordinates in each view: a motif is not at the same place in the torso view and the neckline view;
+   - the print does not continue from the front onto the sleeve.
+
+   §5 C (U from the centre-front line, V from the neck point) was proposed but not built.
+3. **Every plate fails closure** (`plan/numeric-results.md` step 11): the traced outlines sit 1–3 px inside the real edge. Together with the shoulders (numeric step 9), this is now the main defect in the demarcation.
+4. **Branches.** `main` is `polish` step 8 (ba978fe). `halfway` and `numeric` are 20 commits ahead, and `main` is their ancestor, so the merge is a fast-forward. The `polish` checkout has an uncommitted copy of §10, which is already committed on `numeric`.
+
+### 11.2 Off-the-shelf tools: none to drop in
+
+| Kind | Examples | Fit |
+|---|---|---|
+| Swatch onto a garment photo | Hosted services (Photta, Segmind, Pixa). No open-source tool found. | The same idea as ours, but closed and paid for each render |
+| 3D configurator in the browser | three.js demos (a texture swap on a UV-mapped model) | Needs a 3D garment; looks computer-made; against `render.md` §2 |
+| AI try-on, texture transfer | CatVTON, IDM-VTON (non-commercial licence), FabricDiffusion | No control of lace repeats or motif placement; a GPU for each render |
+
+Our method (photo + id, uv and shade maps, or their curves) is the standard 2D method. The compositor is not where the cost is. The plates are.
+
+### 11.3 The 3D route (CLO3D or Blender) and its cost
+
+Estimates of 2026-11-19, to check with quotes:
+
+| Item | Estimate |
+|---|---|
+| Blender | Free |
+| 7 base silhouettes, by an Indian CLO3D freelancer | ₹5–15k each → ₹35k–1.05 L |
+| ≈ 30 part variants (necklines, sleeves, lengths, bottoms, dupattas, backs) | ₹1–3k each → ₹30–90k |
+| CLO3D licence (only to edit the garments ourselves) | ≈ $50 a month; Marvelous Designer $280 a year |
+| **Total** | **≈ ₹70k–2.1 L, one time** |
+
+- Ready-made Indian garments in 3D: almost none on the marketplaces (one men's kurta found). Custom work from the master's paper patterns (DXF into CLO3D) gives the boutique's own cut.
+- Use: offline only, to render base, id, uv and shade for each view (exact to the pixel, no annotation). Never in the browser.
+- Not needed while the AI images work.
+
+### 11.4 The "2.5D parametric garment" proposal (external, 2026-11-21)
+
+Most of it exists already:
+
+| Proposal | In the repo |
+|---|---|
+| Measurements in mm, one design record → 4 views | `halfway` (the Amber model, `state.neck`, `mmPerPx` for each view) |
+| Parametric neckline | `halfway` steps 2–6 |
+| Anchors | Landmarks, for the neckline only |
+| Fabric frame (repeat in mm, grain) | Partly: `uvRangeCm`, zone sizes in cm, `thetaDeg`, the grain checker. No shared origin (§11.1, item 2). |
+| Z relief separate from the layer order | `polish` steps 6–7 (relief, metal and pearl masks, displacement in folds, sheen); `order` in the `.dat` |
+| Extend the `.dat` | `numeric` step 6 holds zones, trims, order and curves. The proposed `garment/` folder is not needed. |
+
+The new parts, with an estimate of how likely each is to work:
+
+| Item | Likely | Why |
+|---|---|---|
+| Shorter hem, slit length | High | The neckline method: move a curve, the trims follow, fill the revealed area |
+| Longer hem (≤ 50 mm) | Medium | The fabric extends, but the image has no folds or shade there |
+| Sleeve length | Medium | The form has no arms: in a ¾ view the revealed area is background |
+| The same motif place in all views | Medium | Needs the shared frame (§11.1, item 2) and views that agree (§11.1, item 1) |
+| Local deformation (bust, shoulder, flare, waist) | Low to medium | The folds and the light are in the image: small changes only. Large changes need new images. |
+
+### 11.5 The Amber model, read again
+
+The analogy of `plan/halfway.md` §1 holds beyond the neckline. Amber splits its files: the parameters for each atom type (`parm10.dat`, with overrides in `frcmod`), the topology (`prmtop`), and the coordinates (`inpcrd`). The same split fits here.
+
+| Amber | Here | Now |
+|---|---|---|
+| Atom types, `parm*.dat` | Material classes. Fabric: repeat in mm, direction, sheen, print type. Lace: period, edging or insertion, metal, pearl. | Partly (`lace-*.json`) |
+| `frcmod` (overrides) | A swatch's own values over its class | No |
+| Residues with head and tail atoms (LEaP libraries) | Parts (neckline, sleeve, hem band) with connection anchors | Counted in §5, not built |
+| Topology (bonds) | Zones, seams, trims, draw order | Yes, but the seams are not listed |
+| Cartesian coordinates | Curves in plate px, one set for each view | Yes |
+| Internal coordinates (Z-matrix) | Design parameters in mm | The neckline only |
+| Flat-bottom restraints (r1 < r2 ≤ r3 < r4: free from r2 to r3, harmonic outside, then linear) | Ranges with a soft wall | Hard stops now |
+| Constraints (SHAKE: fixed bond lengths) | A fixed lace width; whole repeats on each trim | Yes (`polish` step 4) |
+| Periodic boundary conditions, minimum image | The fabric repeat is the unit cell; the cell's offset sets where the motif sits | The repeat yes, the offset no |
+| Energy minimisation | Fit an outline to the edge (data + smoothness terms); deform the mesh "as rigid as possible" | `snap_outline.py` (a robust cubic) |
+| Trajectory (`mdcrd`) | A series of design states: transitions, undo, the journey record | No |
+| 3D force field (bonds = stretch, angles = shear, dihedrals = bending, non-bonded = collision) | Cloth simulation (mass-spring, XPBD) | Rejected for the product (§10.7); offline only |
+
+**The three coordinates, here:**
+- **x, y:** the plate px of each view (one set for each view).
+- **u, v:** the fabric in cm, one frame for the whole garment (to build: §11.1, item 2).
+- **z:** two separate things. **Relief** is continuous (shade, folds, the height of lace, zari and pearls). **Layer** is discrete (draw order). A normal for each pixel can come offline from the AI base, with a monocular normal estimator (StableNormal, Marigold, DSINE). The "Textureshop" method uses such normals to compress the print where the surface turns away.
+
+### 11.6 The process so far
+
+What works:
+- One step = one commit, test switches, reference ports, measured gates, results written with their failures.
+- `plate_invariants.py` (`numeric` step 11): a new plate must pass it or say why.
+
+What costs us:
+- **Unverified checks pile up.** Not done on a real device or by a person: draw time ≤ 5 ms; build time (1.4–3.1 s in software rendering); drag ≥ 30 frames per second; the 10-second tests; lace relief at 2×; anti-tiling at 2×; a person on a phone.
+- **Identity gates keep old defects.** "Pixel-identical to the previous port" protected the refactors, but the outlines inside the real edge and the trim order that cut the hem lace short were found only by eye, and late (`numeric` steps 9–10).
+- **Each plate is made by hand, view by view.** 4 annotations and their fixes for each silhouette is the bottleneck for more clothes.
+- **Three worktrees, three copies of the docs.**
+
+### 11.7 Options from here
+
+| Option | Covers | Effort | Risk |
+|---|---|---|---|
+| **A. Close the demarcation** | Silhouette | Small to medium | Low. Needed before the merge. |
+| **B. One fabric frame** | Swatches | Medium | Medium (depends on A) |
+| **C. Lace as parts** | Laces | Medium | Low to medium |
+| **D. Interactions on the design record** | Interactions | Medium | Low; needs a real phone |
+| **E. Catalogue factory** | More clothes | Large | Medium; pays back from the 2nd silhouette |
+
+**A. Close the demarcation** — plan: `plan/StepA.md` (it also replaces the Coons patch with a fabric frame, and measures the torso again).
+- Snap every free edge of every outline, with the seams excluded. This needs an explicit seam list. Target: the 4 plates pass closure.
+- The open items of `numeric` step 11: the neck plate's 249 px of thin gaps; the torso's slit landmarks and body side; the sleeve's `cuff-l` offset; the hem's 43 px piece; the speck at the right neck corner.
+- Make the two front views agree: edit the torso or neckline image so that the neckline depth agrees within ±3 mm, then re-annotate.
+- Option: soft edges (alpha) from a matting model (SAM 2 with ZIM or SAM2Matting) in place of hard outlines.
+
+**B. One fabric frame for the garment**
+- (u, v) from the centre front and the neck point (§5 C), the same in all 4 views. Front, sleeve and back pieces keep their own grain but join at the seams.
+- Placement: the motif offset is a design value (a buta on the centre front, a border at the hem): the minimum-image rule.
+- Swatch classes: all-over, border (daaman), buta, one-way print, irregular (bandhani, ikat); sheen (cotton, silk, velvet); metal (zari); relief (chikankari).
+- Scale: a swatch sidecar with mm per px from a ruler scan; colour from a card.
+- Optional: normals from the base image, to compress the print where the surface turns away.
+
+**C. Lace as parts**
+- Corner and end pieces, as in a pattern brush (side, outer corner, inner corner, start, end tiles): V and square necklines, slit tops, the hem-to-slit join (a butt join now).
+- A join type for each seam: butt, mitre, overlap.
+- A repeat rule while dragging: keep the motif count inside a small scale band (as SHAKE keeps a length), change the count only past a threshold (hysteresis), so that motifs do not jump.
+- Indian trim classes: gota patti, zari border, pearl, mirror work, tassel edging (latkan).
+
+**D. Interactions on the design record**
+- Flat-bottom ranges: free inside, resistance near the limit, then the stop. Detents at the look's `stops`.
+- Coupled rules (lace narrower than the neck depth) shown as feedback, not as a refusal.
+- Handles for hem rise and slit length (§11.4).
+- Drag the print: the customer sets where the motif sits (needs B).
+- Trajectory: smooth transitions between presets, undo, and the design record as an order sheet in mm for the atelier.
+
+**E. Catalogue factory**
+- Generate the 4 views of a new silhouette from one reference image with a shared layout, so that the landmarks agree.
+- Outlines from SAM 2 (Apache 2.0) as the first trace. Landmarks named in the DeepFashion2 style (x, y, visibility). Then the `annotate-plate` checks, with `plate_invariants.py` as the gate.
+- Parts and anchors (§5), so that silhouettes share necklines and sleeves.
+
+**For all options:** the device and person checks of §11.6; one branch after the merge.
+
+### 11.8 Sources
+
+- Amber file formats: https://ambermd.org/FileFormats.php; LEaP: https://ambermd.org/tutorials/pengfei/index.php; restraints r1–r4: https://structbio.vanderbilt.edu/archives/amber-archive/2003/1917.php
+- Textureshop (Fang and Hart, 2004): https://history.siggraph.org/?p=116167; retexturing with folds (White and Forsyth, 2005): https://www2.eecs.berkeley.edu/Pubs/TechRpts/2005/EECS-2005-4.html
+- Normals from one image: StableNormal https://arxiv.org/abs/2406.16864, Marigold https://arxiv.org/abs/2505.09358
+- Intrinsic decomposition (Careaga and Aksoy, academic licence): https://github.com/compphoto/Intrinsic
+- As-rigid-as-possible deformation (Igarashi et al., 2005): https://www-ui.is.s.u-tokyo.ac.jp/~takeo/research/rigid
+- Pattern brush tiles: https://www.adobe.com/learn/illustrator/web/illustrator-create-pattern-brush
+- Matching prints at seams: https://www.seamwork.com/articles/how-to-match-plaids-stripes-and-large-patterns
+- DeepFashion2 landmarks: https://github.com/switchablenorms/DeepFashion2; SAM 2 matting: https://arxiv.org/abs/2606.27339
+- Browser cloth (XPBD, WebGPU): https://github.com/jspdown/cloth
+- Try-on model licences: https://fashn.ai/blog/comparing-the-top-4-open-source-virtual-try-on-viton-models
+- CLO3D and Marvelous Designer prices: https://www.xp-pen.com/blog/clothing-design-software.html, https://www.cgchannel.com/?p=178281
+- CLO3D freelance budgets in India: https://www.freelancer.com.bd/projects/fashion-design/clo-designer-for-outfit-collection
