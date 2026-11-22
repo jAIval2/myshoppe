@@ -12,7 +12,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - **Current branch of work:** `stepA` (worktree `../myshoppe-stepA`, port 8300), from `numeric`. **Task:** `demo/docs/plan/StepA.md` (the silhouette closed to the photo's edge; replaces the Coons patch; one `plate.dat` per view). Progress: `plan/StepA-results.md`.
 - **Agreed order** (`DedhD.md` §11): StepA → perfect the swatches and laces on the 4 views → merge to `main` → more silhouettes.
 
-**Read in this order for StepA:** this file → `DedhD.md` §11 → `plan/StepA.md` → `plate.md` and `annotate.md` (the current pipeline that StepA changes) → `plan/numeric-results.md` steps 9–11 (the defects StepA fixes).
+**Read in this order for StepA:** this file → `DedhD.md` §11 → `plan/StepA.md` → `plate.md` and `annotate.md` (the current pipeline that StepA changes) → `numeric-results.md` (git history, `da48bfc`) steps 9–11 (the defects StepA fixes).
 
 ## 2. Branches, worktrees, ports
 
@@ -58,7 +58,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - `?perf=1`: an overlay with the build time (with a 1 px readback), the draw time, the frame rate of a drag, and whether float render targets exist.
 
 **Test switches** (URL query): `?view=torso|neck|sleeve|hem`, `?fabric=off|sage|mocha|mustard`, `?lace=pearl|geometric|leaf|fine|paisley|brocade`, `?trims=neck,cuffs,hem,slits|none`, `?checker=1`, `?step=`, `?test`, `?perf=1`, `?syncbuild=1`, `?stage=`.
-Before / after of closed plans: `?shade=0`, `?shadow=`, `?linear=0`, `?lacefit=0`, `?edging=0`, `?relief=0`, `?displace=0`, `?sheen=0|test`, `?antitile=0`, `?bias=`, `?aniso=0`, `?revealfill=0`, `?snap=0`. StepA removed the switches of the old methods (`?geom`, `?meshviews`, `?decode=all`, `?neck=baked`, `?gpushade`, `?cell`, `?mapoff`, `?dat=0`) and its own (`?torso=v1`, `?frame=coons`, `?softedge`) in its step 7.
+`?neckDepth=<mm>&neckWidth=<mm>` (the design record). The before / after switches of the closed plans (`?shade=0`, `?linear=0`, `?lacefit=0`, `?sheen=`, `?revealfill=0`, `?bias=`, `?aniso=0`, `?snap=0` and the rest) were removed in the cleanup, with their code paths; StepA step 7 had removed the switches of the old methods.
 
 ## 5. `demo/assets/`
 
@@ -92,6 +92,8 @@ Review images (`annotate.png`, `check.png`, crops) are made on demand into `demo
 | `swatchprep/sources/fabric-sage-640.png`, `swatchprep/sources/lace-pearl-640.png` | Legacy first swatches (`prep_swatches.py`); left for the swatch plan |
 
 The old review runs of the `upscale` and `polish` plans (`demo/after-*`, `demo/baseline*`) were removed in StepA step 7; git history keeps them (430c3fd).
+
+**Closed plans** (`upscale`, `polish`, `halfway`, `numeric`, with their results and figures) were removed in the cleanup (`plan/cleanup.md`); code comments still cite their steps. Read one with `git show da48bfc:demo/docs/plan/<name>.md`.
 
 ## 6. `demo/silhouette/` and `demo/swatchprep/`
 
@@ -132,7 +134,7 @@ node silhouette/checks/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"      # ex
 | **`widthPx`** | A fabric-width override for a sleeve cap. Removed by StepA. |
 | **Neck area / reveal fill** | Where the live neckline can move; the fabric or the dress-form linen that a change reveals |
 | **Design record** | The customer's choices in mm (`state.neck`), one record shown in all views |
-| **The Amber model** | The data split borrowed from the Amber molecular-dynamics package: parameters, topology, coordinates, internal coordinates (mm), restraints (`halfway.md` §1, `DedhD.md` §11.5) |
+| **The Amber model** | The data split borrowed from the Amber molecular-dynamics package: parameters, topology, coordinates, internal coordinates (mm), restraints (`halfway.md` (git history, `da48bfc`) §1, `DedhD.md` §11.5) |
 | **Closure** | Photo garment that no zone covers: the white rim |
 | **`mmPerPx`** | The plate's scale, from an agreed value (`plate.md` §5) |
 | **Lace fit** | Whole repeats on each trim, a defined start, a scale of 1.00–1.03 |

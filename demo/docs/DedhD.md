@@ -2,7 +2,7 @@
 
 Date: 2026-11-18. Status: analysis, for decisions with the atelier.
 Source of the option counts: the Salon code (`C_GROUPS`, `C_FIELDS_BY_SILHOUETTE` in the Bespoke Studio — 2 demo).
-Related: `render.md` (method), `plan/upscale.md` (quality).
+Related: `render.md` (method), `upscale.md` (git history, `da48bfc`) (quality).
 
 ## 1. Summary
 
@@ -253,7 +253,7 @@ Agreed order: close the current silhouette (straight kurta) → perfect the swat
 ### 11.1 Facts that change the reading of earlier sections
 
 1. **All images are AI-generated:** the 4 base images, the swatches and the laces. They work well in the renderer. Consequences:
-   - The neck-depth mismatch between the torso and the neckline views (25.2 mm against 40.9 mm, `plan/halfway-results.md` step 6) does not come from the camera height. Two generated images disagree. Fix it by editing or regenerating one view to agree with the other. No re-shoot is needed.
+   - The neck-depth mismatch between the torso and the neckline views (25.2 mm against 40.9 mm, `halfway-results.md` (git history, `da48bfc`) step 6) does not come from the camera height. Two generated images disagree. Fix it by editing or regenerating one view to agree with the other. No re-shoot is needed.
    - The swatches have no measured scale. "1024 px per 30 cm" and each lace's `widthMm` are assumptions. A real swatch needs a flat scan with a ruler, and a colour card.
    - §5 still holds: AI images redraw the form and the light, so bands joined at fixed lines (§5 A) are risky with them.
 2. **The fabric has no shared frame.** `make_plate.py` starts each zone's (u, v) at the zone's own grid corner (u along the top edge with the cylinder correction, v downward). So:
@@ -261,7 +261,7 @@ Agreed order: close the current silhouette (straight kurta) → perfect the swat
    - the print does not continue from the front onto the sleeve.
 
    §5 C (U from the centre-front line, V from the neck point) was proposed but not built.
-3. **Every plate fails closure** (`plan/numeric-results.md` step 11): the traced outlines sit 1–3 px inside the real edge. Together with the shoulders (numeric step 9), this is now the main defect in the demarcation.
+3. **Every plate fails closure** (`numeric-results.md` (git history, `da48bfc`) step 11): the traced outlines sit 1–3 px inside the real edge. Together with the shoulders (numeric step 9), this is now the main defect in the demarcation.
 4. **Branches.** `main` is `polish` step 8 (ba978fe). `halfway` and `numeric` are 20 commits ahead, and `main` is their ancestor, so the merge is a fast-forward. The `polish` checkout has an uncommitted copy of §10, which is already committed on `numeric`.
 
 ### 11.2 Off-the-shelf tools: none to drop in
@@ -315,7 +315,7 @@ The new parts, with an estimate of how likely each is to work:
 
 ### 11.5 The Amber model, read again
 
-The analogy of `plan/halfway.md` §1 holds beyond the neckline. Amber splits its files: the parameters for each atom type (`parm10.dat`, with overrides in `frcmod`), the topology (`prmtop`), and the coordinates (`inpcrd`). The same split fits here.
+The analogy of `halfway.md` (git history, `da48bfc`) §1 holds beyond the neckline. Amber splits its files: the parameters for each atom type (`parm10.dat`, with overrides in `frcmod`), the topology (`prmtop`), and the coordinates (`inpcrd`). The same split fits here.
 
 | Amber | Here | Now |
 |---|---|---|

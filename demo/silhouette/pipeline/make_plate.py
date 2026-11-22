@@ -379,7 +379,7 @@ def rasterise(Z, base):
             for (x, y), v in new.items():
                 sp[x, y] = v
             known |= set(new)
-        # colours for the plain fills (?revealfill=0) and the toile: median of the garment just below the edge band, and of the
+        # colours of the toile (where a deeper neck shows it) and of the form (kept in the plate's neck block): median of the garment just below the edge band, and of the
         # form just above the edge
         edge = NECK["edge"]
         tw = 12.0 / MMPX                                   # the photographed garment's own edge band (the toile colour is read below it)

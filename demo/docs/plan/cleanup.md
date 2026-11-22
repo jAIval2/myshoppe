@@ -1,6 +1,6 @@
 # Cleanup before merging `stepA` into `halfway`: the delete list and two pipeline folders
 
-Status: **for review**. Nothing is deleted or moved yet. StepA is committed (`da48bfc`). Scope: `demo/` and the two skills; the backend and the rest of the repository are not touched.
+Status: **done** (2026-11-22). Cleanup 1 (`a6dc1be`): the two folders. Cleanup 2: the deletions and the test switches. StepA itself: `da48bfc`. Scope: `demo/` and the two skills; the backend and the rest of the repository are not touched.
 
 ## 1. What "in use" means
 
@@ -30,7 +30,9 @@ They all stay in git history (`da48bfc`). `render.md` §11 keeps its one-paragra
 **Test switches of closed plans in `testing.html`** (their old code paths go with them):
 - `?shade=0`, `?shadow=`, `?linear=0` (the old sRGB maths, `uLinear`), `?sheen=0|test` (`uSheenOld`), `?antitile=0`, `?displace=0`;
 - `?lacefit=0`, `?edging=0`, `?relief=0`;
-- `?revealfill=0` (plain fills), `?bias=`, `?aniso=0`, `?snap=0`, `?test`.
+- `?revealfill=0` (plain fills), `?bias=`, `?aniso=0`, `?snap=0`.
+
+`?test` **stays** (a correction to the first list): it opens the panel that holds `#stat` (which `?perf=1` writes) and the grain checker toggle.
 
 **Kept switches:** `?view`, `?step`, `?fabric`, `?lace`, `?trims`, `?checker`, `?stage`, `?neckDepth` / `?neckWidth`, `?perf`, `?syncbuild`. The review harness and step 8 use them.
 
@@ -97,3 +99,11 @@ demo/swatchprep/
    - the `halfway` worktree has 7 changes: `DedhD.md`, `testing.html`, and copies of the brocade and paisley laces that `stepA` already has;
    - the main checkout (branch `polish`) has the same kind.
 5. Merge: `halfway` is an ancestor of `stepA` (stepA is 16 commits ahead, halfway 0), so `halfway` fast-forwards to `stepA`.
+
+## 5. Done
+
+| | Result |
+|---|---|
+| Cleanup 1 (`a6dc1be`) | 31 files moved with `git mv`; `plate.py` and `prep.py`; READMEs. `rebuild-check`: ALL IDENTICAL. `check` and `page-check` on the 4 views: the same numbers as before the move. 10 page queries: no console error |
+| Cleanup 2 | Deleted: 5 tools, the 4 closed plans with their results, 19 figures (12 MB). 13 test switches gone with their code (the old sRGB maths, the plain fills, the old sheen, `uShadeOn`, `uAniso`, `uMipBias` → `MIP_BIAS`, `uRevealFill`, `uFormRGB`). The same 10 queries: no console error; the render against the one before the switches went: 8–158 px differ, as much as two runs of the same code (163 px, the headless renderer's noise) |
+| Kept docs | Links to the closed plans now say "git history, `da48bfc`"; code comments still cite their steps (`git show da48bfc:demo/docs/plan/<name>.md`) |

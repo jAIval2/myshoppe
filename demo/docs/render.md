@@ -335,7 +335,7 @@ python3 swatchprep/prep_swatches.py assets assets/swatches /tmp          # add `
 - **One WebGL2 fragment shader** on a full-screen triangle. There are no libraries.
 - **It draws only when a choice changes.** It keeps the last frame (`preserveDrawingBuffer: true`).
 - **Data maps** (`id`, `uv`, `uv_trim`, `shade`) load with `createImageBitmap` (`colorSpaceConversion: "none"`, `premultiplyAlpha: "none"`). The shader reads them with `texelFetch`, with no filtering.
-- **Swatches** use `textureGrad`. The gradients come from the plate UV (central difference over ±4 plate px), and only when the neighbours are in the same zone or trim. Otherwise a round footprint from the known scale is used. Thus there are no seams where the UV jumps between zones. A mip bias of −0.5 (`uMipBias`) and anisotropic filtering (max 8, if the browser has it) are on. Test switches: `?bias=<n>`, `?aniso=0`.
+- **Swatches** use `textureGrad`. The gradients come from the plate UV (central difference over ±4 plate px), and only when the neighbours are in the same zone or trim. Otherwise a round footprint from the known scale is used. Thus there are no seams where the UV jumps between zones. A mip bias of −0.5 (`MIP_BIAS` in the shader) and anisotropic filtering (max 8, if the browser has it) are on.
 - **Canvas size:** up to 2 × the plate (DPR ≤ 2). When the canvas is larger than the plate, the fabric and trim UV are interpolated between 4 plate texels, only if all four are in the same zone (trim). Shade is read from a second, linearly filtered copy of `shade.png`. Test switch: `?stage=<css px>` makes the stage wider.
 - **Edges:** a soft edge from a 3 × 3 sample of the zone map (bilinear mix of the mask when the canvas is larger than the plate).
 - **Controls:**
@@ -362,7 +362,7 @@ python3 swatchprep/prep_swatches.py assets assets/swatches /tmp          # add `
 | Neck points and shoulder line about 15 px too low | Measured the real points again. Scaled the neck dip to the real opening. |
 | Gaps between the sleeves and the front (the two lines were drawn side by side) | The front goes **under** the sleeves: 40 px from the shoulder to the cuffs, 12 px below the cuffs, 10 px at the shoulder tips. |
 | Mirrored fabric tiling made diamond patterns | The swatch is made seamless offline (minimum-error seam cut to a half-offset copy, inside 64 px of the tile edge). Normal repeat. |
-| The fabric and the lace looked soft and blocky | Plate with one UV per pixel (was 2 × 2 blocks; lace 12 steps across); narrow seam cut instead of a wide blend; `textureGrad` with plate gradients and −0.5 mip bias; interpolation when the canvas is larger than the plate. Numbers: `docs/plan/upscale-results.md`. Bodice sharpness 856 → 1335, block ratio 0.43 → 0.03. |
+| The fabric and the lace looked soft and blocky | Plate with one UV per pixel (was 2 × 2 blocks; lace 12 steps across); narrow seam cut instead of a wide blend; `textureGrad` with plate gradients and −0.5 mip bias; interpolation when the canvas is larger than the plate. Numbers: `upscale-results.md` (git history, `da48bfc`). Bodice sharpness 856 → 1335, block ratio 0.43 → 0.03. |
 | White halos around the lace | The key uses warmth (red − blue), not darkness. Paper shadows are neutral. |
 | The canvas did not show in headless screenshots | Removed the opacity fade. Kept the drawing buffer. |
 
@@ -372,14 +372,14 @@ python3 swatchprep/prep_swatches.py assets assets/swatches /tmp          # add `
 - **The fit error can still show** as a thin white strip at some places along the sides.
 - **The left-side points are mirrored** from the right side. The left side of the photo is in shadow, so we could not measure it.
 - **The scale is an assumption:** shoulder width = 370 mm (size M), and fabric tile = 30 cm. Replace both with real measures.
-- **The load time and the draw time were not measured on a real GPU.** The headless harness uses virtual time and reports 0.0 ms for the draw. The ≤ 5 ms budget in `docs/plan/upscale.md` is unverified. The new shader does about 8 more `texelFetch` calls for each fabric pixel and for each lace pixel.
+- **The load time and the draw time were not measured on a real GPU.** The headless harness uses virtual time and reports 0.0 ms for the draw. The ≤ 5 ms budget in `upscale.md` (git history, `da48bfc`) is unverified. The new shader does about 8 more `texelFetch` calls for each fabric pixel and for each lace pixel.
 - **The silhouette is stair-stepped when the canvas is larger than the plate.** The garment mask is a 1200 px binary raster.
 - **The lace swatch (713 KB) is over the 600 KB swatch budget** of the upscale plan.
 - **One petal at the corner of the fabric tile is slightly clipped** where two seam cuts meet. Not visible at garment scale.
 
 #### Next steps
 
-1. Image quality (done, see `docs/plan/upscale-results.md`; step 5, a 1792 px plate and a 2048 px fabric, was not needed). Open: measure draw time on a real GPU and on a phone; shrink the lace swatch; soft alpha for the silhouette.
+1. Image quality (done, see `upscale-results.md` (git history, `da48bfc`); step 5, a 1792 px plate and a 2048 px fabric, was not needed). Open: measure draw time on a real GPU and on a phone; shrink the lace swatch; soft alpha for the silhouette.
 2. Draw the annotation again on the real `base.jpg`, in a normal editor. Then the fit step is not necessary.
 3. Get one real measurement of the kurta, for the scale.
 4. Fix the pearl key: add a rule for small bright round shapes.
@@ -438,7 +438,7 @@ python3 swatchprep/prep_swatches.py assets assets/swatches /tmp          # add `
   - The two edges of one slit use `slit-l` (front) and `slit-r` (back): `FLIP` in `testing.html` flips `slit-r` already, but the lace direction is not checked in the page.
   - One cylinder for each zone: the `back` strip is only 3 cm wide, and its squares narrow towards the tip as a real turned panel would, but this is an approximation.
 
-### 2026-11-19: polish of the fabric and lace overlay (`docs/plan/polish.md`, results in `docs/plan/polish-results.md`)
+### 2026-11-19: polish of the fabric and lace overlay (`polish.md` (git history, `da48bfc`), results in `polish-results.md` (git history, `da48bfc`))
 
 | Step | What changed | Measured |
 |---|---|---|
@@ -460,7 +460,7 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 - **Pearl lace on the hem view:** the hem is 3.4 repeats long; not fitted (a motif is cut at one end).
 - The scale values (`repeatCm`, lace `widthMm`) are still assumptions.
 
-### 2026-11-19: live neckline and the showcase (`docs/plan/halfway.md`, results in `docs/plan/halfway-results.md`)
+### 2026-11-19: live neckline and the showcase (`halfway.md` (git history, `da48bfc`), results in `halfway-results.md` (git history, `da48bfc`))
 
 | Step | What changed | Measured |
 |---|---|---|
@@ -474,7 +474,7 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 
 **Verification:** `silhouette/checks/cdp_shot.mjs` (headless Chrome through the DevTools protocol) saves the canvas pixels and the console errors, and sends real mouse, touch and key events. The shader compiles. Open: draw time and the frame rate during a drag on a real phone, the memory panel, and a person's walk through the journey.
 
-### 2026-11-20: numeric plates (`docs/plan/numeric.md`, results in `docs/plan/numeric-results.md`)
+### 2026-11-20: numeric plates (`numeric.md` (git history, `da48bfc`), results in `numeric-results.md` (git history, `da48bfc`))
 
 The page builds `id`, `uv`, `uv_trim` and the shade itself, on the GPU, from the curves (`plate.js`, `maps.js`) in `plate.dat`; the four map images are not sent. First visit, 4 views: 1.67 MB (was 3.64 MB); `plate.dat` 21.7 KB for the 4 views. The built maps match the PNG maps: zones to 1 px at the edges, uv with no bias and a median of 0.35 px (the PNG's own jitter), trims likewise, the garment shade to ±1 level. The sleeve view's front grid was fixed (grain tilt 18.4° → 4.4°). **Open:** the build time on a real GPU (1.4–3 s in software rendering, so the budgets are unverified); `?geom=maps` gives back the PNG maps.
 
