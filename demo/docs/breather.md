@@ -9,22 +9,18 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - **Method:** each view is a **plate**: a photo of the garment + numbers that say where each part is (zones, trims, fabric coordinates). A WebGL shader paints the chosen fabric and lace onto the photo and keeps the photo's light and folds.
 - **All images are AI-generated** (base photos, swatches, laces). The swatches' physical scale is assumed, not measured.
 - **Code of the visualiser:** `demo/` only. The rest of the repository is the storefront app (§3).
-- **Current branch of work:** `stepA` (worktree `../myshoppe-stepA`, port 8300), from `numeric`. **Task:** `demo/docs/plan/StepA.md` (the silhouette closed to the photo's edge; replaces the Coons patch; one `plate.dat` per view). Progress: `plan/StepA-results.md`.
-- **Agreed order** (`DedhD.md` §11): StepA → perfect the swatches and laces on the 4 views → merge to `main` → more silhouettes.
+- **Current branch:** `main` (`30dff16`), one checkout: `/Users/kayan/Developer/myshoppe`. StepA is closed (`plan/StepA.md`, results `plan/StepA-results.md`; step 8 pending on devices). **Next:** the swatches and laces on the 4 views (option B and C of `DedhD.md` §11.7).
+- **Agreed order** (`DedhD.md` §11): StepA (done) → perfect the swatches and laces on the 4 views → push `main` → more silhouettes. The branches were consolidated into `main` on 2026-11-22 (all were its ancestors); not pushed yet.
 
-**Read in this order for StepA:** this file → `DedhD.md` §11 → `plan/StepA.md` → `plate.md` and `annotate.md` (the current pipeline that StepA changes) → `numeric-results.md` (git history, `da48bfc`) steps 9–11 (the defects StepA fixes).
+**Read in this order:** this file → `DedhD.md` §11 → `plan/StepA-results.md` (step 9: what is done and open) → `plate.md` and `annotate.md` (the pipeline) → `silhouette/README.md`, `swatchprep/README.md`.
 
-## 2. Branches, worktrees, ports
+## 2. Branch and server
 
-| Branch | Worktree | Port (convention) | State |
+| Branch | Checkout | Port | State |
 |---|---|---|---|
-| `main` | — (not checked out) | — | = `polish` step 8 (ba978fe). Merged last after the swatch and lace plan. |
-| `polish` | `/Users/kayan/Developer/myshoppe` | 8000 | Closed. Has an uncommitted `demo/docs/DedhD.md` (an old copy of §10) and `demo/testing.html` (+4 lines), and an untracked `demo.zip` (a snapshot of `demo/`). |
-| `halfway` | `/Users/kayan/Developer/myshoppe-halfway` | 8100 | Closed. |
-| `numeric` | `/Users/kayan/Developer/myshoppe-numeric` | 8200 | The reference for StepA. 20 commits ahead of `main`; `main` is its ancestor (fast-forward). Last: 430c3fd. |
-| `stepA` | `/Users/kayan/Developer/myshoppe-stepA` | 8300 | Current: StepA (from `numeric` 430c3fd). |
+| `main` | `/Users/kayan/Developer/myshoppe` | 8300 | Everything: StepA and the cleanup (`30dff16`). 26 commits ahead of `origin/main` (not pushed). `polish`, `halfway`, `numeric` and `stepA` were its ancestors and are deleted (2026-11-22) |
 
-- Serve a worktree: `python3 -m http.server <port> --bind 127.0.0.1 --directory demo`, then open `http://localhost:<port>/testing.html`.
+- Serve: `python3 -m http.server 8300 --bind 127.0.0.1 --directory demo`, then open `http://localhost:8300/testing.html`.
 - Two review runs on the same port kill each other's server: always pass a free port to the tools.
 - Outside the repository: the Salon page whose option counts `DedhD.md` uses (`C_GROUPS`, `C_FIELDS_BY_SILHOUETTE`) is `/Users/kayan/Downloads/demo 22.26.03/index.html`.
 
@@ -124,8 +120,8 @@ node silhouette/checks/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"      # ex
 | **Plate** | One fixed view of one garment variant: photo + numbers |
 | **Zone** | A fabric piece in a view (front, sleeve-l, back ...), with a draw `order` |
 | **Outline** | A zone's visible edge, closed; cuts the neck dip, slits, gaps, notches |
-| **Grid** | The 4 edges (top, left, right, bottom) of a zone's Coons patch: the fabric coordinates now. Removed by StepA. |
-| **Coons patch** | The surface between 4 boundary curves; today's fabric map |
+| **Grid** | The 4 edges (top, left, right, bottom) of a zone's Coons patch, before StepA. Removed by StepA. |
+| **Coons patch** | The surface between 4 boundary curves; the fabric map before StepA (replaced by the fabric frame) |
 | **Fabric frame** | StepA's replacement: an axis, an anchor, a half-width profile, `thetaDeg`, `sag` |
 | **Typed edge** | StepA: `free` (snapped to the photo), `seam` (shared), `frame` (image border), `cut` (live neck dip) |
 | **Trim** | A lace sewn along a garment edge at its own width: `insertion` or `edging` (StepA extension) |

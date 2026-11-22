@@ -478,6 +478,25 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 
 The page builds `id`, `uv`, `uv_trim` and the shade itself, on the GPU, from the curves (`plate.js`, `maps.js`) in `plate.dat`; the four map images are not sent. First visit, 4 views: 1.67 MB (was 3.64 MB); `plate.dat` 21.7 KB for the 4 views. The built maps match the PNG maps: zones to 1 px at the edges, uv with no bias and a median of 0.35 px (the PNG's own jitter), trims likewise, the garment shade to ±1 level. The sleeve view's front grid was fixed (grain tilt 18.4° → 4.4°). **Open:** the build time on a real GPU (1.4–3 s in software rendering, so the budgets are unverified); `?geom=maps` gives back the PNG maps.
 
+### 2026-11-22: StepA, the silhouette closed to the photo's edge (`plan/StepA.md`, results in `plan/StepA-results.md`)
+
+- **One plate file:** `plate.dat` (BSP2) holds typed edges (free, seam, frame, cut), zones as chains of edges, fabric frames, trims, landmarks and decisions. A plate folder holds `base.jpg` + `plate.dat`; the pipeline is `demo/silhouette/` (`plate.py`).
+- **Edges:**
+  - The torso was measured on its photo.
+  - Free edges are snapped to the photo's 50 % crossing.
+  - The fabric frame (axis, cylinder, sag) replaces the Coons patch: no fold, grain ≤ 2.94°, page = build to 10⁻¹⁴ cm.
+  - Exact 16-bit maps on the page; soft free edges.
+  - Rim (mocha) 0.25 / 0.00 / 0.88 / 2.61 %, from 5.7 / 26 / 7.0 / 16.2 % at step 0.
+- **Laces** (the extension): each lace lies along its edge at its own width and repeat (the trim field). There are no wedges, streaks or fans, and the slit and hem laces mitre. The ends go out to the silhouette, the overhang takes the garment's light, and the live neck lace hangs on the live edge.
+- **Re-read on the photos:** the torso hem over the stand; the right sleeve seam; the slit corner. The neck view's arm "gaps" are now garment.
+- **Build time:** 1.05–1.19 s per view in software rendering (`numeric`: 1.4–3.0 s).
+- **Open:**
+  - closure on the sleeve view (0.06 %);
+  - the rim on the sleeve and hem views;
+  - the halo's 95th percentile on 3 views;
+  - step 8 on a phone and a laptop;
+  - the neck-depth agreement of the two front views.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)

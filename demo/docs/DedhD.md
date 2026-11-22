@@ -353,13 +353,13 @@ What costs us:
 
 | Option | Covers | Effort | Risk |
 |---|---|---|---|
-| **A. Close the demarcation** | Silhouette | Small to medium | Low. Needed before the merge. |
+| **A. Close the demarcation** | Silhouette | Small to medium | **Done** (2026-11-22): `plan/StepA.md`, results `plan/StepA-results.md` |
 | **B. One fabric frame** | Swatches | Medium | Medium (depends on A) |
 | **C. Lace as parts** | Laces | Medium | Low to medium |
 | **D. Interactions on the design record** | Interactions | Medium | Low; needs a real phone |
 | **E. Catalogue factory** | More clothes | Large | Medium; pays back from the 2nd silhouette |
 
-**A. Close the demarcation** — plan: `plan/StepA.md` (it also replaces the Coons patch with a fabric frame, and measures the torso again).
+**A. Close the demarcation** — **done** 2026-11-22 (open items in `plan/StepA-results.md` step 9). Plan: `plan/StepA.md` (it also replaces the Coons patch with a fabric frame, and measures the torso again).
 - Snap every free edge of every outline, with the seams excluded. This needs an explicit seam list. Target: the 4 plates pass closure.
 - The open items of `numeric` step 11: the neck plate's 249 px of thin gaps; the torso's slit landmarks and body side; the sleeve's `cuff-l` offset; the hem's 43 px piece; the speck at the right neck corner.
 - Make the two front views agree: edit the torso or neckline image so that the neckline depth agrees within ±3 mm, then re-annotate.

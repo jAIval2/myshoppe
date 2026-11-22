@@ -219,7 +219,7 @@ def rasterise(Z, base):
     r_, _, b_ = id_img.split()
     id_img = Image.merge("RGB", (r_, gch, b_))
 
-    # ---- neck area: id.png B = 1 (halfway.md step 2)
+    # ---- neck area: id B = 1 (halfway.md step 2)
     if NECK and "area" in NECK:
         r, g_, b_ = id_img.split()
         b_.paste(1, (0, 0), NECK["area"])

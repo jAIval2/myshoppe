@@ -406,7 +406,7 @@
     paisley:   { src: "assets/swatches/lace-paisley-2048.webp", meta: "assets/swatches/lace-paisley.json", mat: "assets/swatches/lace-paisley-mat.webp", name: "Zari Paisley Lotus Lace" },
     brocade:   { src: "assets/swatches/lace-brocade-2048.webp", meta: "assets/swatches/lace-brocade.json", name: "Navy & Gold Brocade Border" },
   };
-  // trim id in id.png (G channel) → button group; flip = pearls on the other side of the strip
+  // trim id in the id map (G channel) → button group
   const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8 };   // hem-bl / hem-br: the hem of the side pieces of the hem view
   const GROUP = { neck: ["neck"], cuffs: ["cuff-l", "cuff-r"], hem: ["hem", "hem-bl", "hem-br"], slits: ["slit-l", "slit-r"] };
 
@@ -485,7 +485,7 @@
   uniform float uSrgbTex;       // 1 = colour textures are SRGB8_ALPHA8 (the GPU decodes), 0 = decode here (fallback)
   uniform float uShadeSqrt;     // the plate's shadeEncoding == "sqrt": shade = 2 * stored^2, linear light
   uniform float uShadeMed;      // the plate's shadeMedian / 255 (to convert between the two shade spaces)
-  // ---- live neckline (halfway.md steps 2, 3, 5). In the neck area (id.png B = 1) the garment edge, the reveal fills and the
+  // ---- live neckline (halfway.md steps 2, 3, 5). In the neck area (id B = 1) the garment edge, the reveal fills and the
   // neck trim come from curves, not from the baked maps. All curves in plate px, 24 points, corner to corner (left to right).
   uniform float uNeckLive;      // 1 = this view has the live neckline
   uniform vec2  uNE[24];        // live edge

@@ -1,6 +1,6 @@
 # Plan: StepA — the silhouette, closed to the photo's edge
 
-Status: **in progress**: steps 0–7 done (uncommitted from step 3 on; one commit for the rest of StepA); the extension (§8, steps L1–L5) next; then steps 8 and 9. Branch `stepA` (from `numeric`, 430c3fd), worktree `../myshoppe-stepA`.
+Status: **closed** (2026-11-22). Steps 0–7, the extension (§8) and the close (step 9) are done; step 8 (phone and laptop) is pending on the published zip. Results and open items: `plan/StepA-results.md`. Commits `9b5bc58` … `da48bfc`, then the cleanup (`plan/cleanup.md`); all consolidated into `main` (`30dff16`).
 Compare: **http://localhost:8200/testing.html** (`numeric`, the reference) and **http://localhost:8300/testing.html** (this worktree).
 Read first: `docs/breather.md` (what is where). Background: `DedhD.md` §11 (option A, and the facts in §11.1). Product: a visualiser, 4 fixed views, **no 3D, no pan, no zoom**.
 Scope: the straight kurta, 4 views (torso, neck, sleeve, hem). Swatches and laces are the next plan; `main` is merged after that one (`DedhD.md` §11, agreed order).

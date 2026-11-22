@@ -226,6 +226,115 @@ The weak spans keep the measured points (as the plan says), so they are no worse
 - [x] Trim offset: mean within 0.5 px of the offset, std ≤ 1.0 px, every trim (`cuff-l` included). Trim smoothness: all pass but the torso `hem` (0.82 px).
 - [x] `rebuild_check.sh` passes (the snap is deterministic).
 
+## Step 4: The fabric frame replaces the Coons patch
+
+**Done:** each zone's `frame` (axis, anchor, half-width cubics, θ, sag) is measured in its view and fitted by the build (`silhouette/pipeline/plateframe.py`). The map projects onto the axis with the normals interpolated along each segment, using a cylinder arc across (continued linearly past the silhouette) and arc length along. Coverage = the outline, plus 6 px under-strips at the seams (`tuck` gone). `Plate.frameUV` and `FRAME_FS` do the same arithmetic.
+
+| Check (`plate_invariants.py`, all 4 plates, 2026-11-22) | Result |
+|---|---|
+| No fold (Jacobian > 0, the box + 16 px) | 0 points in every zone |
+| Grain: constant-u lines within 3° of the axis (95 %) | 0.32–2.94° (worst: the sleeve view's front) |
+| UV rate at the axis | 0.998–1.001 × face-on (limit ±2 %) |
+| u = 0 through the centre-front landmarks | 0.00 px |
+| Parity, `frame_check.mjs` | ≤ 3 × 10⁻¹⁴ cm (limit 10⁻⁴) |
+| Neckline: a depth change of ±20 mm | neck view 20.01 / 19.70 mm, torso view 20.05 / 19.67 mm (±1 px); no hole at the range ends |
+| Hairline gaps | 0 px on the neck view (the 249 px of `numeric` and the 87 px of step 7 are gone: extension item 6) |
+
+**Cross-view** (information for the swatch plan): the landmarks seen in two views, with their (u, v) in cm in each view's frame:
+
+| Landmark | Torso | Neck | Sleeve | Hem |
+|---|---|---|---|---|
+| `neck-l` | (−8.1, 0.0) | (−8.1, 0.0) | (−11.0, −2.2) | |
+| `neck-r` | (8.1, 0.0) | (8.3, 0.0) | (4.3, 1.0) | |
+| `cf-neck` | (0.0, 3.3) | (0.0, 4.0) | | |
+| `shoulder-r` | (22.1, 3.7) | (22.6, 3.8) | | |
+| `underarm-l` | (−18.6, 21.6) | (−18.9, 17.2) | | |
+| `hem-l` | (−23.8, 101.0) | | | (−7.9, 115.7) |
+
+The two front views agree on the neck points within 2 mm. The centre-front depth differs by 7 mm (the photos' own disagreement: step 8). `hem-l` names a different point in the torso view (the slit corner) than in the hem view. The sleeve view's front is a turned view, so its u differs.
+
+**Person:** the silhouette was approved on the before / after sheet (2026-11-22). The grain checker at 2× was not reviewed on its own.
+
+## Step 5: Exact maps on the page
+
+**Done:**
+- `maps.js`: one stencil pass per polygon and one `FRAME_FS` quad per zone.
+- 16-bit packing (RG = u, BA = v, over 128 cm); `uOff` (0.5, 0.5): an integer coordinate is a pixel centre.
+- The build fills by pixel centre, even-odd (`fill_exact`), as the GPU does.
+- `?perf=1` and `?syncbuild=1`.
+- Since the extension, the trims are the trim field (`TRIM_FS`).
+
+| Check (2026-11-22) | Result |
+|---|---|
+| Coverage, page against build (`maps_check.py`) | Only the 1 px edge band differs on neck, sleeve and hem. On the torso, 1 px outside it at (821, 916), from before the extension (open) |
+| uv | max 0.0013–0.0023 cm (limit 0.01; one 16-bit step is 0.0020) |
+| Trims (the trim fields since the extension) | `s` 0.0010 cm, `t` 0.0098 mm on all 4 views |
+| Build time, software renderer (`?syncbuild=1`) | torso 1114, neck 1048, sleeve 1095, hem 1194 ms (`numeric`: 1.4–3.0 s): PASS |
+| `plate.dat`, 4 views | 29,178 B (limit 40 KB) |
+
+## Step 6: Soft free edges
+
+**Done:** id A = (d + 3) / 4 on a ribbon from 3 px outside to 1 px inside every free edge. The shader's coverage is clamp(0.5 + d), and beside the edge it takes the photo 3 px beyond it. Seams, frame edges and the neck cut stay hard.
+
+| `fringe.py` (mocha / sage; limits: rim 0.5 %, halo 10 %) | Torso | Neck | Sleeve | Hem |
+|---|---|---|---|---|
+| Rim, mocha | 0.25 % | 0.00 % | **0.88 %** | **2.61 %** |
+| Rim, sage | **1.13 %** | **2.11 %** | **0.94 %** | **2.69 %** |
+| Halo, median / 95 % | 1.6 / **12.7 %** | 1.0 / 4.6 % | 2.4 / **235 %** | 1.9 / **12.6 %** |
+| Step 0 rim, mocha | 5.7 % | 26 % | 7.0 % | 16.2 % |
+
+The rim fell by 80–100 %. The limits are met on the torso and the neck view in mocha only, and the halo only on the neck view. The worst 5 % of the halo comes from weak spans: the sleeve view's arm edges, and the torso hem over the floor (FAILs, open).
+
+## Step 7: Remove the old artifacts; docs and skills
+
+**Done:** the Coons patch, the grids, `tuck`, `widthPx`, the map PNGs, the old switches and tools (StepA §5). The docs and both skills were rewritten. After the cleanup (`plan/cleanup.md`), a plate folder holds `base.jpg` + `plate.dat`, and the pipeline lives in `demo/silhouette/`.
+
+| Check | Result |
+|---|---|
+| The removal search of step 7 | Only StepA's own plan and results, the history parts of `render.md`, `DedhD.md` and `breather.md`, and three names that only match the pattern: `uvOffsetCm`, `uUVOff` (the frame's 16-bit offset) and `widthPx0` (the live neckline's width) |
+| `plate_invariants.py` | neck ALL PASS. Torso, sleeve and hem: one FAIL each, closure (torso: a 6 px piece; sleeve: 0.0596 %; hem: a 10 px piece) (open) |
+| `rebuild-check` | ALL IDENTICAL |
+| The skills' quick reference | runs as written (`python3 silhouette/plate.py ...`) |
+| The review set, by a person | approved on the before / after sheet (2026-11-22) |
+
+## Step 8: Device and person checks
+
+**Pending the user's check on a phone and a laptop** of the published zip (2026-11-22). For each view, open `testing.html?step=<cloth|neck|sleeve|hem>&perf=1` and write here:
+
+| Device | View | Build (ms, limit 50 laptop / 250 phone) | Draw (ms) | Drag (fps, ≥ 30) | Float render targets |
+|---|---|---|---|---|---|
+| | | | | | |
+
+The neck-depth agreement of the two front views stays open: the photos disagree by 7 mm at the centre front (step 4 cross-view), and no new image was supplied.
+
+## Step 9: Close
+
+StepA is closed (2026-11-22), with step 8 pending on devices and the open items below. Commits: steps 0–2 `9b5bc58`, `20d8e68`, `b2af865`; steps 3–7 and the extension `da48bfc`; the cleanup `a6dc1be`, `30dff16`. All branches are consolidated into `main`.
+
+| §1 item | Evidence | State |
+|---|---|---|
+| 1. Fabric to the photo's edge, no rim | Rim (mocha) 0.25 / 0.00 / 0.88 / 2.61 % (step 0: 5.7 / 26 / 7.0 / 16.2 %); leftover garment 0.008 / 0.003 / 0.038 / 0.001 % | Met on torso and neck; sleeve and hem open |
+| 2. Seams: no hairline, step or double edge | Hairline gaps 0 px; the torso band beside the sleeve and the neck-view "holes" fixed (extension items 4, 6) | Met |
+| 3. Soft free edges | The coverage ramp on every free edge; halo median 1.0–2.4 % | Met in the median; the 95th percentile is open on 3 views |
+| 4. The print lies as cloth | No fold; grain ≤ 2.94°; rate ±0.2 %; u = 0 through the centre front; anchored at the centre front and the neck-point line | Met |
+| 5. Laces | Real width and repeat; no wedge, streak or fan (trim fields complete, 0 seams within 30 mm); silhouette ends; slit / hem mitre; before / after approved | Met |
+| 6. The live neckline | The lace hangs on the live edge; depth response ±1 px; reveal fills as before | Met |
+| 7. A plate folder | `base.jpg` + `plate.dat`; the source in `silhouette/sources/` | Met (two files since the cleanup) |
+| 8. Typed edges; trims derived | `platedat.py --check` passes; trim lines from their edges | Met |
+| 9. Fabric frame, no Coons | Steps 4 and 7 | Met |
+| 10. The torso measured | Step 2; hem, seam and slit corner read again in the extension | Met |
+| 11. `plate_invariants.py` passes | neck ALL PASS; the others fail closure only, each written with its number | Open (3 closure FAILs) |
+| 12. The shade on the GPU | Built in `maps.js`; float targets on devices: step 8 | Pending step 8 |
+| 13. Speed | Software 1.05–1.19 s per view (faster than `numeric`); device budgets: step 8 | Pending step 8 |
+
+**Open items, carried to the next plans:**
+- Closure FAILs: the sleeve view 0.0596 %, and small pieces on the torso (6 px) and the hem (10 px).
+- The rim on the sleeve and hem views; the halo's 95th percentile on the torso, sleeve and hem views (weak spans).
+- 1 px of map coverage on the torso.
+- Step 8 on devices.
+- The neck-depth agreement (a new image).
+- The lace widths: the pearl lace's 30 mm is an assumption (the swatch and lace plan).
+
 ## Extension (§8): the lace laid on the garment, and the last silhouette items
 
 **Why:** the review of 2026-11-22 (the user's marked screenshots) found the lace layout to be the weak part. The measured causes and the decision (**the lace decides**: each lace keeps its own width and repeat) are in `StepA.md` §8.
@@ -276,9 +385,8 @@ The weak spans keep the measured points (as the plan says), so they are no worse
 - the lace is shown at its real 30 mm.
 
 **Open:**
-- **A person's approval** of the before / after sheet and the L4 corrections.
+- ~~A person's approval of the before / after sheet~~: **approved** by the user, 2026-11-22.
 - Closure FAILs from before the extension: sleeve 0.0596 %; small pieces on the torso (6 px) and the hem (10 px). (The neck's are fixed by item 6.)
 - `maps_check.py` coverage on the torso: 1 px at (821, 916), from before the extension.
 - The halo's 95th percentile is still over 10 % on the torso, sleeve and hem views (median 1.6–2.4 %); the neck view is now 4.6 %.
 - The lace widths are the sidecars' (pearl 30 mm is still an assumption). At the lace's real width the neck lace is 30 mm (it was 12 mm).
-- Steps 4–7 of this file are still to be written, at the close (step 9).
