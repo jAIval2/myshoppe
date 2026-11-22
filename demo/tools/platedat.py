@@ -17,16 +17,18 @@ A curve's points are rounded to the unit when written.
 The header P (what a plate is; StepA.md section 1, items 7-8):
   v, view, variant, viewBox, mmPerPx, uvRangeCm, scaleNote, source
   edges      {name: {type: free | seam | frame | cut, points, zones: [a, b] (a seam)}}.  A seam is ONE list used by two zones.
-             A lower zone's run that lies hidden under a later zone (the sleeve view's body under the sleeve; the torso's front under
-             the sleeves) is a seam with "under": <the later zone>, used by that one lower zone.
+             A lower zone's run that lies hidden under a later zone (the sleeve view's body under the sleeve and the cuff) is a seam with "under": <the later zone>, used by that one lower zone.
              free = a visible contour (snapped to the photo, StepA step 3); frame = the image border; cut = the live neck dip.
-  zones      {name: {id, order, outline: [[edge, +1 | -1], ...], grid: {top, left, right, bottom} (until step 7), widthPx (until step 4)}}
+  zones      {name: {id, order, outline: [[edge, +1 | -1], ...], frame}}: the frame (tools/plateframe.py) = axis, L, s0, vMm,
+             thetaDeg, half, sag, and its specification (axisFrom, anchor, sagEdge, skipTop, axisDegree)
              The outline is the chain of its edges; a join point shared by two consecutive edges is written once.
-  trims      {name: {id, order, widthMm, type, edge, centre, ...}}: drawn in this order (a later trim wins)
-  stitches   {name: points};  occluders: [points];  landmarks {name: [x, y]};  invariants {openings, skipTrimOffset}
-  settings   view settings: thetaDeg, tuck (torso v1 only), shadeSmoothMm, shadeSmoothEps, shadeSpace
+  trims      {name: {id, order, type (edging | insertion), edge, from, to, anchor, cut, line, side, zone}}: a lace hangs on its edge;
+             line = the edge between the anchors (derived in the build), side = the sign of the inward normal, zone = the edge's zone;
+             anchor = where the motif sits (cf: the frame's u = 0; from / to: an end); cut = the real (square) ends (StepA extension)
+  stitches   {name: points};  occluders: [chain of edges [[edge, +-1], ...] (or points)];  landmarks {name: [x, y]};  invariants {openings}
+  settings   view settings: thetaDeg, shadeSmoothMm, shadeSmoothEps, shadeSpace
   decisions  what tools/make_plate.py takes from the image: shadeMedian, shadeSmoothPx, shadeEncoding, the neck block, each trim's
-             side / length / vMax, each zone's size in cm
+             cloth length (lengthCm), each zone's size in cm
 """
 import json, math, os, struct, sys
 
@@ -152,7 +154,10 @@ def validate(P):
             for x, y in e["points"]:
                 if not (min(x, W - x) < 0.05 or min(y, H - y) < 0.05): bad.append(f"frame edge {n}: point {x, y} not on the border"); break
     for tn, t in P.get("trims", {}).items():
-        if "centre" not in t: bad.append(f"trim {tn}: no centre")
+        for k in ("line", "side", "zone"):
+            if k not in t: bad.append(f"trim {tn}: no {k}")
+        if t.get("zone") and t["zone"] not in P.get("zones", {}): bad.append(f"trim {tn}: unknown zone {t['zone']}")
+        if t.get("type") not in ("edging", "insertion"): bad.append(f"trim {tn}: type {t.get('type')}")
         if t.get("edge") and t["edge"] not in E: bad.append(f"trim {tn}: unknown edge {t['edge']}")
     return bad
 
@@ -165,23 +170,78 @@ def legacy(P):
              "zones": {n: {"id": z["id"], **D.get("zones", {}).get(n, {})} for n, z in P["zones"].items()},
              "trims": {}}
     for n, t in P.get("trims", {}).items():
-        plate["trims"][n] = {"id": t["id"], **{k: v for k, v in D.get("trims", {}).get(n, {}).items() if k == "lengthCm"},
-                             "widthMm": t["widthMm"], "type": t["type"], "outerV": 1,
-                             **{k: v for k, v in D.get("trims", {}).get(n, {}).items() if k != "lengthCm"}}
+        plate["trims"][n] = {"id": t["id"], "type": t["type"], **D.get("trims", {}).get(n, {}), "side": t["side"], "zone": t["zone"],
+                             "anchor": t.get("anchor", "cf")}
     for k in ("shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck"):
         if k in D: plate[k] = D[k]
     Z = {"view": P["view"], "mmPerPx": P["mmPerPx"], "viewBox": P["viewBox"], "zones": {}, "trims": {}}
-    for k in ("thetaDeg", "tuck", "shadeSmoothEps", "shadeSmoothMm", "shadeSpace"):
+    for k in ("thetaDeg", "shadeSmoothEps", "shadeSmoothMm", "shadeSpace"):
         if k in S: Z[k] = S[k]
     if "uvRangeCm" in P: Z["uvRangeCm"] = P["uvRangeCm"]
     for n, z in P["zones"].items():
-        Z["zones"][n] = {"order": z["order"], "grid": z["grid"], "outline": outline(P, n)}
-        if "widthPx" in z: Z["zones"][n]["widthPx"] = z["widthPx"]
+        Z["zones"][n] = {"order": z["order"], "outline": outline(P, n)}
+        if "frame" in z and "L" in z["frame"]: Z["zones"][n]["frame"] = z["frame"]
+    for n, strips in under_strips(P).items(): Z["zones"][n]["under"] = strips
+    if "uvOffsetCm" in D: Z["uvOffsetCm"] = D["uvOffsetCm"]
     for n, t in P.get("trims", {}).items():
-        Z["trims"][n] = {"order": t["order"], "widthMm": t["widthMm"], "type": t["type"], "centre": t["centre"]}
-    for k in ("landmarks", "stitches", "occluders", "invariants"):
+        Z["trims"][n] = {k: t[k] for k in ("order", "type", "line", "side", "zone", "anchor", "cut") if k in t}
+    for k in ("landmarks", "stitches", "invariants"):
         if k in P: Z[k] = P[k]
+    if P.get("occluders"): Z["occluders"] = [chain(P, o) if o and isinstance(o[0][0], str) else o for o in P["occluders"]]
+    cuts = [e["points"] for e in P["edges"].values() if e["type"] == "cut"]
+    if cuts: Z["neckEdge"] = cuts[0]
     return plate, Z
+
+
+UNDER_PX = 6.0
+
+
+def under_strips(P):
+    """StepA step 4: at a seam the LOWER zone runs UNDER_PX px under the upper one (the upper zone ends on the seam), so that no
+    hairline of the photo shows between them. {lower zone: [strip polygons]}: each strip is the seam and the seam moved UNDER_PX
+    toward the upper zone (each point along its own normal)."""
+    out = {}
+    Zs = P["zones"]
+    for n, e in P["edges"].items():
+        if e["type"] != "seam" or "under" in e or len(e.get("zones", [])) != 2: continue
+        a, b = e["zones"]
+        if Zs[a]["order"] == Zs[b]["order"]: continue
+        lo, up = (a, b) if Zs[a]["order"] < Zs[b]["order"] else (b, a)
+        pts = e["points"]
+        if len(pts) < 2: continue
+        upo = outline(P, up)
+
+        def normal(i):
+            p, q = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+            tx, ty = q[0] - p[0], q[1] - p[1]; L = math.hypot(tx, ty) or 1.0
+            return -ty / L, tx / L
+        m = len(pts) // 2
+        nx, ny = normal(m)
+        mid = ((pts[m][0] + pts[max(0, m - 1)][0]) / 2, (pts[m][1] + pts[max(0, m - 1)][1]) / 2) if len(pts) > 2 else ((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2)
+        sgn = 1.0 if _inside((mid[0] + 2 * nx, mid[1] + 2 * ny), upo) else -1.0
+        off = []
+        for i, p in enumerate(pts):
+            nx, ny = normal(i)
+            off.append([p[0] + sgn * nx * UNDER_PX, p[1] + sgn * ny * UNDER_PX])
+        out.setdefault(lo, []).append([list(p) for p in pts] + off[::-1])
+    return out
+
+
+def _inside(pt, poly):
+    c = False
+    for (x1, y1), (x2, y2) in zip(poly, poly[1:] + poly[:1]):
+        if (y1 > pt[1]) != (y2 > pt[1]) and pt[0] < (x2 - x1) * (pt[1] - y1) / (y2 - y1) + x1: c = not c
+    return c
+
+
+def chain(P, ch):
+    """The points of a chain of edges [[edge, +1 | -1], ...] (an occluder): a join point written once; no closure required."""
+    out = []
+    for name, d in ch:
+        pts = P["edges"][name]["points"]
+        pts = pts if d > 0 else pts[::-1]
+        out += pts[1:] if out and out[-1] == pts[0] else pts
+    return [list(p) for p in out]
 
 
 def dump(P):

@@ -1,5 +1,7 @@
 # Upscale results
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Harness: `tools/shoot.sh <dir>` → `tools/crops.py <dir>/shot-2x.png <dir>/crops` → `tools/metrics.py <dir>`.
 Baseline crops: `baseline/` (neckline, cuff-left, bodice-centre, hem, full 2× shot).
 

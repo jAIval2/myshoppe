@@ -137,3 +137,148 @@ The photo differs from a mirror at the slit tops (the right slit opens 77 px = 6
   - Review 5 (2026-11-22): **approved**.
 - [x] Every landmark of the torso is measured. The left and right landmarks differ from a mirror where the photo differs (table).
 - [x] The plate builds from its source (`rebuild_check.sh`) and renders with the old grid method. `?torso=v1` gives back the imported plate.
+
+## Step 3: Free edges snapped to the photo
+
+**Done:**
+1. `tools/snap_edges.py`, a module of the build (alone: the report, writing nothing). For every `free` and `cut` edge: samples every 2 px with the outward normal; a local colour model (mean colour 3–8 px inside and outside; where that finds no contrast, 1.5–4 px: a gap narrower than 8 px) and the sub-pixel 50 % crossing of the projection between the two (±8 px, the crossing nearest the edge); a robust Whittaker fit of the displacement (data + λ 4 × the squared second difference at 2 px spacing, samples more than 1.2 px off dropped, 3 rounds), then the colour model again at the fitted edge and once more; points every 2 px, thinned to 0.05 px. A weak sample (inside and outside closer than 14 levels) keeps its measured position. A sample that a later zone covers, or that lies over another zone (4 px outward is that zone's fabric: a sleeve's edge over the body, white over white), also keeps it and is counted apart: it is not a contour against the background.
+2. Corners: where edges meet, the corner is the mean of the snapped ends (kept on the border at the frame); a seam's end follows, and its first 12 px move with it (a linear taper). Seams are not moved otherwise. Grid points and landmarks that sat on a moved corner follow it; the sleeve view's occluder (the mannequin arm) is now a chain of the plate's edges (`arm-l`, `arm-r`, `front-under-cuff`), so it follows too.
+3. `make_plate.py`: source → snap → **trims derived from their edges** (`derive_trims`: the parallel at `offsetMm` on the zone's side, normals averaged over ±8 px, a moving average over 4 mm, kept inside the zone and between the trim's anchors `from` / `to`; the annotate scripts now give only the edge, the offset and the anchors) → decisions → `plate.dat`. The hem view's `hem-bl` / `hem-br` are derived from the side pieces' hem edges like the others. Stitches are kept as measured (they are photographed lines, not trims).
+4. The neck block takes its photographed edge from the `cut` edge (it was "the front outline below the grid top": a snapped corner no longer sits exactly on the grid top).
+5. **Measuring corrections found by the snap's checks** (written in the annotate scripts):
+   - neck view: where each wall gap under the arms closes again, the sleeve lies on the body; the two separate lists there (the body 2 px under the sleeve) are now ONE shared seam (`join-l`, `join-r`, the sleeve's edge), as the torso has since step 2;
+   - neck view, right underarm (the 1,251 px piece of uncovered garment): read again on `source.png`. The front and the sleeve touch down to the apex of the wall wedge (source (1714, 1362): above it a white fold, not wall; `underarm-r` moved there from (1702, 1230)), the wedge closes at (1655, 1700); the body side of the wedge lay 5–10 px inside the photo's edge, beyond the snap's ±8 px reach.
+6. The default neckline, re-measured from the snapped neck edge (depth below the corner line at the centre front): neck view **39.7 mm** (was 40.9; 130.4 px × 0.3046 mm), torso view 32.6 mm (was 29.9; the traced v1: 25.2). `assets/looks/straight-kurta.json`: `neck.depthMm.default` and its first stop 40.9 → 39.7. The two front photos now disagree by 7.1 mm (was 15.7 mm in `halfway` step 6); the image fix of `DedhD.md` §11.1 stays for step 8.
+7. `plate_invariants.py --outline`: the coverage of the outlines alone, with the StepA limits (closure ≤ 0.02 %, no piece wider than 1 px by a 2 × 2 erosion; trim offset measured exactly against the trim's own edge, mean within 0.5 px, std ≤ 1.0 px).
+
+**Edge accuracy** (plate px; the fit against the sub-pixel crossings of the last round; weak share of the contour samples; covered / over and dropped samples counted apart):
+
+| View | Edge | Samples | Mean move | Fit vs crossing: median / 95 % / max | Weak | Covered / over | Dropped | |
+|---|---|---|---|---|---|---|---|---|
+| torso | `shoulder-l` | 59 | 0.66 | 0.06 / 0.22 / 0.55 | 0.0 % | 0 | 0 | PASS |
+| torso | `neck` | 102 | 1.97 | 0.05 / 0.23 / 0.44 | 0.0 % | 0 | 1 | PASS |
+| torso | `shoulder-r` | 57 | 0.19 | 0.05 / 0.13 / 0.17 | 0.0 % | 0 | 0 | PASS |
+| torso | `body-l` | 325 | 0.52 | 0.04 / 0.15 / 0.38 | 0.0 % | 8 | 0 | PASS |
+| torso | `body-r` | 323 | 0.42 | 0.03 / 0.15 / 1.18 | 2.4 % | 34 | 0 | PASS |
+| torso | `hem` | 222 | 0.69 | 0.09 / 0.71 / 0.94 | 36.0 % | 0 | 15 | **FAIL** |
+| torso | `outer-l` | 309 | 1.40 | 0.04 / 0.11 / 0.16 | 0.0 % | 0 | 0 | PASS |
+| torso | `cuff-l` | 57 | 3.11 | 0.05 / 0.20 / 0.31 | 0.0 % | 0 | 0 | PASS |
+| torso | `sleeve-gap-l` | 67 | 0.29 | 0.04 / 0.12 / 0.12 | 0.0 % | 8 | 1 | PASS |
+| torso | `outer-r` | 311 | 0.20 | 0.04 / 0.09 / 0.17 | 0.0 % | 0 | 0 | PASS |
+| torso | `cuff-r` | 57 | 1.58 | 0.05 / 0.16 / 0.77 | 0.0 % | 0 | 1 | PASS |
+| torso | `sleeve-gap-r` | 64 | 1.13 | 0.09 / 0.63 / 0.66 | 0.0 % | 34 | 0 | PASS |
+| neck | `shoulder-l` | 169 | 1.59 | 0.07 / 0.23 / 0.58 | 0.0 % | 0 | 0 | PASS |
+| neck | `neck` | 317 | 1.04 | 0.07 / 0.49 / 1.00 | 0.0 % | 0 | 9 | PASS |
+| neck | `shoulder-r` | 167 | 2.12 | 0.05 / 0.17 / 0.36 | 0.0 % | 0 | 0 | PASS |
+| neck | `body-l` | 159 | 2.69 | 0.06 / 0.47 / 1.03 | 3.3 % | 38 | 5 | PASS |
+| neck | `body-r` | 139 | 2.26 | 0.09 / 0.44 / 1.07 | 0.0 % | 4 | 1 | PASS |
+| neck | `cap-l` | 23 | 3.80 | 0.05 / 0.27 / 0.36 | 0.0 % | 0 | 0 | PASS |
+| neck | `sleeve-in-l` | 163 | 0.68 | 0.12 / 0.90 / 1.18 | 56.8 % | 38 | 5 | **FAIL** |
+| neck | `cap-r` | 23 | 2.56 | 0.06 / 0.64 / 0.97 | 0.0 % | 0 | 0 | PASS |
+| neck | `sleeve-in-r` | 138 | 1.96 | 0.09 / 0.67 / 1.15 | 35.1 % | 4 | 11 | **FAIL** |
+| sleeve | `shoulder-top` | 108 | 1.94 | 0.13 / 0.54 / 1.10 | 10.2 % | 0 | 14 | **FAIL** |
+| sleeve | `neck` | 235 | 1.21 | 0.09 / 0.32 / 0.63 | 0.0 % | 0 | 3 | PASS |
+| sleeve | `far-shoulder` | 129 | 0.82 | 0.03 / 0.13 / 0.60 | 0.0 % | 0 | 0 | PASS |
+| sleeve | `arm-r` | 161 | 0.80 | 0.18 / 0.70 / 1.17 | 47.2 % | 0 | 11 | **FAIL** |
+| sleeve | `arm-l` | 118 | 1.04 | 0.28 / 0.72 / 1.16 | 6.8 % | 0 | 6 | **FAIL** |
+| sleeve | `body-low` | 60 | 1.11 | 0.03 / 0.09 / 0.12 | 0.0 % | 0 | 0 | PASS |
+| sleeve | `body-gap` | 168 | 2.01 | 0.04 / 0.13 / 0.22 | 0.0 % | 5 | 0 | PASS |
+| sleeve | `cap` | 13 | 0.38 | 0.30 / 1.08 / 1.08 | 0.0 % | 0 | 1 | **FAIL** |
+| sleeve | `outer` | 756 | 0.71 | 0.03 / 0.09 / 0.18 | 0.0 % | 0 | 0 | PASS |
+| sleeve | `cuff` | 158 | 1.30 | 0.09 / 0.39 / 0.80 | 1.7 % | 43 | 2 | PASS |
+| sleeve | `sleeve-in` | 340 | 1.45 | 0.05 / 0.30 / 0.79 | 0.0 % | 147 | 1 | PASS |
+| hem | `slit-front` | 542 | 1.20 | 0.07 / 0.44 / 1.18 | 0.0 % | 6 | 9 | PASS |
+| hem | `hem-front` | 329 | 1.66 | 0.07 / 0.42 / 1.11 | 0.6 % | 0 | 0 | PASS |
+| hem | `front-left-low` | 37 | 0.94 | 0.05 / 0.16 / 0.33 | 2.8 % | 1 | 2 | PASS |
+| hem | `back-right` | 648 | 1.61 | 0.03 / 0.09 / 0.15 | 0.0 % | 0 | 0 | PASS |
+| hem | `hem-back` | 52 | 1.09 | 0.09 / 0.34 / 0.47 | 0.0 % | 0 | 0 | PASS |
+| hem | `slit-back` | 538 | 1.52 | 0.05 / 0.16 / 0.50 | 0.0 % | 6 | 0 | PASS |
+| hem | `hem-left` | 108 | 1.91 | 0.03 / 0.09 / 0.15 | 0.0 % | 1 | 0 | PASS |
+| hem | `left-edge` | 281 | 0.27 | 0.02 / 0.07 / 0.10 | 0.0 % | 0 | 0 | PASS |
+
+33 of 40 edges pass. The 7 that fail, and why (open items, with their measurement):
+- **torso `hem`**, weak 36 % (x 527–690 at the bottom left: the white hem over the pale floor, no colour step) — kept as measured;
+- **neck `sleeve-in-l`, `sleeve-in-r`**, weak 57 % / 35 %: the sleeves' side of the wall gaps is a shaded fold against a beige wall of nearly the same colour;
+- **sleeve `arm-r`, `arm-l`**, weak 47 % / 7 %: the garment against the linen mannequin arm (same colour family);
+- **sleeve `shoulder-top`**, weak 10 % (8 px at the shoulder point, where the cap meets);
+- **sleeve `cap`** (13 samples, 26 px): 95 % 1.08 px > 0.75 (a short curved edge; max 1.08 ≤ 1.5).
+The weak spans keep the measured points (as the plan says), so they are no worse than before; the plan's risk table applies ("AI images have soft or doubled edges in places: mark the span weak; review at 2×").
+
+**Closure of the outlines** (`plate_invariants.py --outline`, in memory: the grid still limits the render until step 4):
+
+| View | Uncovered garment | Pieces wider than 1 px | Trim offsets (exact, against their edges) | Other |
+|---|---|---|---|---|
+| torso | 18 px = **0.0031 %** | 5 px (small specks, x 406–812, y 836–1436) | all 6 PASS (`cuff-l` 14.23 against 14.25 px, std 0.03) | `hem` smoothness 0.82 px (limit 0.8) |
+| neck | 282 px = 0.0208 % | 97 px: a soft grey half-shadow band, 2–3 px wide, on the body's side of the right wall wedge (x 1087–1109, y 1159–1320) | PASS | hairlines between zones 75 px (the outlines' own rasterising along shared seams: step 4's `underPx` covers them); `plate_checks.py` grain tilt 10.8° (the grid's right edge now has the wedge's kink: the grid goes in step 4) |
+| sleeve | 626 px = 0.0429 % | 212 px (along the shoulder line and the arm notch: the weak spans above) | PASS (`cuff-l` 36.94 against 36.96 px, std 0.06) | |
+| hem | 184 px = **0.0132 %** | 18 px at the front hem's bottom (x 309–470, y 1347–1359) | all 5 PASS | |
+
+(Before the snap, step 0 / numeric step 11, grid × outline: torso 0.138 %, neck 0.239 %, sleeve 0.097 %, hem 0.026 %.)
+
+| Check | Result |
+|---|---|
+| `rebuild_check.sh` | ALL IDENTICAL (the snap is deterministic) |
+| `plate.dat`, 4 views | 30,256 B (torso 9,282, neck 5,970, sleeve 6,754, hem 8,250) |
+| The page on 8300, the 12 `--numeric` queries (4 views; the neckline at depth 20 and 100 mm, width 132 and 194 mm) | all 12 drawn, no console errors |
+
+- [ ] Edge accuracy for each free edge: 33 of 40 edges pass; 7 fail on weak spans or one short curved edge (listed above).
+- [ ] Outline closure ≤ 0.02 %, no piece wider than 1 px, on all 4 plates: torso and hem within the share; neck 0.0208 %, sleeve 0.043 %; small wide pieces on all four (listed). Open.
+- [x] Trim offset: mean within 0.5 px of the offset, std ≤ 1.0 px, every trim (`cuff-l` included). Trim smoothness: all pass but the torso `hem` (0.82 px).
+- [x] `rebuild_check.sh` passes (the snap is deterministic).
+
+## Extension (§8): the lace laid on the garment, and the last silhouette items
+
+**Why:** the review of 2026-11-22 (the user's marked screenshots) found the lace layout to be the weak part. The measured causes and the decision (**the lace decides**: each lace keeps its own width and repeat) are in `StepA.md` §8.
+
+**Done (steps L1–L4; not committed):**
+1. **The trim field** (`tools/trimfield.py`; `plate.js` `trimElements`; `maps.js` `TRIM_FS`).
+   - A trim is its garment edge between its anchors (`line`, from `derive_trims`), not a centre line. For each pixel near it: `t` = mm from the edge (+ on the garment), `s` = the cloth length along the edge in the zone's fabric frame, 0 at the anchor.
+   - One element per 2 px segment, between smooth normals (the chord over ±30 mm). Neighbouring elements share their normals, so there is no wedge and no overlap at a bend.
+   - Two element types were tried first, nearest segment plus vertex wedges; they gave seams of `s` on the inner side of every bend, up to 1.6 cm, and were dropped.
+   - The band runs from 8 mm outside the edge to 56 mm inside (the widest lace), so it does not depend on the lace chosen.
+   - Open ends carry on and the outline cuts them; the slit top is a cut (square) end. The overhang exists only along the edge.
+   - The slits are a field of their own (`uvts`), mitred against the hem in the shader by the nearer edge.
+2. **Trim data** (the annotate scripts and `plate.dat`): `{edge, from, to, type, anchor, cut}` plus the derived `line`, `side` and `zone`. `widthMm`, `offsetMm`, the centre line, `vMax`, `outerV` and `FLIP` are gone.
+3. **The page** (`testing.html`):
+   - the lace at its own width; a motif centred at the frame's u = 0;
+   - the slits with whole repeats from the hem corner;
+   - the live neck lace hung on the live edge (`dL` and its arc length from the centre front; the neck area made wide and deep enough for the widest lace);
+   - the overhang lit like the garment 3 px inside the edge;
+   - the lace texture's transparent texels given its mean colour (its mipmaps no longer grey it);
+   - the glow on the lace only.
+4. **Silhouette** (`annotate_torso.py`, step L4 items 0–2, read again on `source.png`):
+   - The hem over the stand: it ran straight at y 2200, but the garment rises to 2161 over the stand, so 20–37 px of the stand were fabric. This, not the overhang, was the black lace over the stand. The hem snap is now weak on 1.3 % of its length (was 36 %).
+   - The right sleeve's inner edge, y 725–1085: 4–14 px to the right, on the sleeve's shaded side. This was the band beside the sleeve.
+   - The right body side, y 1980–2140: 1–4 px inside the back panel's white folded edge. This was the strip at the slit corner.
+5. **The neck view's fabric was flat** (the user, 2026-11-22: "neckline swatches are missing"). With the neck lace laid live, that view has no baked trim, so the page made a 1 × 1 placeholder for `uvt`. `flatTexture` bound it on the active unit, which was unit 2 (the fabric's `uv`), so the fabric's coordinates became one value. `flatTexture` now uses a scratch unit (15). The neck view's fringe, measured again: rim 3.29 % (mocha), 4.41 % (sage), as at step 7.
+6. **Neck view, the two "gaps" between the arms and the body** (L4 item 3). The user's call: they are the kurta's own white fabric in shadow, not the wall. They close as garment: the sleeve's inner edge is now a seam shared by the front and the sleeve (`annotate_neck.py`), and the body-side "gap" edges are gone. Results:
+   - the neck plate: ALL PASS. Closure was 0.0206 % and 87 px of hairlines; the false openings caused both.
+   - render (`fringe.py`): uncovered 0.003 % with no piece over 1 px (was 0.013 %, 6 pieces); rim 0.00 % mocha (was 3.29 %), 2.11 % sage (was 4.41 %); halo 95 % 4.6 % (was 94 %: the grey half-shadow of the right wedge, open since step 3).
+
+**Measured:**
+
+| Check | Result |
+|---|---|
+| `rebuild_check.sh`; `plate.dat` | ALL IDENTICAL; 29,178 B for the 4 views (after item 6) |
+| Trim line on its edge | mean 0.03–0.24 px, std ≤ 0.21 px (limits 0.3 / 0.5); smoothness ≤ 0.23 px (the torso hem's 0.82 px of step 7 is gone) |
+| Trim field complete (1 px to 30 mm in) | 0 pixels without a value, on every trim of the 4 views |
+| Seams of `s` within 30 mm of the edge | 0 everywhere. Deeper: the torso hem's bend over the stand (5) and the right cuff (1), which only the 40 mm and 53 mm laces reach |
+| Page field against the build (`maps_check.py`) | `s` within 0.0010 cm, `t` within 0.0098 mm (one 16-bit step), on all 4 views |
+| `frame_check.mjs` | ≤ 3 × 10⁻¹⁴ cm |
+| Page | 17 queries (6 laces, slits on and off, neck depth 20–100 mm), no console error |
+| Rim (mocha) | torso 0.25 % (step 7: 0.35 %); neck 0.00 % (was 3.29 %, item 6); sleeve and hem unchanged (0.9 / 3.1 %) |
+
+**Before / after** of every area marked on 2026-11-22: [`img/stepA-lace-before-after.jpg`](img/stepA-lace-before-after.jpg). The changes it shows:
+- the streaks in the hem view's lace are gone;
+- the fan at the slit / hem corner is one lace;
+- both ends of the cuffs and of the sleeve-view neck run out to the silhouette;
+- the hem lace follows the hem over the stand;
+- the lace is shown at its real 30 mm.
+
+**Open:**
+- **A person's approval** of the before / after sheet and the L4 corrections.
+- Closure FAILs from before the extension: sleeve 0.0596 %; small pieces on the torso (6 px) and the hem (10 px). (The neck's are fixed by item 6.)
+- `maps_check.py` coverage on the torso: 1 px at (821, 916), from before the extension.
+- The halo's 95th percentile is still over 10 % on the torso, sleeve and hem views (median 1.6–2.4 %); the neck view is now 4.6 %.
+- The lace widths are the sidecars' (pearl 30 mm is still an assumption). At the lace's real width the neck lace is 30 mm (it was 12 mm).
+- Steps 4–7 of this file are still to be written, at the close (step 9).

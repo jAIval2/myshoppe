@@ -1,5 +1,7 @@
 # Plan: numeric — curves and a `.dat` file in place of the map images
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Status: **steps 0–7 done; build time on real GPUs unverified; step 8 not done; steps 9–11 done (step 11: the plates do not all pass yet, open items in the results)**. See `numeric-results.md`. Branch `numeric` (from `halfway`, 65d0be4), worktree `../myshoppe-numeric`.
 Compare: **http://localhost:8000** (`polish`), **http://localhost:8100** (`halfway`, the reference for this plan), **http://localhost:8200** (this worktree), each `/testing.html`.
 Background: `DedhD.md` §10. Product: a visualiser, 4 fixed views, **no 3D**.

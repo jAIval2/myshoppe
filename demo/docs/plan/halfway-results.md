@@ -1,5 +1,7 @@
 # Results: halfway plan
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Plan: `halfway.md`. Branch `halfway`. Reference: port 8000 (`polish`).
 
 ## How it was checked

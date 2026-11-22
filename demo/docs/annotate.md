@@ -1,11 +1,11 @@
 ---
 name: annotate-plate
-description: Annotate one base image of the Bespoke Studio demo — measure garment edges, seams, gaps, objects in front and landmarks on the photo, and write zones.json plus a colour-coded annotate.png review image, with automatic checks. Use for step 4 of the make-plate pipeline, when a base image arrives without a usable annotation, or when an annotation must be corrected.
+description: Annotate one base image of the Bespoke Studio demo — measure garment edges, seams, gaps, objects in front and landmarks on the photo, and write them as typed edges, zones with fabric-frame specifications and trims in tools/annotate_<view>.py, with automatic checks and a colour-coded annotate.png review image. Use for step 4 of the make-plate pipeline, when a base image arrives without a usable annotation, or when an annotation must be corrected.
 ---
 
 # Skill: annotate a base image
 
-This skill makes the **curve data** of a plate: `zones.json`, the review image `annotate.png`, and the script `tools/annotate_<view>.py` that makes them again.
+This skill makes the **measured data** of a plate: the script `tools/annotate_<view>.py` (the base crop, the measured points as typed edges, the zones with their fabric-frame specifications, the trims, the landmarks). `tools/make_plate.py` builds the plate from it, and draws the review image `annotate.png` (`--review`).
 It is **step 4** of `plate.md`. The pipeline, acceptance and view specifications are in `plate.md`.
 
 **Why we annotate ourselves:** in this demo, every annotated image made by an image-generation tool was a **new picture**. The form, the neck and the garment moved 8–60 px. Lines drawn on such an image do not fit the base. So the default is: **measure on the base, write the data, and let a person review an overlay.**
@@ -18,12 +18,11 @@ All paths are relative to `demo/`. Python 3 with Pillow only.
 
 | In | Out |
 |---|---|
-| `assets/plates/<plate>/source.png` | `base.jpg` (1200 × 1600), if the script also makes the base (close views) |
-| The view type and its specification (`plate.md` §5) | `zones.json` (contract: `plate.md` step 4) |
-| Optional: an annotated image from someone else | `annotate.png`: the colour code on `base.jpg` |
-| | `tools/annotate_<view>.py`: measured points, data, drawing and checks in one script |
+| `assets/plates/<plate>/source.png` | `tools/annotate_<view>.py`: `base(plate)` (the crop), `measure()` (the data below), the automatic checks when run alone |
+| The view type and its specification (`plate.md` §5) | After `make_plate.py <plate> --review`: `base.jpg`, `plate.dat`, and `demo/review/<plate>/annotate.png` for the review |
+| Optional: an annotated image from someone else | (a layout guide only, §4) |
 
-Templates: `tools/annotate_neck.py` (front view, shared seams, gaps), `tools/annotate_sleeve.py` (turned view, arm notch, `widthPx`, trim clipping).
+Templates: `tools/annotate_neck.py` (front view, shared seams, gaps that close again), `tools/annotate_sleeve.py` (turned view, an arm notch as an occluder, an axis through measured centres), `tools/annotate_torso.py` (full front view, both sides measured, wall gaps at the cuffs), `tools/annotate_hem.py` (three pieces, slits, an anchor at a known distance).
 
 ---
 
@@ -31,21 +30,17 @@ Templates: `tools/annotate_neck.py` (front view, shared seams, gaps), `tools/ann
 
 1. **One frame:** 1200 × 1600 px, 3:4, origin at the top left.
 2. **Measure on `source.png`**, at full resolution. Convert to the plate frame only at the end, with `T()` (§5).
-3. **Edge directions:** `top` and `bottom` go left → right. `left` and `right` go top → bottom (y must not decrease). "Left" and "right" are as seen in the image.
-4. **Corners meet exactly.** Each grid corner is the same point in its two edges.
-5. **A shared seam is one list.** Where a sleeve meets the front, both zones use **the same points**. Never sample a seam two times.
-6. **Gaps stay gaps.** If the wall shows between two parts, the gap is outside every zone. Where the parts touch again, the upper zone (the sleeve) covers the lower one by 2 px.
-7. **Objects in front are notches.** The bare mannequin arm, the stand or a hand in front of the garment is cut out of the outline of every zone that it covers.
-8. **The outline is the real visible edge**, closed and with no self-crossing. It cuts the neck dip, the slit opening, the armhole curve, gaps and notches.
-9. **A grid edge is a smooth grain line, not a cut.**
-   - The front side edges must not bulge more than **5 %** of their length from their straight chord. The good plates have 2.6–3.9 %.
-   - If a seam bulges more (the armhole in a turned view: 10.7 %), the grid edge runs **smoothly under the neighbouring zone**, and only the outline follows the seam.
-   - The grid top **never** follows the neck dip.
-   - Edges that bend on purpose are permitted: the shoulder line rising to the neck points, and sleeve edges along the arm.
-10. **Trims are centre lines**, half the trim width inside the garment edge, and **inside their zone outline** from end to end. Width is in mm.
+3. **Directions:** an edge's points run in one direction (top → bottom or left → right as named); a zone's outline is a chain of edges, each `+1` (as stored) or `-1` (reversed), that closes.
+4. **Corners meet exactly:** consecutive edges of an outline share their end point (the validator checks it).
+5. **A shared seam is one list.** Where two zones meet on a seam (an armhole; a sleeve lying on the body where a gap closes), both use **the same edge** (`"type": "seam", "zones": [a, b]`). Never sample a seam two times. The lower zone runs 6 px under the upper one automatically.
+6. **Every edge has a type:** `free` (garment against wall, form or mannequin arm: the build snaps it to the photo), `seam` (one list, two zones), `frame` (the image border), `cut` (the live neck dip). A lower zone's run hidden under a later zone is a `seam` with `"under": <the later zone>`.
+7. **Gaps stay gaps.** If the wall shows between two parts, both edges are `free` and the gap is outside every zone. Measure where the wall really shows: a white fold is garment, not wall.
+8. **Objects in front are notches and occluders.** The bare mannequin arm or the stand in front of the garment is cut out of the outline, and listed as an occluder (a chain of its edges): an edging lace does not hang over it.
+9. **Each zone has a fabric frame specification** (`"frame"`): `axis` (two landmarks for a straight centre front; or measured centre points through a bend; or `"midline"`), `anchor` (`{"line": ["neck-l", "neck-r"]}`, `{"point": "shoulder"}`, or `{"point": "slit-top", "vMm": ...}` at a known distance), optional `sagEdge` (the hem or the cuff: a weft line), `skipTop` (a sleeve cap), `axisDegree`. The build fits the half widths and the sag. The outline alone decides where the fabric shows; no grid edges.
+10. **Trims are specifications:** `edge` (the garment edge the lace is sewn to), `type` (`insertion`: the lace lies from the edge inward; `edging`: an edging lace's decorative edge hangs past it), optional anchors `from` / `to` (landmarks: the trim's line runs between their nearest points on the edge), `anchor` (where the motif sits: `cf`, the default, the frame's u = 0; or `from` / `to`, a whole motif at that end) and `cut` (the ends that are real, square ends: the slit top). No width and no offset: the lace's own width is used (StepA extension). The build derives the line (`derive_trims`).
 11. **Scale comes from an agreed value** (`plate.md` §5), never from the image alone.
-12. **Only what is in the photo.** Stitches, seams and darts that you cannot see are not data.
-13. **No text** in the base or in `annotate.png`.
+12. **Only what is in the photo.** Stitches, seams and darts that you cannot see are not data. A seam or a cuff fold may be made smooth by a fit through its measured points (the torso's armholes and cuffs).
+13. **No text** in the base.
 
 ---
 
@@ -53,13 +48,13 @@ Templates: `tools/annotate_neck.py` (front view, shared seams, gaps), `tools/ann
 
 | Item | Colour | Line |
 |---|---|---|
-| Front / body grid edges | Red `#E53935` | solid, 3 px |
-| Real outline (neck dip, slit opening, notches) | Red `#E53935` | dashed |
-| Sleeve and back-panel grid edges | Blue `#1E63E9` | solid, 3 px |
+| Front / body edges | Red `#E53935` | solid, 2 px |
+| The neck cut (`cut`) | Red `#E53935` | dashed |
+| Sleeve and back-panel edges | Blue `#1E63E9` | solid, 2 px |
+| A fabric axis | Green `#2E7D32` | dashed, 1 px |
 | Neck / cuff / hem / slit trim centre | Purple `#8E24AA` / Orange `#FB8C00` / Dark gold `#C79100` / Teal `#00897B` | solid |
 | Stitch lines (top-stitch, bar tack) | Grey `#616161` | dashed, 2 px |
-| Landmarks and grid corners | Black dot (r = 6), white ring | — |
-| Scale | Green `#2E7D32` | between its two landmarks |
+| Landmarks | Black dot, white ring | — |
 
 On a shared seam, draw red 2.5 px towards the body and blue 2.5 px towards the sleeve. The data keeps one exact line.
 
@@ -71,11 +66,10 @@ On a shared seam, draw red 2.5 px towards the body and blue 2.5 px towards the s
 Annotated image received?
 ├── no ─────────────────────────────────────────────► Path A: measure and write (§5–§9)
 └── yes → alignment test (plate.md step 2)
-          ├── aligned (every box ≤ 2) ───────────────► Path B
-          └── not aligned ───────────────────────────► Path A. Use the image only as a layout guide.
+          └── either way ────────────────────────────► Path A. Use the image only as a layout guide.
 ```
 
-**Path B:** `python3 tools/extract_zones.py <annotate.png> <base.jpg> <zones.json> <preview.png>`. Review the preview (§9.2). If a trace jumped to another line, give that edge as straight or measured points in the script. Then run the checks of §9.1. Do **not** use `tools/fit_zones.py`.
+The traced torso plate of 2026-11-18 (`extract_zones.py`, one affine per zone, the left side mirrored) was replaced by a measured one in StepA step 2: a received annotation is never the data.
 
 ---
 
@@ -90,7 +84,7 @@ def T(pts):                                      # source px -> plate px
 ```
 
 - Patch the sparkle mark before the crop (`plate.md` step 3).
-- Write the crop and the patch in `zones.json` → `"source"`.
+- Write the crop and the patch in the data's `"source"` text.
 
 ---
 
@@ -137,9 +131,9 @@ For each row from the neck corners down to below the dip, find the gap in the ga
 
 ### 6.5 Gaps and objects in front
 
-- **Gap** (wall between an arm and the body): the front edge follows the body side, and the sleeve edge follows the arm side. Both start at the underarm. Do not make the gap wider than it is in the photo.
-- **Object in front** (mannequin arm below a cuff): measure both of its edges, and cut it out of the front outline as a notch that starts and ends on the cuff edge.
-- **Hidden edge** (the body edge behind the sleeve): interpolate it with a few points, and write it in the script. The sleeve covers it, so only the grid smoothness matters there (rule 9).
+- **Gap** (wall between an arm and the body): the front edge follows the body side, and the sleeve edge follows the arm side, both `free`. They start where the wall really shows (a white fold above it is garment: the front and the sleeve share a seam down to there), and where the gap closes again the sleeve lying on the body is one shared seam. Do not make the gap wider than it is in the photo.
+- **Object in front** (mannequin arm below a cuff): measure both of its edges, cut it out of the front outline as a notch, and list it as an occluder (a chain of those edges).
+- **Hidden edge** (the body edge behind the sleeve): where the sleeve lies on the body, the body ends on the sleeve's edge (a shared seam). Where the body runs on under the sleeve out of sight, write its run as a `seam` with `"under"`: only its ends matter.
 
 ### 6.6 Number checks before you write
 
@@ -154,64 +148,66 @@ For each row from the neck corners down to below the dip, find the gap in the ga
 
 ## 7. Write the data
 
-Copy the template that is nearest to the view. Change only the measured lists and the zone recipes.
+Copy the template that is nearest to the view. Change only the measured lists, the edges, the zones and the trims.
 
-### 7.1 Seams: one list, two users
-
-```python
-seam_l = [(294, 644), (300, 720), ...]     # shoulder -> underarm, measured ONE time
-front_left_outline_part = seam_l + body_l  # the outline follows the seam
-sleeve_inner            = seam_l + slv_l   # the sleeve edge follows the same seam
-```
-
-### 7.2 Zone recipes
-
-| Zone | grid top | grid left | grid right | grid bottom | outline |
-|---|---|---|---|---|---|
-| `front` | shoulder-l → neck-l → **straight** → neck-r → shoulder-r | **smooth** line: the seam if it bulges ≤ 5 %, otherwise a smooth line under the sleeve | same rule, right side | hem or border | shoulders + neck dip + seams + gaps + notches + bottom |
-| `sleeve-l` | cap (border or outer edge → shoulder; torso: shoulder → underarm) | outer edge, or border | inner edge = `seam_l + slv_l` | cuff edge, or border | top + inner + bottom + outer |
-| `sleeve-r` | mirror of `sleeve-l` | inner edge = `seam_r + slv_r` | outer edge, or border | cuff edge, or border | — |
-| `back` (hem view) | slit top | back edge of the slit | side or border | back hem | — |
-
-**`widthPx`:** if a zone's top or bottom edge is much shorter than the zone (a sleeve cap of 50 px on a sleeve 300 px wide), `make_plate.py` takes their mean and stretches the fabric. Set:
+### 7.1 Edges: one list, typed
 
 ```python
-zone["widthPx"] = polygon_area(outline) / ((length(left) + length(right)) / 2)
+seam_l = [(294, 644), (300, 720), ...]                  # shoulder -> underarm, measured ONE time
+edges = {
+    "armhole-l": {"type": "seam", "zones": ["front", "sleeve-l"], "points": T(seam_l)},
+    "body-l":    {"type": "free", "points": T(seam_l[-1:] + body_l)},     # the body side of the wall gap
+    "neck":      {"type": "cut",  "points": T(neck_edge)},
+    "front-bottom": {"type": "frame", "points": T([(405, 2048), (1650, 2048)])},
+}
 ```
 
-On the sleeve plate this changed the sleeve from 7.8 to 12.3 cm wide, and the squares became 2 cm.
+### 7.2 Zones: an outline chain and a frame
+
+```python
+zones = {
+    "front": {"order": 1,
+              "frame": {"axis": ["cf-neck", "cf-low"], "anchor": {"line": ["neck-l", "neck-r"]}},
+              "outline": [["shoulder-l", 1], ["neck", 1], ["shoulder-r", 1], ["armhole-r", 1], ["body-r", 1],
+                          ["front-bottom", -1], ["body-l", -1], ["armhole-l", -1]]},
+    "sleeve-l": {"order": 2, "frame": {"axis": "midline", "anchor": {"point": "shoulder-l"}, "sagEdge": "cuff-l", "skipTop": 0.15},
+                 "outline": [...]},
+}
+```
+
+| Zone | Axis | Anchor |
+|---|---|---|
+| `front` (front view) | the centre front: `cf-neck` → `cf-low` / `hem-cf` | the neck-point line (`neck-l`, `neck-r`) |
+| `front` (turned view) | a vertical line halfway between the armhole and the far side (or the frame) | the neck-point line |
+| `sleeve-*` | `"midline"` for a straight sleeve; measured centres (upper arm, elbow, cuff) for a bent one | the shoulder point |
+| `back`, `back-l` (hem view) | `"midline"` | the slit top at its distance from the neck-point line (`vMm`) |
 
 ### 7.3 Trims
 
 ```python
-centre = offset(edge, (width_mm / 2) / mm_per_px, point_outside_the_garment)
-centre = clip_extend(centre, zone_outline)   # drop end points outside the outline, extend each end inside
+trims = {"hem": {"order": 3, "type": "edging", "edge": "hem", "from": "hem-l", "to": "hem-r"},
+         "slit-l": {"order": 3, "type": "insertion", "edge": "body-l", "from": "slit-l", "to": "hem-l", "anchor": "to", "cut": ["from"]}}
 ```
 
-| Trim | Width | Centre from the edge | Direction |
+| Trim | Width | Offset from its edge | Anchors |
 |---|---|---|---|
-| `neck` | 12 mm | 6 mm | neck-l → neck-r |
-| `cuff-l`, `cuff-r` | 25 mm | 12.5 mm | left → right as seen |
-| `hem` | 30 mm | 15 mm | left → right |
-| `slit-*` | 8 mm | 4 mm | slit top → hem |
-
-`clip_extend` is in `tools/annotate_sleeve.py`. It is needed where the trim meets a corner (neck corners, cuff corners).
+| `neck` | 12 mm | 6 mm | `neck-l` → `neck-r` |
+| `cuff-l`, `cuff-r` | 25 mm | 12.5 mm | — (inside the sleeve) |
+| `hem`, `hem-bl`, `hem-br` | 30 mm | 15 mm | the hem corners |
+| `slit-*` | 8 mm | 4 mm | the slit top → the hem corner |
 
 ### 7.4 Stitches, landmarks, scale, settings
 
-- **Stitches:** `"stitches": {name: polyline}`. **Measure** their distance from the edge on a zoom crop. Draw only the part that is visible (sleeve plate: the neck top-stitch only on the near half).
-- **Landmarks:** a dict of named plate-px points. The names are in `plate.md` §5. Add a second centre-front point (`cf-low` or `cf-hem`) when the centre front is visible.
+- **Stitches:** `"stitches": {name: polyline}`. **Measure** their distance from the edge on a zoom crop. Draw only the part that is visible.
+- **Landmarks:** a dict of named plate-px points (`plate.md` §5). A corner landmark that is an edge's end follows the snap; `cf-neck` is put on the snapped neck edge by the build.
 - **Scale:** `mm_per_px = agreed_mm / math.dist(L[a], L[b])`, and `"scaleNote"`.
-- **Settings:** `thetaDeg` for turned bodies and zones cut by the frame; `tuck` only for the torso.
+- **Settings:** `thetaDeg` for turned bodies and zones cut by the frame.
 
 ---
 
-## 8. Draw `annotate.png`
+## 8. The review image `annotate.png`
 
-Colour code §3, on `base.jpg`:
-- Shared seams drawn offset: red towards the body, blue towards the sleeve.
-- Outline parts that are not grid edges (neck dip, notches, slit opening) in dashed red.
-- No text.
+`make_plate.py <plate> --review` draws it from the plate (colour code §3): free edges in the zone's colour (the front red, the others blue), a seam as red and blue side by side, the neck cut dashed, each zone's fabric axis dashed green, trims, stitches, landmarks. It also writes `check.png` (a 2 cm checker on the fabric) and the edge crops.
 
 ---
 
@@ -221,22 +217,22 @@ Colour code §3, on `base.jpg`:
 
 | Check | Method |
 |---|---|
-| Left / right edges go top → bottom | y never decreases |
-| Corners meet | distance < 0.05 px |
-| No crossing on shared seams | for each y: sleeve-l inner x ≤ front-left x + 1.6; sleeve-r inner x ≥ front-right x − 1.6 |
+| Side edges go top → bottom | y never decreases |
+| Gaps not crossed | where a sleeve and the body face a wall gap: the sleeve's edge stays on its side (an overlap ≤ 1.6 px) |
 | Outlines simple | 0 self-crossings (segment-intersection test) |
-| Trim centres inside their zone outlines | point-in-polygon on every point (after `clip_extend`) |
-| **Front side edges smooth** | bulge from the chord ≤ 5 % (the same test as `plate_checks.py`) |
+| The plate validates (`make_plate.py` runs `platedat.validate`) | every edge typed; chains closed; a seam used by exactly two zones (or one lower zone, `under`); frame points on the border |
 | Scale cross-checks | §6.6 |
+| After the build (`plate.md` step 6) | trims inside their zones and at their offset; the frame rules; closure |
 
 ### 9.2 Visual: 2× zoom crops of `annotate.png`
 
 | Area | Look for |
 |---|---|
-| Neck | Red dashed **on** the edge; purple inside; grey on the real stitches |
+| Neck | Red dashed **on** the edge; purple inside, ending below the corner anchors; grey on the real stitches |
 | Shoulder points | Dot on the corner; shoulder line on the edge |
 | Armholes | Red and blue side by side on the seam; no crossing |
-| Underarms | The gap between red and blue, not wider than in the photo |
+| Underarms | The gap between red and blue, not wider than in the photo; the underarm landmark at the top of the underarm fold |
+| Axes | Green dashed down the middle of each piece, along its grain |
 | Cuffs | Edge on the real edge; orange inside; grey on the real stitch |
 | Notches | Dashed red on the edges of the mannequin arm or the stand |
 | Hem, slit | Edges, trims, bar tack on the real features |
@@ -252,13 +248,12 @@ Show `annotate.png` and the zoom crops to the owner of the look. Typical feedbac
 | Error | Seen as | Correct |
 |---|---|---|
 | A seam sampled two times | Red and blue cross; zigzag | One list (rule 5) |
-| A grid edge follows a bulging seam | S-curves in `check.png`; grain tilt > 10° | Smooth grid edge; the outline follows the seam (rule 9) |
-| A short cap edge, no `widthPx` | Fabric stretched across the sleeve | `widthPx` (§7.2) |
-| Trim ends outside the outline | Lace on the wall at a corner | `clip_extend` (§7.3) |
+| An axis off the middle of a piece, or through a notch | Columns of squares bend or tilt (frame grain > 3°) | Axis through measured centres (rule 9) |
+| A shaded edge against a light wall read too far out | Fabric on the wall along a sleeve | Read it again on a 2.5–3× crop; the snap keeps a weak edge |
+| Trim past its corner | Lace runs up the steep end of an edge | `from` / `to` anchors (rule 10) |
 | A gap missed | Fabric on the wall under the arm | True-colour crop of every underarm (§6.5) |
 | An object in front not cut out | Fabric on the mannequin arm | Notch (rule 7) |
 | The gap drawn too wide | Too much wall; the sleeve looks thin | Keep the sleeve edge on the real arm edge |
-| The grid top follows the neck dip | Grain bends near the neck | Straight top; the outline cuts the dip |
 | Stitches guessed | Grey line beside the real stitches | Measure on a zoom crop |
 | Points measured on the plate image | Error × 1.3 after the crop | Measure on `source.png`, then `T()` |
 | A front-view check used on a turned view | False alarm on shoulder → neck | §6.6, turned column |

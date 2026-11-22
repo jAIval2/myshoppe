@@ -114,40 +114,43 @@ This is a standard VFX method, the "UV pass" or "STMap". A render stores the UV 
 
 Our 2D pattern pieces *are* the UV layout. Each piece has its own grain. Trim strips (binding, piping) have their own UV strips. Thus lace bends along the neckline automatically.
 
-### 6.3 Passes for each plate
+### 6.3 What a plate is (since StepA)
 
-A **plate** is one view of one shape variant. Each plate has these files:
+A **plate** is one view of one shape variant: a folder of three files (`plan/StepA.md` §1):
 
-| File | Contents | Use in the browser |
+| File | Contents | Ships |
 |---|---|---|
-| `uv.png` | U and V, 16-bit, packed into 8-bit channels (see 6.5) | Where each fabric pixel comes from |
-| `shade.webp` | Grey light and ambient occlusion on neutral cloth | Folds and drape |
-| `id.png` | One flat colour for each zone | Which fabric or lace goes where; toggles; click targets |
-| `spec.webp` (optional) | Highlights only | Sheen on silk, satin, mashru |
-| `detail-*.webp` (optional) | Isolated RGBA layers, for example an embroidery motif in grey | Toggled details; the shader tints them with the thread colour |
+| `source.png` | The image as received; it is measured | No |
+| `base.jpg` | The 1200 × 1600 photo, made from `source.png` | Yes |
+| `plate.dat` | Every number of the view (`tools/platedat.py`, `BSP2`): typed edges (`free`, `seam`, `frame`, `cut`), each zone's outline as a chain of edges and its **fabric frame**, the trims (from their edges), stitches, landmarks, occluders, scale, and the decisions taken from the image (trim sides, the shade median, the neck block) | Yes |
 
-The dress form itself is a normal photo or render in the background of each plate.
+The source of a plate is `source.png` + `tools/annotate_<view>.py` (the measured points); `tools/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically (`tools/rebuild_check.sh`). No map image is stored: the page builds the maps.
+
+**The fabric frame** of a zone (`tools/plateframe.py`, `Plate.frameUV`): an axis (the centre front, a sleeve's or a panel's centre line), an anchor (v = 0 on the neck-point line, at the shoulder point, or a known distance at the slit top), a half-width profile on each side (a cubic fitted to the outline), `thetaDeg` and a sag (the weft lines curve like the hem or the cuff). v = the position along the axis (mm); u = the arc of a cylinder across it. Defined everywhere around the zone, so the outline alone decides where the fabric shows; the same garment point has the same (u, v) wherever the views agree.
 
 ### 6.4 Offline steps (one time for each plate)
 
-1. Make the garment in CLO3D. Keep the real-scale UVs for each pattern piece (do not use unified UVs). Then a 10 cm motif measures 10 cm on the body.
-2. Set the four cameras of section 3. Lock them. All looks use the same cameras.
-3. Use a neutral mid-grey fabric. Render the passes of 6.3 for each shape variant.
-4. Export the UV pass as 16-bit or 32-bit EXR. Treat it as data: do not apply colour management (see Blender issue #83842).
-5. Convert the EXR to the packed PNG, then convert shade and spec to WebP. Do this with a script in the worker. Pillow is already in the backend.
-6. Record the plate in the registry (section 7).
+`demo/docs/plate.md` (the pipeline) and `demo/docs/annotate.md` (measuring). In short: intake → base crop → measure every edge on gridded crops of `source.png` (typed edges, landmarks, the frame's axis and anchor) → `make_plate.py`: free edges snapped to the photo (`tools/snap_edges.py`), trims derived from their edges, frames fitted, decisions → `plate.dat` → `plate_invariants.py` and a person's review → record (§11).
 
-Fabric and lace swatches also need one step: remove the light (de-light the swatch) and make the brightness even. If you do not, the shade pass darkens the cloth two times. Dark fabrics then lose all their folds.
+A 3D route (CLO3D or Blender) stays possible as an offline source of plates (`DedhD.md` §11.3): its outlines and frames would come from the render instead of a measurement.
 
-The base form for the `torso` view must be a **bare** dress form. If the form wears a white kurta, a wide garment (anarkali, lehenga) goes past the kurta onto the wall. The shading is then not correct. Also remove the AI sparkle mark from `assets/torso-base.png`.
+Fabric and lace swatches also need one step: remove the light (de-light the swatch) and make the brightness even. If you do not, the shade darkens the cloth two times. Dark fabrics then lose all their folds.
 
 ### 6.5 In the browser
 
-- One `<canvas>`, one full-screen quad, one fragment shader of approximately 30 lines. No Three.js.
-- The shader does: `fabric = texture(swatch[zone], decodeUV(uv) * scale)` → `colour = fabric × shade + sheen × spec` → toggled zones and detail layers on top.
-- 4–6 textures. WebGL guarantees a minimum of 8 texture units.
-- Draw **only when a choice changes**. Do not use an animation loop.
-- Precision: browsers decode PNG to 8 bits for each channel. 8 bits is not sufficient for UVs. Put U into R + G (high byte, low byte) and V into B + A. Set `UNPACK_PREMULTIPLY_ALPHA_WEBGL = false` and `UNPACK_COLORSPACE_CONVERSION_WEBGL = NONE`. You can also use two RGB PNGs.
+- One `<canvas>`, one full-screen quad, one fragment shader. No Three.js. Draw **only when a choice changes**.
+- When a view is shown, `maps.js` builds its maps on the GPU from `plate.dat` (`plate.js` parses it): **id** (R zone, G trim, B the neck area, A the coverage of a soft free edge), **uv** (the zone's fabric frame evaluated per pixel), the **trim field** (`uvt` with id G, and `uvts` for the slits: below) and the **shade** (the photo's luminance ÷ its median, a guided filter per zone; it needs float render targets). One exact draw for each zone (its outline, and at a seam the lower zone's strip 6 px under the upper one) and each trim.
+- **Precision:** uv and the trim fields are 16-bit, packed into the RGBA8 textures (RG = u, BA = v, over 128 cm: 0.02 mm steps).
+- **Laces (StepA extension, `docs/plan/StepA.md` §8):** a lace is a strip of cloth sewn along a garment edge, at its **own** width and repeat (the sidecar's `widthMm` and period: the lace decides, not the trim).
+  - The **trim field** gives, for each pixel near a trim's edge: `t` = mm from the edge (+ on the garment) and `s` = the cloth length in cm along the edge, measured in the zone's fabric frame and 0 at the anchor. Because `s` is measured in the fabric frame, the motifs crowd toward a silhouette as the fabric does.
+  - The field is built from one element per 2 px segment of the edge, between smooth normals (the chord over ±30 mm). Elements share their normals, so there is no wedge and no overlap at a bend. Where two trims of a zone meet, the nearer edge wins: a mitre. It is built from 8 mm outside the edge to 56 mm inside (the widest lace), so it does not depend on the lace chosen. `tools/trimfield.py` is the reference; `plate.js` `trimElements` and `maps.js` `TRIM_FS` do the same.
+  - Ends: the neck, the cuffs and the hem are loops, so the field goes on past their ends and the garment's outline cuts it. Only the slit top is a square end.
+  - The overhang (an edging lace's decorative edge, `edgeDepth` of its width past the edge) exists only along the edge, takes the garment's light 3 px inside the edge (not the stand's or the wall's behind it), and keeps its contact shadow.
+  - Phase: a motif is centred at the frame's u = 0 (the centre front, a sleeve's axis). The slits have whole repeats from the hem corner. The slits are a field of their own (`uvts`); the shader mitres them against the hem by the nearer edge.
+  - In the views with the live neckline, the neck lace hangs on the live edge (`t` = the distance to it, `s` = its arc length from the centre front).
+  - The lace texture's transparent texels carry the lace's mean colour, so its small mipmaps do not grey it.
+- **Soft free edges:** where a zone meets the background, its coverage is a 1 px ramp on the photo's 50 % edge, and what shows beside the fabric is the photo 3 px beyond the edge (past the garment's own white).
+- The shader does: `fabric = texture(swatch, decode(uv) / repeat)` × shade (+ sheen) → laces from the trim field → the live neckline → the coverage of the edge. `?perf=1` shows the build time, the draw time, the frame rate of a drag and whether float render targets exist.
 
 ### 6.6 Where SVG stays
 

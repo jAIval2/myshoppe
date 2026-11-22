@@ -1,5 +1,7 @@
 # Plan: higher quality for the fabric and lace overlay
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Status: **done** (steps 0–4 and 6; step 5 skipped). Results: `upscale-results.md`.
 Scope: `demo/` only (the torso plate `assets/plates/torso-straight/`, the swatches, `testing.html`, `tools/`).
 Background: `../render.md`, section 11 ("Known problems" and "Next steps").

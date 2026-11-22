@@ -1,5 +1,7 @@
 # Plan: halfway — live neckline with pivot points, then the showcase
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Status: **steps 1–7 done** (step 6 with its fallback); open checks need a real phone and a person: see `halfway-results.md`. Branch `halfway`, worktree `../myshoppe-halfway`.
 Compare: **http://localhost:8000/testing.html** (branch `polish`, the reference) and **http://localhost:8100/testing.html** (this worktree).
 Product: a **visualiser** for customers, and an easier life for the owner. Not a factory tool. **4 fixed views, no 3D.**

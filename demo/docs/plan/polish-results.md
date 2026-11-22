@@ -1,5 +1,7 @@
 # Polish results
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Plan: `polish.md`. Harness: `DPR=2 tools/shoot_views.sh <dir> <the 8 queries>` → `tools/polish_metrics.py crops|fcr|fd|joins`.
 All screenshots are 2× (canvas 860 × 1147 px in a 1800 × 1520 screenshot). Fixed review crops: `baseline-polish/` (before) and later `after-step*/`.
 Crop boxes are frozen in `tools/polish_metrics.py` (`CROPS`), in plate px, above the caption pill of the stage (it covers plate y > 1466).

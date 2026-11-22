@@ -3,7 +3,7 @@
 Source: source.png, 1792 x 2400 (the AI image as received; it was assets/torso-base.png). The base: the sparkle mark (bottom right
 wall) covered with wall from 200 px to the left and 40 px up, the exact 3:4 cut (1792 x 2389: 11 px of plain wall and stand off the
 bottom), resized to 1200 x 1600 (x 0.669643, y 0.669736). This was tools/make_base.py.
-As a module (tools/make_plate.py): base(plate_dir), measure(), review(P, base). Run alone: python3 tools/annotate_torso.py
+As a module (tools/make_plate.py): base(plate_dir), measure(). Run alone: python3 tools/annotate_torso.py
 (the automatic checks of annotate.md 9.1; writes nothing).
 
 How the lists were measured (2026-11-21): every edge was read on gridded crops of source.png (2-3x, 10 px grid, true colour and
@@ -65,14 +65,31 @@ outer_r = [(1185, 441), (1192, 445), (1198, 451), (1207, 470), (1210, 478), (121
            (1354, 1177), (1361, 1216), (1363, 1223), (1364, 1231), (1372, 1269), (1378, 1308), (1384, 1340)]
 cuff_r = [(1222, 1374), (1230, 1375), (1238, 1373), (1277, 1368), (1293, 1364), (1317, 1360), (1333, 1356), (1356, 1352),
           (1370, 1348), (1378, 1347), (1384, 1340)]
-sleeve_in_r = [(1222, 1374), (1216, 1350), (1210, 1330), (1204, 1300), (1198, 1270), (1193, 1250), (1188, 1220), (1185, 1200), (1184, 1190), (1180, 1159), (1173, 1117), (1171, 1109), (1170, 1100), (1161, 1062), (1161, 1055), (1158, 1031), (1158, 1024), (1162, 1015), (1158, 985), (1158, 977), (1155, 954), (1155, 946), (1152, 923), (1152, 915), (1151, 908), (1148, 900), (1148, 883), (1150, 880), (1150, 850), (1150, 800), (1153, 750), (1152, 705)]
+# y 725-1085 read again (StepA extension, step L4, 2026-11-22: "the long band beside the sleeve"): the first reading lay 4-14 px to the
+# right, on the sleeve's shaded side, so the body's fabric covered a strip of it (a dark stripe through the body's pattern). Each row:
+# the 50 % crossing of the first fall of >= 14 levels going right from the lit body (blur 1.2 px). Below y 1100 the two agreed (2 px).
+sleeve_in_r = [(1222, 1374), (1216, 1350), (1210, 1330), (1204, 1300), (1198, 1270), (1193, 1250), (1188, 1220), (1185, 1200), (1184, 1190), (1180, 1159), (1173, 1117), (1171, 1109), (1170, 1100),
+               (1166.0, 1085), (1162.9, 1070), (1159.5, 1055), (1155.9, 1040), (1153.2, 1025), (1149.5, 1010), (1147.0, 995),
+               (1144.9, 980), (1143.5, 965), (1143.1, 950), (1142.5, 935), (1142.9, 920), (1142.2, 905), (1141.6, 890), (1141.5, 875),
+               (1141.3, 860), (1140.6, 845), (1140.0, 830), (1138.4, 815), (1137.8, 800), (1140.6, 785), (1144.0, 770), (1147.5, 755),
+               (1147.8, 740), (1149.0, 725), (1152, 705)]
 armhole_r = [(1185, 441), (1178, 450), (1170, 460), (1165, 480), (1161, 500), (1158, 525), (1156, 550), (1153, 575), (1152, 600), (1152, 650), (1152, 705)]
 body_l = [(613, 1185), (614, 1218), (610, 1258), (610, 1267), (608, 1275), (599, 1350), (597, 1391), (592, 1425), (592, 1433), (588, 1466), (588, 1474), (585, 1507), (585, 1538), (584, 1546), (585, 1561), (587, 1569), (586, 1585), (587, 1592), (587, 1639), (582, 1692), (582, 1731), (581, 1738), (580, 1762), (579, 1769), (579, 1785), (578, 1792), (579, 1800), (578, 1808), (578, 1838), (579, 1846), (578, 1854), (579, 1862), (578, 1877), (579, 1885), (578, 1892), (578, 1985), (580, 2009), (580, 2034), (583, 2067), (581, 2100), (581, 2141), (582, 2150)]
-body_r = [(1184, 1190), (1190, 1235), (1190, 1242), (1203, 1350), (1203, 1358), (1213, 1442), (1214, 1458), (1214, 1492), (1215, 1500), (1216, 1531), (1217, 1538), (1217, 1554), (1216, 1562), (1217, 1577), (1216, 1592), (1217, 1600), (1217, 1623), (1218, 1631), (1217, 1646), (1218, 1654), (1218, 1700), (1219, 1708), (1219, 1746), (1220, 1754), (1219, 1762), (1219, 1800), (1217, 1808), (1216, 1839), (1214, 1854), (1216, 1902), (1216, 1950), (1215, 2000), (1214, 2050), (1213, 2100), (1212, 2133), (1212, 2150)]
+body_r = [(1184, 1190), (1190, 1235), (1190, 1242), (1203, 1350), (1203, 1358), (1213, 1442), (1214, 1458), (1214, 1492), (1215, 1500), (1216, 1531), (1217, 1538), (1217, 1554), (1216, 1562), (1217, 1577), (1216, 1592), (1217, 1600), (1217, 1623), (1218, 1631), (1217, 1646), (1218, 1654), (1218, 1700), (1219, 1708), (1219, 1746), (1220, 1754), (1219, 1762), (1219, 1800), (1217, 1808), (1216, 1839), (1214, 1854), (1216, 1902), (1216, 1950),
+          # y 1980-2140 read again (StepA extension, step L4: "the strip of white beside the slit"): the outer 50 % crossing of the back
+          # panel's white folded edge against the wall (blur 0.8 px); the first reading lay 1-4 px inside it. The corner stays.
+          (1216.7, 1980), (1215.7, 2000), (1215.6, 2020), (1216.7, 2040), (1217.6, 2060), (1216.7, 2080), (1215.6, 2100),
+          (1214.6, 2110), (1213.6, 2120), (1212.6, 2130), (1213.0, 2140), (1212, 2150)]
+# x 760-1060 read again (StepA extension, step L4, 2026-11-22): the hem rises over the stand (the first reading ran straight across at
+# y 2200 and the front covered 20-37 px of the stand's top). Each column: the garment's last luminance step going down (blur 1.2 px,
+# central difference >= 10 levels): white -> floor at x 760-840, white -> stand at 850-960, the hem's shaded fold -> floor at 970-1060.
+# x 720-750: no step (the garment's shade there equals the floor's): the first reading stays.
 hem_edge = [(582, 2150), (607, 2164), (614, 2167), (627, 2175), (635, 2178), (648, 2186), (657, 2190), (673, 2195),
-            (690, 2199), (708, 2201), (717, 2198), (725, 2200), (742, 2202), (750, 2200), (758, 2200), (767, 2203),
-            (800, 2203), (808, 2202), (825, 2202), (842, 2200), (858, 2200), (892, 2198), (908, 2198), (917, 2199),
-            (933, 2199), (942, 2200), (958, 2200), (992, 2202), (1025, 2202), (1033, 2203), (1050, 2203), (1075, 2200),
+            (690, 2199), (708, 2201), (717, 2198), (725, 2200), (742, 2202), (750, 2200), (760, 2199), (770, 2196),
+            (780, 2193), (790, 2189), (800, 2185), (810, 2181), (820, 2177), (830, 2172), (840, 2169), (850, 2168), (860, 2166),
+            (870, 2164), (880, 2163), (890, 2162), (900, 2162), (910, 2161), (920, 2162), (930, 2163), (940, 2164), (950, 2166),
+            (960, 2168), (970, 2170), (980, 2172), (990, 2176), (1000, 2180), (1010, 2185), (1020, 2188), (1030, 2192),
+            (1040, 2194), (1050, 2197), (1060, 2200), (1075, 2200),
             (1110, 2200), (1118, 2199), (1152, 2190), (1160, 2186), (1176, 2180), (1192, 2171), (1197, 2166), (1201, 2159),
             (1206, 2154), (1212, 2150)]
 
@@ -121,7 +138,6 @@ CF_X = 897                                              # the form's centre-fron
 I_GAP_L, I_GAP_R = sleeve_in_l.index(GAP_L), sleeve_in_r.index(GAP_R)
 sleeve_gap_l, sleeve_body_l = sleeve_in_l[:I_GAP_L + 1], sleeve_in_l[I_GAP_L:]      # cuff-in -> gap top, gap top -> underarm
 sleeve_gap_r, sleeve_body_r = sleeve_in_r[:I_GAP_R + 1], sleeve_in_r[I_GAP_R:]
-GRID_L, GRID_R = (632, 950), (1168, 1000)               # a point of each front grid side under the sleeve (the grid lies outside the outline)
 
 
 def y_at(pts, x):
@@ -175,24 +191,6 @@ def inside(pt, poly):
     return c
 
 
-def clip_extend(centre, outline, reach=90):
-    """Trim centre must stay inside the zone outline: drop outside end points, extend each end along its last segment."""
-    c = [list(p) for p in centre]
-    while c and not inside(c[0], outline): c.pop(0)
-    while c and not inside(c[-1], outline): c.pop()
-    for end in (0, -1):
-        a, b = (c[1], c[0]) if end == 0 else (c[-2], c[-1])
-        n = math.dist(a, b) or 1
-        ux, uy = (b[0] - a[0]) / n, (b[1] - a[1]) / n
-        t, last = 1.0, None
-        while t <= reach and inside((b[0] + ux * t, b[1] + uy * t), outline):
-            last = [round(b[0] + ux * t, 1), round(b[1] + uy * t, 1)]
-            t += 1.0
-        if last:
-            c.insert(0, last) if end == 0 else c.append(last)
-    return c
-
-
 def thin(pts, tol):
     """Douglas-Peucker."""
     if len(pts) < 3: return pts
@@ -239,21 +237,14 @@ def measure():
         "cuff-r": {"type": "free", "points": T(cuff_r)},
         "sleeve-gap-r": {"type": "free", "points": T(sleeve_gap_r)},
     }
-    # grids (the Coons patch, until StepA step 4): the outline cuts, so each grid edge lies on or OUTSIDE the outline
-    side_l = [SH_L, GRID_L] + [(x - 6, y) for x, y in body_l[1:-1]] + [(HEM_L[0] - 6, HEM_L[1])]
-    side_r = [SH_R, GRID_R] + [(x + 6, y) for x, y in body_r[1:-1]] + [(HEM_R[0] + 6, HEM_R[1])]
     zones = {
-        "front": {"order": 1,
+        "front": {"order": 1, "frame": {"axis": ["cf-neck", "hem-cf"], "anchor": {"line": ["neck-l", "neck-r"]}, "sagEdge": "hem"},
                   "outline": [["shoulder-l", 1], ["neck", 1], ["shoulder-r", 1], ["armhole-r", 1], ["sleeve-body-r", -1], ["body-r", 1],
-                              ["hem", -1], ["body-l", -1], ["sleeve-body-l", 1], ["armhole-l", -1]],
-                  "grid": {"top": T(shoulder_l + shoulder_r), "left": T(side_l), "right": T(side_r),
-                           "bottom": T([side_l[-1]] + hem_edge[1:-1] + [side_r[-1]])}},
-        "sleeve-l": {"order": 2,
-                     "outline": [["outer-l", 1], ["cuff-l", 1], ["sleeve-gap-l", 1], ["sleeve-body-l", 1], ["armhole-l", -1]],
-                     "grid": {"top": T([SH_L, SH_L]), "left": T(outer_l), "right": T(armhole_l + sleeve_in_l[::-1][1:]), "bottom": T(cuff_l)}},
-        "sleeve-r": {"order": 2,
-                     "outline": [["armhole-r", 1], ["sleeve-body-r", -1], ["sleeve-gap-r", -1], ["cuff-r", 1], ["outer-r", -1]],
-                     "grid": {"top": T([SH_R, SH_R]), "left": T(armhole_r + sleeve_in_r[::-1][1:]), "right": T(outer_r), "bottom": T(cuff_r)}},
+                              ["hem", -1], ["body-l", -1], ["sleeve-body-l", 1], ["armhole-l", -1]]},
+        "sleeve-l": {"order": 2, "frame": {"axis": "midline", "anchor": {"point": "shoulder-l"}, "sagEdge": "cuff-l", "skipTop": 0.15},
+                     "outline": [["outer-l", 1], ["cuff-l", 1], ["sleeve-gap-l", 1], ["sleeve-body-l", 1], ["armhole-l", -1]]},
+        "sleeve-r": {"order": 2, "frame": {"axis": "midline", "anchor": {"point": "shoulder-r"}, "sagEdge": "cuff-r", "skipTop": 0.15},
+                     "outline": [["armhole-r", 1], ["sleeve-body-r", -1], ["sleeve-gap-r", -1], ["cuff-r", 1], ["outer-r", -1]]},
     }
     P = {"view": "torso", "variant": "straight-kurta", "viewBox": [1200, 1600], "mmPerPx": round(mm_per_px, 4),
          "scaleNote": "neck-l -> neck-r = 158 mm (the neck view's agreed value; the old assumption, shoulder width 370 mm, would give "
@@ -262,81 +253,24 @@ def measure():
                    "Points measured on source.png by Claude, both sides (StepA step 2).",
          "landmarks": L, "edges": edges, "zones": zones, "stitches": {}, "settings": {"shadeSmoothMm": 0}}
     O = {zn: platedat.outline(P, zn) for zn in zones}
-    for zn in ("sleeve-l", "sleeve-r"):                    # the sleeve cap is a point: the fabric width = area / mean side length (until step 4)
-        z = zones[zn]
-        zones[zn]["widthPx"] = round(poly_area(O[zn]) / ((plen(z["grid"]["left"]) + plen(z["grid"]["right"])) / 2), 1)
     mm = mm_per_px
     tw = lambda w: w / mm
     neck = T(neck_edge)
     below = lambda pts: [p for p in pts]
-    keep = lambda c, zone: [p for p in c if inside(p, O[zone])]
-    hem_c = [p for p in keep(parallel(T(hem_edge), tw(15), T([(897, 2350)])[0]), "front") if L["hem-l"][0] <= p[0] <= L["hem-r"][0]]
+    # trims: each lace hangs on its garment edge between its anchors (the build derives the line: StepA extension, step L1); the
+    # lace's own width and repeat are the lace's. anchor: where the motif is placed (default the frame's u = 0); cut: a real end
     trims = {
-        "neck": {"order": 3, "widthMm": 12, "type": "insertion", "edge": "neck", "offsetMm": 6,
-                 "from": "neck-l", "to": "neck-r",                # ends below the corner anchors (person review 2026-11-22)
-                 "centre": [p for p in keep(parallel(neck, tw(6), T([(CF_X, 300)])[0]), "front") if L["neck-l"][0] <= p[0] <= L["neck-r"][0]]},
-        "cuff-l": {"order": 3, "widthMm": 25, "type": "edging", "edge": "cuff-l", "offsetMm": 12.5,
-                   "centre": keep(parallel(T(cuff_l), tw(12.5), T([(490, 1500)])[0]), "sleeve-l")},
-        "cuff-r": {"order": 3, "widthMm": 25, "type": "edging", "edge": "cuff-r", "offsetMm": 12.5,
-                   "centre": keep(parallel(T(cuff_r), tw(12.5), T([(1300, 1500)])[0]), "sleeve-r")},
-        "slit-l": {"order": 3, "widthMm": 8, "type": "insertion", "edge": "body-l", "offsetMm": 4, "from": "slit-l", "to": "hem-l",
-                   "centre": keep(parallel(T([p for p in body_l if p[1] >= SLIT_L[1]]), tw(4), T([(400, 2000)])[0]), "front")},
-        "slit-r": {"order": 3, "widthMm": 8, "type": "insertion", "edge": "body-r", "offsetMm": 4, "from": "slit-r", "to": "hem-r",
-                   "centre": keep(parallel(T([p for p in body_r if p[1] >= SLIT_R[1]]), tw(4), T([(1400, 2000)])[0]), "front")},
-        # the hem lace ends above the corner anchors (hem-l, hem-r), after the person review of 2026-11-22
-        "hem": {"order": 3, "widthMm": 30, "type": "edging", "edge": "hem", "offsetMm": 15, "from": "hem-l", "to": "hem-r",
-                "join": "over the slit trims", "centre": hem_c},
+        "neck": {"order": 3, "type": "insertion", "edge": "neck", "from": "neck-l", "to": "neck-r"},
+        "cuff-l": {"order": 3, "type": "edging", "edge": "cuff-l"},
+        "cuff-r": {"order": 3, "type": "edging", "edge": "cuff-r"},
+        "slit-l": {"order": 3, "type": "insertion", "edge": "body-l", "from": "slit-l", "to": "hem-l", "anchor": "to", "cut": ["from"]},
+        "slit-r": {"order": 3, "type": "insertion", "edge": "body-r", "from": "slit-r", "to": "hem-r", "anchor": "to", "cut": ["from"]},
+        "hem": {"order": 3, "type": "edging", "edge": "hem", "from": "hem-l", "to": "hem-r", "join": "mitre with the slits"},
     }
-    for n in trims:                                        # every 2 px is more than a trim needs: thin to 0.05 px
-        trims[n]["centre"] = thin(trims[n]["centre"], 0.05)
     P["trims"] = trims
     return P
 
 
-# ---- annotate.png: colour code on the exact base (annotate.md section 3)
-RED, BLUE, PURPLE, ORANGE, GOLD, TEAL, GREEN = (229, 57, 53), (30, 99, 233), (142, 36, 170), (251, 140, 0), (199, 145, 0), (0, 137, 123), (46, 125, 50)
-
-
-def review(P, base_img):
-    img = base_img.copy()
-    d = ImageDraw.Draw(img)
-
-    def line(pts, col, w=2):
-        d.line([tuple(p) for p in pts], fill=col, width=w, joint="curve")
-
-    def dashed(pts, col, w=2, on=7, off=5):
-        acc, draw = 0.0, True
-        for a, b in zip(pts, pts[1:]):
-            seg = math.dist(a, b)
-            t = 0.0
-            while t < seg:
-                step = min((on if draw else off) - acc, seg - t)
-                if draw:
-                    d.line([(a[0] + (b[0] - a[0]) * t / seg, a[1] + (b[1] - a[1]) * t / seg),
-                            (a[0] + (b[0] - a[0]) * (t + step) / seg, a[1] + (b[1] - a[1]) * (t + step) / seg)], fill=col, width=w)
-                t += step
-                acc += step
-                if acc >= (on if draw else off):
-                    acc, draw = 0.0, not draw
-    E = P["edges"]
-    for n in ("armhole-l", "armhole-r"):                    # shared seams: red towards the body, blue towards the sleeve
-        away = P["landmarks"]["cf-neck"]
-        line(offset(E[n]["points"], 1.5, away), RED, 1)
-        line(offset(E[n]["points"], -1.5, away), BLUE, 1)
-    for n in ("shoulder-l", "shoulder-r", "body-l", "body-r", "hem"): line(E[n]["points"], RED)
-    dashed(E["neck"]["points"], RED)
-    for n in ("sleeve-body-l", "sleeve-body-r"):           # shared: red towards the body, blue towards the sleeve
-        away = P["landmarks"]["cf-neck"]
-        line(offset(E[n]["points"], 1.5, away), RED, 1)
-        line(offset(E[n]["points"], -1.5, away), BLUE, 1)
-    for n in ("outer-l", "cuff-l", "sleeve-gap-l", "outer-r", "cuff-r", "sleeve-gap-r"): line(E[n]["points"], BLUE)
-    col = {"neck": PURPLE, "cuff-l": ORANGE, "cuff-r": ORANGE, "hem": GOLD, "slit-l": TEAL, "slit-r": TEAL}
-    for n, t in P["trims"].items(): line(t["centre"], col[n], 1)
-    L = P["landmarks"]
-    line([L["neck-l"], L["neck-r"]], GREEN, 2)
-    for x, y in L.values():
-        d.ellipse((x - 4, y - 4, x + 4, y + 4), fill="black", outline="white", width=1)
-    return img
 
 
 # ---- checks (annotate.md 9.1)
@@ -357,28 +291,11 @@ def checks(P):
     print(f"wall gap sleeve -> body: left {min(gap_l):.1f} .. {max(gap_l):.1f} px, right {min(gap_r):.1f} .. {max(gap_r):.1f} px (an overlap must be <= 1.6)")
     assert min(gap_l) >= -1.6 and min(gap_r) >= -1.6
     O = {zn: platedat.outline(P, zn) for zn in P["zones"]}
-    for zn, zv in P["zones"].items():
-        g = zv["grid"]
-        for a, b in ((g["top"][0], g["left"][0]), (g["top"][-1], g["right"][0]), (g["bottom"][0], g["left"][-1]), (g["bottom"][-1], g["right"][-1])):
-            assert math.dist(a, b) < 0.05, (zn, a, b)
-    print("grid corners meet: yes")
     for zn, o in O.items():
         n = len(o)
         X = sum(1 for i in range(n) for j in range(i + 2, n) if not (i == 0 and j == n - 1) and segs_cross(o[i], o[(i + 1) % n], o[j], o[(j + 1) % n]))
         print(f"outline {zn}: {n} points, {X} self-crossings")
         assert X == 0
-    for tn, t in P["trims"].items():
-        zone = "sleeve-l" if tn == "cuff-l" else "sleeve-r" if tn == "cuff-r" else "front"
-        bad = [p for p in t["centre"] if not inside(p, O[zone])]
-        print(f"trim {tn}: {len(bad)} of {len(t['centre'])} centre points outside the {zone} outline")
-        assert not bad
-    for side in ("left", "right"):
-        e = P["zones"]["front"]["grid"][side]
-        a, b = e[0], e[-1]
-        Ln = math.dist(a, b)
-        dev = max(abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Ln for p in e)
-        print(f"front grid {side} bulge {dev:.0f} px = {100 * dev / Ln:.1f} % (must be <= 5 %)")
-        assert dev / Ln <= 0.05
     L, mm = P["landmarks"], P["mmPerPx"]
     sw = math.dist(L["shoulder-l"], L["shoulder-r"]) * mm
     print(f"scale {mm} mm/px (neck width 158 mm) | shoulder width {sw:.0f} mm (assumed 370) | shoulder -> neck: left "

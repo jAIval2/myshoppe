@@ -229,7 +229,7 @@ def cmd_fit(sw_dir=None):
         for view in ("torso", "neck", "sleeve", "hem"):
             pj = plate_json(PLATE_OF[view])
             for name, t in pj["trims"].items():
-                L, w = t["lengthCm"], t["widthMm"] / 10
+                L, w = t["lengthCm"], meta.get("widthMm", 30.0) / 10      # the lace's own width (StepA extension: the lace decides)
                 r = meta["periodRatio"] * w
                 lim = 0.10 if L < 3 * r else 0.05
                 n = max(1, round(L / r))
@@ -282,7 +282,7 @@ def cmd_joins():
             for t in names:
                 if t not in pj["trims"]:
                     continue
-                L, wmm = pj["trims"][t]["lengthCm"], pj["trims"][t]["widthMm"]
+                L, wmm = pj["trims"][t]["lengthCm"], round((meta or {}).get("widthMm", 30.0))   # the lace's own width (StepA extension)
                 tile_cm = wmm / 10 * w / h                         # one image of the lace along this trim
                 mirror_joins = int(L // tile_cm)                   # MIRRORED_REPEAT: one mirror join at every multiple of the tile
                 rep = (meta["periodRatio"] * wmm / 10) if meta and meta.get("periodRatio") else None

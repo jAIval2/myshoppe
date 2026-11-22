@@ -1,8 +1,7 @@
 """The edges of a plate, for the review tools (StepA step 0): which parts of each zone outline are free (garment against wall,
 form or mannequin arm), seam (another zone on the other side), frame (the image border) or cut (the live neck dip).
 
-Since step 1 the type of each outline segment is the type of its edge in plate.dat (tools/platedat.py); the torso's tuck is
-applied to the points, as make_plate.py does. A free-edge sample that lies inside a zone drawn later (a free edge that runs under
+Since step 1 the type of each outline segment is the type of its edge in plate.dat (tools/platedat.py). A free-edge sample that lies inside a zone drawn later (a free edge that runs under
 a sleeve for a few px) counts as hidden ("seam").
 Pillow only. Used by tools/edge_crops.py and tools/fringe.py.
 """
@@ -12,28 +11,8 @@ from PIL import Image, ImageDraw
 W, H = 1200, 1600
 
 
-def tuck(p, t):
-    """make_plate.py tuck(): push a front side point outward (the torso only)."""
-    x, y = p
-    if abs(x - t["cx"]) < t["centreBand"]:
-        return [x, y]
-    pr = t.get("profile")
-    if isinstance(pr, dict): pr = pr["right" if x > t["cx"] else "left"]
-    if pr and y <= pr[-1][0]:
-        d = pr[0][1]
-        for (ya, da), (yb, db) in zip(pr, pr[1:]):
-            if ya <= y <= yb: d = da + (db - da) * (y - ya) / (yb - ya) if yb > ya else db
-        if y < pr[0][0]: d = 0.0
-    elif y < t["tipY"]: d = t["tip"]
-    elif y <= t["yFull"]: d = t["reach"]
-    elif y <= t["yZero"]: d = t["reach"] + (t["below"] - t["reach"]) * (y - t["yFull"]) / (t["yZero"] - t["yFull"])
-    else: d = t["below"]
-    return [x + (d if x > t["cx"] else -d), y]
-
-
 def load(pd):
-    """The zone data of a plate (platedat.legacy) with the tuck applied to the front outline (the outline the maps are cut with),
-    and "types": {zone: [type of the segment from vertex i to i + 1]}."""
+    """The zone data of a plate (platedat.legacy) and "types": {zone: [type of the segment from vertex i to i + 1]}."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import platedat
     P = platedat.read(pd)
@@ -45,11 +24,6 @@ def load(pd):
             n = len(P["edges"][name]["points"]) - 1
             t += [P["edges"][name]["type"]] * n
         types[zn] = t[:len(Z["zones"][zn]["outline"])] if len(t) >= len(Z["zones"][zn]["outline"]) else t + [t[-1]]
-    if "tuck" in Z:
-        ex = Z["tuck"].get("exempt", {})
-        skip = lambda i: any(a <= i <= b for a, b in ex.get("outline", []))
-        fz = Z["zones"]["front"]
-        fz["outline"] = [list(p) if skip(i) else tuck(p, Z["tuck"]) for i, p in enumerate(fz["outline"])]
     Z["types"] = types
     return Z
 
@@ -86,7 +60,7 @@ def classify(Z, step=1.0):
             a, b = o[k], o[(k + 1) % len(o)]
             L = math.dist(a, b)
             if L == 0: continue
-            nx, ny = -(b[1] - a[1]) / L * sgn, (b[0] - a[0]) / L * sgn     # outward
+            nx, ny = (b[1] - a[1]) / L * sgn, -(b[0] - a[0]) / L * sgn     # outward (y down: area > 0 = clockwise on screen)
             m = max(1, int(math.ceil(L / step)))
             for i in range(m):
                 p = (a[0] + (b[0] - a[0]) * i / m, a[1] + (b[1] - a[1]) * i / m)

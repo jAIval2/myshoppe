@@ -408,8 +408,6 @@
   };
   // trim id in id.png (G channel) → button group; flip = pearls on the other side of the strip
   const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8 };   // hem-bl / hem-br: the hem of the side pieces of the hem view
-  const FLIP = { "slit-r": 1 };
-  const VIEW_FLIP = {};                                // per-view override of FLIP (set after checking the pearls)
   const GROUP = { neck: ["neck"], cuffs: ["cuff-l", "cuff-r"], hem: ["hem", "hem-bl", "hem-br"], slits: ["slit-l", "slit-r"] };
 
   const params0 = new URLSearchParams(location.search);    // test switches: ?view=neck|sleeve|hem  ?fabric=mocha  ?lace=leaf
@@ -421,6 +419,28 @@
   const canvas = document.getElementById("stage");
   const note = document.getElementById("note");
   const stat = document.getElementById("stat");
+  // ---- ?perf=1 (StepA step 5): an overlay that a phone can show without tools: the view's build time (with the 1 px readback, so the
+  // GPU work is counted), the draw time of a frame (with a readback), the frame rate while the neckline is dragged, and whether
+  // float render targets (EXT_color_buffer_float, needed for the shade on the GPU) exist
+  const PERF = new URLSearchParams(location.search).get("perf") === "1";
+  const perfEl = PERF ? Object.assign(document.createElement("div"), { id: "perf" }) : null;
+  const perfData = { build: null, draws: [], times: [] };
+  if (perfEl) {
+    perfEl.style.cssText = "position:fixed;left:8px;top:8px;z-index:99;background:rgba(0,0,0,.72);color:#fff;font:12px/1.4 ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre";
+    document.body.appendChild(perfEl);
+  }
+  function perfShow(o) {
+    if (!perfEl) return;
+    Object.assign(perfData, o);
+    const now = performance.now(), recent = perfData.times.filter((t) => now - t < 1000);
+    const draws = perfData.draws.slice(-30), med = draws.length ? [...draws].sort((a, b) => a - b)[draws.length >> 1] : null;
+    const gl2 = document.getElementById("stage").getContext("webgl2");
+    perfEl.textContent = `build ${perfData.build != null ? perfData.build.toFixed(1) + " ms" : "PNG maps"}\n` +
+      `draw ${med != null ? med.toFixed(1) + " ms (median of " + draws.length + ")" : "-"}\n` +
+      `fps ${recent.length >= 2 ? Math.round((recent.length - 1) * 1000 / (recent[recent.length - 1] - recent[0])) : "-"} (last second)\n` +
+      `float targets ${gl2 && gl2.getExtension("EXT_color_buffer_float") ? "yes" : "NO"}`;
+  }
+  function perfFrame(ms) { perfData.draws.push(ms); perfData.times.push(performance.now()); if (perfData.times.length > 240) perfData.times.splice(0, 120); perfShow({}); }
   const fail = (msg) => { note.textContent = msg; note.classList.add("show"); };
 
   const gl = canvas.getContext("webgl2", { antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: true }); // we draw rarely: keep the last frame
@@ -440,16 +460,18 @@
   const FS = `#version 300 es
   precision highp float;
   precision highp int;
-  uniform sampler2D uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace, uLaceMat;
+  uniform sampler2D uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace, uLaceMat, uUVTS;
   uniform vec2  uCanvas;        // canvas size in device px
   uniform vec2  uPlate;         // plate size (1200, 1600)
   uniform float uCmPerPx;       // plate px → cm
-  uniform float uRange;         // UV range in cm (128)
+  uniform float uRange;         // UV range in cm of the built maps (Maps.UV_RANGE_CM, 128)
   uniform float uFabricOn, uFabricCm;
   uniform float uLaceAspect;
-  uniform float uTrimOn[9], uTrimWcm[9], uTrimFlip[9];
-  uniform float uTrimFit[9], uTrimU0[9];
-  uniform float uTrimVMax[9], uTrimEdging[9];   // stored V range of each strip (1.5 = edging strip); 1 = lace hangs past the edge
+  uniform float uTrimOn[9];
+  uniform float uTrimFit[9], uTrimU0[9];  // the slits' whole repeats from the hem corner; the phase (half a period at u = 0: a motif centred)
+  uniform float uTrimEdging[9];  // 1 = an edging lace on an edging trim: its decorative edge hangs past the garment edge
+  uniform float uTrimOrder[9];   // the order of each trim's zone (a trim of a zone in front wins; the slit / hem mitre within one zone)
+  uniform float uLaceW;          // the lace's own width, cm (StepA extension: the lace decides)
   uniform float uDisplaceMm;    // fabric shifted along the shade gradient in folds, mm at a strong fold slope (0 = off), step 7
   uniform float uSheen, uSheenWidth, uSheenOld;   // directional sheen of the fabric; uSheenOld = the old fixed 0.15 highlight (?sheen=0)
   uniform float uAntiTile;      // 1 = hex tiling of the fabric (irregular fabrics only), step 7
@@ -468,11 +490,11 @@
   uniform float uShadeMed;      // the plate's shadeMedian / 255 (to convert between the two shade spaces)
   // ---- live neckline (halfway.md steps 2, 3, 5). In the neck area (id.png B = 1) the garment edge, the reveal fills and the
   // neck trim come from curves, not from the baked maps. All curves in plate px, 24 points, corner to corner (left to right).
-  uniform float uNeckLive;      // 1 = live neckline, 0 = the baked maps (?neck=baked)
+  uniform float uNeckLive;      // 1 = this view has the live neckline
   uniform vec2  uNE[24];        // live edge
   uniform vec2  uNE0[24];       // photographed edge (same 24 picks: segment i of uNE matches segment i of uNE0)
-  uniform vec2  uNC[24];        // live trim centre line
-  uniform float uNeckTw;        // trim width, plate px
+  uniform float uNEcum[24];     // arc length of the live edge at each of its points, plate px
+  uniform float uNeckS0;        // arc length of the live edge at the centre front, plate px (the neck lace's anchor)
   uniform vec3  uFormRGB, uToileRGB;   // plain fills (?revealfill=0): form and toile colour, sRGB 0..1
   uniform float uRevealFill;    // step 3: 1 = fills from the photo, 0 = plain colours
   uniform vec4  uFormPatch;     // a clean square of the dress form in the photo (x0, y0, x1, y1 plate px): its fine detail
@@ -500,11 +522,9 @@
     return uLinear > 0.5 ? toLin1(min(so * uShadeMed, 1.0)) / toLin1(uShadeMed) : so;
   }
 
-  vec2 decode(vec4 t) {                       // 12-bit packed → cm
-    vec3 c = floor(t.rgb * 255.0 + 0.5);
-    float u = c.r * 16.0 + floor(c.b / 16.0);
-    float v = c.g * 16.0 + mod(c.b, 16.0);
-    return vec2(u, v) / 4095.0 * uRange;
+  vec2 decode(vec4 t) {                       // the 16-bit packing of maps.js (RG = u, BA = v) -> cm
+    vec4 b = floor(t * 255.0 + 0.5);
+    return vec2(b.r * 256.0 + b.g, b.b * 256.0 + b.a) / 65535.0 * uRange;
   }
 
   // UV step per canvas px, from the plate itself (central difference over +-R plate px).
@@ -517,29 +537,43 @@
     float iso = uCmPerPx * k / uFabricCm;                              // round footprint (cm per canvas px)
     gx = vec2(iso, 0.0); gy = vec2(0.0, iso);
     if (uAniso < 0.5) return;
-    bool okx = int(texelFetch(uId, a, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, b, 0).r * 255.0 + 0.5) == zone
-            && texelFetch(uId, a, 0).g == 0.0 && texelFetch(uId, b, 0).g == 0.0;
-    bool oky = int(texelFetch(uId, c, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, d, 0).r * 255.0 + 0.5) == zone
-            && texelFetch(uId, c, 0).g == 0.0 && texelFetch(uId, d, 0).g == 0.0;
+    bool okx = int(texelFetch(uId, a, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, b, 0).r * 255.0 + 0.5) == zone;
+    bool oky = int(texelFetch(uId, c, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, d, 0).r * 255.0 + 0.5) == zone;
     if (okx && oky) {
       gx = (decode(texelFetch(uUV, a, 0)) - decode(texelFetch(uUV, b, 0))) / float(a.x - b.x) * k / uFabricCm;
       gy = (decode(texelFetch(uUV, c, 0)) - decode(texelFetch(uUV, d, 0))) / float(c.y - d.y) * k / uFabricCm;
     }
   }
-  void gradTrim(ivec2 p, int trim, float k, float w, float fit, out vec2 gx, out vec2 gy) {
+  // ---- StepA extension: the trim field (maps.js). Main field: id G = the trim, uvt = (s + 64 cm, (t mm + 64) / 10); the slits'
+  // field: uvts = (s + 32 slit-l | s + 96 slit-r, (t mm + 64) / 10). v = (s cm along the edge, t mm from it, + on the garment).
+  bool fieldAt(ivec2 q, int want, bool slit, out vec2 v) {
+    v = vec2(0.0);
+    if (slit) {
+      vec4 r = texelFetch(uUVTS, q, 0);
+      if (r == vec4(0.0)) return false;
+      vec2 f = decode(r);
+      int st = f.x >= 64.0 ? 6 : 5;
+      if (st != want) return false;
+      v = vec2(f.x - (st == 6 ? 96.0 : 32.0), f.y * 10.0 - 64.0);
+      return true;
+    }
+    if (int(texelFetch(uId, q, 0).g * 255.0 + 0.5) != want) return false;
+    vec2 f = decode(texelFetch(uUVT, q, 0));
+    v = vec2(f.x - 64.0, f.y * 10.0 - 64.0);
+    return true;
+  }
+  // the field's (s, t) step per canvas px, from the plate (central differences over +-R px, both neighbours in the same trim);
+  // false where a neighbour is missing
+  bool gradField(ivec2 p, int want, bool slit, float k, out vec2 dx, out vec2 dy) {
     ivec2 mx = ivec2(uPlate) - 1;
+    vec2 va, vb, vc, vd;
+    dx = vec2(0.0); dy = vec2(0.0);
     ivec2 a = clamp(p + ivec2(R, 0), ivec2(0), mx), b = clamp(p - ivec2(R, 0), ivec2(0), mx);
     ivec2 c = clamp(p + ivec2(0, R), ivec2(0), mx), d = clamp(p - ivec2(0, R), ivec2(0), mx);
-    float iso = uCmPerPx * k / w;                                       // lace height is 1 in texture T
-    gx = vec2(iso / (uLaceAspect * fit), 0.0); gy = vec2(0.0, iso);
-    if (uAniso < 0.5) return;
-    bool ok = int(texelFetch(uId, a, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, b, 0).g * 255.0 + 0.5) == trim
-           && int(texelFetch(uId, c, 0).g * 255.0 + 0.5) == trim && int(texelFetch(uId, d, 0).g * 255.0 + 0.5) == trim;
-    if (!ok) return;
-    vec2 sx = (decode(texelFetch(uUVT, a, 0)) - decode(texelFetch(uUVT, b, 0))) / float(a.x - b.x) * k;
-    vec2 sy = (decode(texelFetch(uUVT, c, 0)) - decode(texelFetch(uUVT, d, 0))) / float(c.y - d.y) * k;
-    gx = vec2(sx.x / (w * uLaceAspect * fit), sx.y / uRange);           // across (V) is 0..1 over the strip
-    gy = vec2(sy.x / (w * uLaceAspect * fit), sy.y / uRange);
+    if (!fieldAt(a, want, slit, va) || !fieldAt(b, want, slit, vb) || !fieldAt(c, want, slit, vc) || !fieldAt(d, want, slit, vd)) return false;
+    dx = (va - vb) / float(a.x - b.x) * k;
+    dy = (vc - vd) / float(c.y - d.y) * k;
+    return true;
   }
 
   // ---- step 7: hex tiling (offsets only, no rotation: the grain direction stays), contrast-preserving blend
@@ -565,7 +599,7 @@
   }
 
   // nearest point on a 24-point polyline: distance, segment, parameter (one function per curve: GLSL has no array references)
-  ${["NE", "NE0", "NC"].map((n) => `
+  ${["NE", "NE0"].map((n) => `
   float near${n}(vec2 q, out int si, out float st, out float traw) {
     float best = 1e9; si = 0; st = 0.0; traw = 0.0;
     for (int i = 0; i < 23; i++) {
@@ -638,27 +672,20 @@
       dO = sdNE0(fpx, oI, oT);
       covE = clamp(0.5 + dL / k, 0.0, 1.0);                          // analytic edge coverage (canvas px)
       zone = covE > 0.0 ? 1 : 0;
-      // ---- step 5: the neck trim from the live trim centre line, as the plate maker writes it: u = cm along the centre line,
-      // v = 0.5 + offset toward the edge / trim width (0 inner side, 1 the garment edge). The baked neck trim is not used here.
+      // ---- the neck lace from the LIVE edge (StepA extension, step L3): t = the distance from it (dL, + on the garment), s = the arc
+      // length along it from the centre front; past a corner the end segment carries on (the garment's outline cuts the lace there).
+      // The baked field has no neck in this view.
       if (trim == 1) trim = 0;
       if (zone == 1 && uTrimOn[1] > 0.5) {
-        float best = 1e9, acc = 0.0, bacc = 0.0, btr = 0.5;
-        int bi = 0;
-        for (int i = 0; i < 23; i++) {
-          vec2 a = uNC[i], ab = uNC[i + 1] - a;
-          float sl = length(ab), tr = dot(fpx - a, ab) / max(sl * sl, 1e-6);
-          float d = distance(fpx, a + ab * clamp(tr, 0.0, 1.0));
-          if (d < best) { best = d; bi = i; btr = tr; bacc = acc + sl * clamp(tr, 0.0, 1.0); }
-          acc += sl;
-        }
-        vec2 ab = uNC[bi + 1] - uNC[bi];
-        tT = normalize(ab);
-        tN = vec2(tT.y, -tT.x);                                      // toward the edge (up, for a curve drawn left to right)
-        float v = 0.5 + dot(fpx - (uNC[bi] + ab * clamp(btr, 0.0, 1.0)), tN) / uNeckTw;
-        bool ends = (bi == 0 && btr < 0.0) || (bi == 22 && btr > 1.0); // past the ends of the strip: no trim (as the plate)
-        // +0.95 px: the plate maker draws the strip quad after quad, each with a 1 px outline, so a px on the border of two quads
-        // takes the later quad's u: the baked u runs 0.9-1.0 px ahead of the exact arc (tools/trim_match.py). Same convention here.
-        if (!ends && v >= 0.0 && v <= 1.0) { liveTrim = true; trim = 1; tLive = vec2((bacc + 0.95) * uCmPerPx, v * uRange); }
+        vec2 a = uNE[eI], ab = uNE[eI + 1] - a;
+        float sl = max(length(ab), 1e-6), tr = dot(fpx - a, ab) / (sl * sl);
+        tT = ab / sl;
+        vec2 nIn = vec2(-tT.y, tT.x);                                // onto the garment (below a curve drawn left to right)
+        float tt = dL;
+        if ((eI == 0 && tr < 0.0) || (eI == 22 && tr > 1.0)) tt = dot(fpx - a, nIn);
+        else tr = clamp(tr, 0.0, 1.0);
+        tN = nIn;
+        if (tt >= 0.0) { liveTrim = true; tLive = vec2((uNEcum[eI] + tr * sl - uNeckS0) * uCmPerPx, tt * uCmPerPx * 10.0); }
       }
       if (dO - dL > 0.25 && dO > -8.5 / (uCmPerPx * 10.0)) {         // was garment in the photo (or its edge), is form now
         if (uRevealFill < 0.5) {
@@ -700,8 +727,39 @@
       }
     }
 
+    // ---- StepA step 6: a soft free edge. id A = (d + 3) / 4, d = the signed distance to the snapped edge (px, + inside), from 3 px
+    // outside to 1 px inside. Coverage = clamp(0.5 + d): a 1 px ramp on the photo's 50 % edge. What shows beside the fabric is not the
+    // photo here (its edge pixels are part garment white for about 1.5 px either side of the edge): it is the photo 3 px beyond the
+    // edge, along A's gradient. Outside the ramp the pixel is background (an edging lace still hangs over it), with that photo.
+    float softCov = -1.0;
+    if ((uFabricOn > 0.5 || uChecker > 0.5) && zone > 0 && !neckA && idt.a < 0.999) {
+      ivec2 mxs = ivec2(uPlate) - 1;
+      float aR = texelFetch(uId, clamp(p + ivec2(1, 0), ivec2(0), mxs), 0).a, aL = texelFetch(uId, clamp(p - ivec2(1, 0), ivec2(0), mxs), 0).a;
+      float aD = texelFetch(uId, clamp(p + ivec2(0, 1), ivec2(0), mxs), 0).a, aU = texelFetch(uId, clamp(p - ivec2(0, 1), ivec2(0), mxs), 0).a;
+      vec2 g = vec2(aR - aL, aD - aU);                               // toward the inside
+      vec2 outward = length(g) > 0.0 ? -normalize(g) : vec2(0.0);
+      float dEdge = 4.0 * idt.a - 3.0 + dot(fpx - vec2(p), -outward); // the pixel's own place within it (canvas px finer than plate px)
+      softCov = clamp(0.5 + dEdge, 0.0, 1.0);
+      under = cin(texture(uPhoto, (fpx + outward * max(3.0 + dEdge, 0.5) + 0.5) / uPlate)).rgb;
+      photo.rgb = under;
+      if (softCov <= 0.0) zone = 0;
+    }
+    // ---- the lace of this pixel (StepA extension): the main field (id G), or the slits' field, or the live neck. Where a slit and
+    // another trim both reach the pixel: the trim of the zone in front wins; within one zone the nearer edge (a mitre at the corner)
+    int lt = 0;                                                      // the trim
+    bool ltSlit = false;
+    vec2 lf = vec2(0.0);                                             // (s cm, t mm)
+    if (liveTrim) { lt = 1; lf = tLive; }
+    else {
+      vec2 fv;
+      if (trim > 0 && uTrimOn[trim] > 0.5 && fieldAt(p, trim, false, fv)) { lt = trim; lf = fv; }
+      for (int st = 5; st <= 6; st++) {
+        if (uTrimOn[st] < 0.5 || !fieldAt(p, st, true, fv)) continue;
+        if (lt == 0 || uTrimOrder[st] > uTrimOrder[lt] || (uTrimOrder[st] == uTrimOrder[lt] && abs(fv.y) < abs(lf.y))) { lt = st; lf = fv; ltSlit = true; }
+      }
+    }
     bool bg = zone == 0;                                             // wall, form, stand: only an edging overhang is drawn here
-    if (bg && !(trim > 0 && uTrimOn[trim] > 0.5 && uTrimEdging[trim] > 0.5)) {
+    if (bg && !(lt > 0 && lf.y < 0.0 && uTrimEdging[lt] > 0.5)) {
       outColor = vec4(uLinear > 0.5 ? toSRGB(under) : under, 1.0); return;
     }
 
@@ -736,6 +794,7 @@
       cov /= 9.0;
     }
     if (neckA) cov = min(cov, covE);
+    if (softCov >= 0.0) cov = softCov;                               // StepA step 6: the soft free edge's share (see above)
 
     float s = shadeOf(up ? texture(uShade, st).r : texelFetch(uShade, p, 0).r);   // 1.0 = normal light
     if (uShadeOn < 0.5) s = 1.0;
@@ -833,27 +892,44 @@
       }
     }
 
-    if (trim > 0 && uTrimOn[trim] > 0.5) {
-      vec2 t = liveTrim ? tLive : decode(texelFetch(uUVT, p, 0));
-      if (!liveTrim && up && i00.g == idt.g && i10.g == idt.g && i01.g == idt.g && i11.g == idt.g)
-        t = wq.x * decode(texelFetch(uUVT, q00, 0)) + wq.y * decode(texelFetch(uUVT, q10, 0))
-          + wq.z * decode(texelFetch(uUVT, q01, 0)) + wq.w * decode(texelFetch(uUVT, q11, 0));
-      float rawV = t.y / uRange * uTrimVMax[trim];                      // 0 inner side .. 1 garment edge .. vMax tip of the overhang
-      bool edg = uTrimEdging[trim] > 0.5;
-      // the overhang of an edging strip is used only when edging is on for this trim and lace (else: no trim here, as before)
-      if (edg || rawV <= 1.0) {
-      float across = rawV;
-      if (uTrimFlip[trim] > 0.5) across = 1.0 - across;                // old plates only (no outerV)
-      if (edg) across -= uLaceEdge;                                     // the decorative edge crosses the garment edge
+    float laceA = 0.0;                                               // the lace's own cover here (the glow)
+    if (lt > 0) {
+      // (s, t) between plate texels when the canvas is finer than the plate (all 4 in this trim), else the texel's own
+      if (!liveTrim && up) {
+        vec2 v00, v10, v01, v11;
+        if (fieldAt(q00, lt, ltSlit, v00) && fieldAt(q10, lt, ltSlit, v10) && fieldAt(q01, lt, ltSlit, v01) && fieldAt(q11, lt, ltSlit, v11))
+          lf = wq.x * v00 + wq.y * v10 + wq.z * v01 + wq.w * v11;
+      }
+      // the lace across: its decorative edge (the image's bottom, across = 1) on the garment edge, or edgeDepth of its width past it
+      // for an edging lace on an edging trim; its own width (the lace decides). Along: s / the tile length, with the trim's phase.
+      float Wl = uLaceW, fit = uTrimFit[lt];
+      float e = uTrimEdging[lt] > 0.5 ? uLaceEdge : 0.0;
+      float across = 1.0 - e - lf.y / (10.0 * Wl);
       bool inLace = across >= 0.0 && across <= 1.0;
-      float w = uTrimWcm[trim];
-      float fit = uTrimFit[trim];
-      vec2 lc = vec2(t.x / (w * uLaceAspect * fit) + uTrimU0[trim], across);
-      vec2 gx, gy;
-      if (liveTrim) {                                                    // lace coordinates per canvas px, from the curve
-        gx = vec2(tT.x * k * uCmPerPx / (w * uLaceAspect * fit), tN.x * k / uNeckTw);
-        gy = vec2(tT.y * k * uCmPerPx / (w * uLaceAspect * fit), tN.y * k / uNeckTw);
-      } else gradTrim(p, trim, k, w, fit, gx, gy);
+      vec2 lc = vec2(lf.x / (Wl * uLaceAspect * fit) + uTrimU0[lt], across);
+      vec2 gx, gy, dsx, dsy;                                          // lace coordinates per canvas px
+      if (liveTrim) {
+        gx = vec2(tT.x * k * uCmPerPx / (Wl * uLaceAspect * fit), -tN.x * k * uCmPerPx / Wl);
+        gy = vec2(tT.y * k * uCmPerPx / (Wl * uLaceAspect * fit), -tN.y * k * uCmPerPx / Wl);
+      } else if (uAniso > 0.5 && gradField(p, lt, ltSlit, k, dsx, dsy)) {
+        gx = vec2(dsx.x / (Wl * uLaceAspect * fit), -dsx.y / (10.0 * Wl));
+        gy = vec2(dsy.x / (Wl * uLaceAspect * fit), -dsy.y / (10.0 * Wl));
+      } else {
+        float iso = uCmPerPx * k / Wl;
+        gx = vec2(iso / (uLaceAspect * fit), 0.0); gy = vec2(0.0, iso);
+      }
+      // the light of the lace: past the garment edge (the overhang), the garment's light 3 px inside the edge at the foot point,
+      // not the stand's or the wall's behind it
+      float sL = s;
+      if (lf.y < 0.0 && !liveTrim) {
+        vec2 g2 = vec2(0.0);
+        if (gradField(p, lt, ltSlit, 1.0, dsx, dsy)) g2 = vec2(dsx.y, dsy.y);   // t grows onto the garment
+        if (length(g2) > 0.0) {
+          vec2 foot = fpx + normalize(g2) * (-lf.y / (uCmPerPx * 10.0) + 3.0);
+          sL = shadeOf(texture(uShade, (foot + 0.5) / uPlate).r);
+          if (uShadeOn < 0.5) sL = 1.0;
+        }
+      }
       float bias = exp2(uMipBias);
       vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
       if (!inLace) lace = vec4(0.0);
@@ -884,14 +960,13 @@
         if (m0.g > 0.02) {
           float hs = textureGrad(uLaceMat, lc, gx * bias * 3.0, gy * bias).r;
           float hl = smoothstep(0.02, 0.12, m0.r - hs + (lit - 1.0));
-          lace.rgb += lace.rgb * m0.g * hl * (0.35 + 0.65 * clamp(s - 0.8, 0.0, 1.0));
+          lace.rgb += lace.rgb * m0.g * hl * (0.35 + 0.65 * clamp(sL - 0.8, 0.0, 1.0));
         }
       }
       if (uShadowStrength > 0.0) {
-        // Shadow of the lace on the fabric: the lace alpha read again, shifted right and down on the stage,
-        // 1.5 mip levels softer. The shift is a fixed direction on the screen, so it stays lower-right along the
-        // curve of the neckline: gx, gy are the lace coordinates per canvas px, from the plate UV.
-        // on the background (wall, form) the lace is farther in front: a longer, softer shadow (x1.5, +0.5 mip)
+        // Shadow of the lace on the fabric: the lace alpha read again, shifted right and down on the stage, 1.5 mip levels
+        // softer. The shift is a fixed direction on the screen (gx, gy: the lace coordinates per canvas px). On the background
+        // (wall, form, stand) the lace is farther in front: a longer, softer shadow (x1.5, +0.5 mip): its contact shadow there.
         vec2 so = uShadowMm * (bg ? 1.5 : 1.0) / (uCmPerPx * 10.0) / k;  // mm -> plate px -> canvas px
         vec2 off = gx * so.x + gy * so.y;
         float soft = bg ? 4.0 : 2.8284;
@@ -899,13 +974,13 @@
         float sh = (sc.y >= 0.0 && sc.y <= 1.0) ? textureGrad(uLace, sc, gx * bias * soft, gy * bias * soft).a : 0.0;
         col *= 1.0 - uShadowStrength * sh * (1.0 - lace.a);           // the lace itself is not darkened
       }
-      col = mix(col, lace.rgb * (uLinear > 0.5 ? min(s * 1.124, 1.399) : min(s * 1.05, 1.15)), lace.a);   // 1.05^2.4, 1.15^2.4
-      }
+      col = mix(col, lace.rgb * (uLinear > 0.5 ? min(sL * 1.124, 1.399) : min(sL * 1.05, 1.15)), lace.a);   // 1.05^2.4, 1.15^2.4
+      laceA = lace.a;
     }
 
     vec3 res = mix(under, clamp(col, 0.0, 1.0), cov);
     if (uGlow > 0.0) {                                               // step 7: a soft, warm lift of the selected part
-      float gm = (trim > 0 && uTrimOn[trim] > 0.5 && uGlowTrim[trim] > 0.5) ? 1.0 : 0.0;
+      float gm = (lt > 0 && uGlowTrim[lt] > 0.5) ? smoothstep(0.05, 0.5, laceA) : 0.0;   // the lace itself, not its band
       if (uGlowNeck > 0.5 && neckA) gm = max(gm, (1.0 - smoothstep(0.0, 7.0 / (uCmPerPx * 10.0), abs(dL))) * cov);
       res = mix(res, min(res * 1.3 + vec3(0.07, 0.06, 0.04), vec3(1.0)), gm * uGlow);
     }
@@ -952,12 +1027,11 @@
   // images: normal decode, LINEAR + mipmaps
   // halfway.md step 1: the page keeps the DOWNLOADED files (compressed blobs) of every view and decodes only what it shows.
   // A decoded bitmap is closed as soon as it is on the GPU; `decoded` counts the bytes of the bitmaps still open (test hook).
-  // numeric.md: the maps of the MESH_VIEWS are built on the GPU from the curves (plate.js, maps.js) and plate.dat; ?geom=maps: the PNG maps (the old way, kept as the reference and the fallback)
-  const GEOM = params0.get("geom") === "maps" ? "maps" : "mesh";
-  const MESH_VIEWS = params0.has("meshviews") ? Object.fromEntries(params0.get("meshviews").split(",").map((v) => [v, 1])) : { torso: 1, neck: 1, sleeve: 1, hem: 1 };   // all four views (numeric.md step 5); test: ?meshviews=torso,neck,sleeve,hem to choose
-  const meshOn = (view) => GEOM === "mesh" && !!MESH_VIEWS[view];
-  const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");   // the shade is built on the GPU only with float render targets (else shade.png)
-  const DECODE_ALL = params0.get("decode") === "all";              // test: ?decode=all  the old way (decoded images kept)
+  // StepA: every view is built on the GPU from its plate.dat (plate.js, maps.js): only base.jpg and plate.dat are downloaded.
+  // Without float render targets the shade (the folds) cannot be built: the page uses a flat shade then (StepA step 8 decides
+  // whether a shade.webp must ship for such devices).
+  const FLOAT_OK = !!gl.getExtension("EXT_color_buffer_float");
+  if (!FLOAT_OK) console.warn("no EXT_color_buffer_float: the folds (shade) are not built; a flat light is used");
   const decoded = new Set();
   async function blobOf(url, tries = 2) {            // one retry: a busy local server sometimes drops a connection
     try {
@@ -976,7 +1050,7 @@
     decoded.add(b);
     return b;
   }
-  const release = (b) => { if (b && !DECODE_ALL) { decoded.delete(b); b.close(); } };
+  const release = (b) => { if (b) { decoded.delete(b); b.close(); } };
   async function bitmap(url, data) { return decode(await blobOf(url), data); }
   function texture(unit, img, { data = false, linear = false, mips = false, wrap = gl.CLAMP_TO_EDGE } = {}) {
     const t = gl.createTexture();
@@ -1020,30 +1094,22 @@
     units[unit] = texture(unit, img, opts);
   }
 
-  const MAPS = [["photo", "base.jpg", false], ["id", "id.png", true], ["uv", "uv.png", true], ["uvt", "uv_trim.png", true], ["shade", "shade.png", true]];
-  const MESH_SHADE = FLOAT_OK && params0.get("gpushade") !== "0";   // test: ?gpushade=0  the shade from shade.png even with ?geom=mesh
-  const mapsOf = (view) => (meshOn(view) ? MAPS.filter(([k]) => k === "photo" || (k === "shade" && !MESH_SHADE)) : MAPS);   // the mesh makes id, uv, uv_trim (steps 2-3) and the shade (step 4) itself
+  const MAPS = [["photo", "base.jpg", false]];          // the only image a view downloads (with its plate.dat)
   function fetchView(view) {                           // download once, keep the compressed files (blobs)
     if (!cache[view]) {
-      const P = VIEWS[view].plate, maps = mapsOf(view);
+      const P = VIEWS[view].plate, maps = MAPS;
       // every view reads ONE small plate.dat (version 2, StepA step 1): the curves, the typed edges and the decisions
-      // test: ?torso=v1  the torso as imported from the numeric plate (traced, one affine per zone, the left side mirrored; StepA
-      // step 2 measured it again). Its own plate.dat, the same base.jpg. Until StepA step 7.
-      const datOf = view === "torso" && params0.get("torso") === "v1" ? "assets/plates/torso-v1/plate.dat" : P + "plate.dat";
-      const meta = blobOf(datOf).then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
+      const meta = blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
       cache[view] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
         .then(([{ plate, zones }, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
       cache[view].catch(() => delete cache[view]);    // allow a retry
     }
     return cache[view];
   }
-  const keptBitmaps = {};                              // ?decode=all: view -> decoded images (the old memory use)
   async function decodeView(view, v) {
-    if (DECODE_ALL && keptBitmaps[view]) return keptBitmaps[view];
-    const maps = mapsOf(view);
+    const maps = MAPS;
     const bm = await Promise.all(maps.map(([k, , data]) => decode(v.blobs[k], data)));
     const r = Object.fromEntries(maps.map(([k], i) => [k, bm[i]]));
-    if (DECODE_ALL) keptBitmaps[view] = r;
     return r;
   }
   function setUnitTex(unit, tex) {                     // a texture that was built on the GPU (maps.js)
@@ -1075,6 +1141,19 @@
   const laceMetaOf = (url) => (metaCache[url] ||= fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null));
   let lace = null;                                     // { meta, aspect } of the lace on unit 6
 
+  function bleed(img) {                                // an ImageData: every texel with alpha < 8 gets the mean colour of the opaque ones
+    const cv = document.createElement("canvas");
+    cv.width = img.width; cv.height = img.height;
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(img, 0, 0);
+    const im = cx.getImageData(0, 0, img.width, img.height), d = im.data;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 247) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    if (!n) return img;
+    r /= n; g /= n; b /= n;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] < 8) { d[i] = r; d[i + 1] = g; d[i + 2] = b; }
+    return im;
+  }
   async function setLace(key) {                        // lace on unit 6
     const [img, meta, matBlob] = await Promise.all([swatch.decoded(LACES[key].src), laceMetaOf(LACES[key].meta),
       LACES[key].mat ? (matCache[LACES[key].mat] ||= blobOf(LACES[key].mat).catch(() => { delete matCache[LACES[key].mat]; return null; })) : null]);
@@ -1082,64 +1161,53 @@
     if (state.lace !== key) { release(img); release(mat); return; }
     // a lace with a measured repeat tiles with REPEAT; a lace without one (or ?lacefit=0) keeps the mirror
     const mirror = !LACEFIT || !meta || meta.mirror;
-    setUnit(6, img, { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
+    // StepA extension: the lace's transparent texels carry the colour of the lace, not the paper's grey of the cut-out, so that its
+    // smaller mipmaps (a lace a few px tall) average lace with lace and the alpha alone thins it: no grey, no speckle
+    setUnit(6, bleed(img), { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     if (mat) {                                         // material map on unit 7: same coordinates and wrap as the lace
       setUnit(7, mat, { data: true, mips: true, wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
     gl.uniform1f(U("uHasMat"), mat && RELIEF ? 1 : 0);
-    lace = { meta: mirror ? null : meta, aspect: img.width / img.height, mirror };
+    lace = { meta, aspect: img.width / img.height, mirror };
     release(img); release(mat);
     gl.uniform1f(U("uLaceAspect"), lace.aspect);
     laceFit();
   }
 
-  // Whole repeats on each trim, and a defined start (polish.md step 4). s = u / (tile length * fit) + u0, in lace images.
-  // The tile starts at a gap between motifs, so motif boundaries are at multiples of p = 1 / periods, centres in between.
-  const CENTRED = { neck: 1, hem: 1 };                 // a motif centred at the middle of the trim (centre front, middle of the hem)
-  const END = { "slit-l": 1, "slit-r": 1, "hem-bl": 1 };            // a whole motif at the END of the trim (the hem end of a slit); others: at the start
+  // The lace on each trim (StepA extension, step L3): its own width and repeat on every trim (the lace decides). x = s / (tile length
+  // * fit) + u0, in lace images; s is the cloth length along the trim's edge from its anchor. The tile starts at a gap between motifs
+  // (boundaries at multiples of p = 1 / periods): u0 = p / 2 centres a motif on the anchor (the frame's u = 0: the centre front, a
+  // sleeve's axis). An end anchor (the slits: their hem end) keeps a boundary there and whole repeats up to the other end (fit +-5 %,
+  // +-10 % under 3 repeats). A lace without a repeat mirrors about the anchor.
   const fitLog = {};
+  let zonesData = null;                                // the zone data of the current view (the order of each trim's zone)
   function laceFit() {
     if (!plate || !lace) return;
-    const fit = new Float32Array(9).fill(1), u0 = new Float32Array(9);
-    const vmax = new Float32Array(9).fill(1), edging = new Float32Array(9);
-    const edgeDepth = lace.meta?.edgeDepth ?? 0.35;
+    const fit = new Float32Array(9).fill(1), u0 = new Float32Array(9), edging = new Float32Array(9), order = new Float32Array(9);
+    const W = (lace.meta?.widthMm ?? 30) / 10, tile = W * lace.aspect;   // cm
     for (const [name, id] of Object.entries(TRIMS)) {
       const t = plate.trims[name];
       if (!t) continue;
-      // the neck trim follows the live neckline (halfway.md step 5): its length changes with the setting
-      const live = name === "neck" && neckGeo && NECK_LIVE && neckGeo.defLenPx;
-      const L = live ? t.lengthCm * neckGeo.lenPx / neckGeo.defLenPx : t.lengthCm, w = t.widthMm / 10, tile = w * lace.aspect;   // cm
-      vmax[id] = t.vMax || 1;
+      order[id] = zonesData?.zones[t.zone]?.order ?? 0;
       edging[id] = EDGING && t.type === "edging" && lace.meta?.edging ? 1 : 0;   // only laces with a clean (keyed) edge
-      if (!LACEFIT) { fitLog[name] = "off"; continue; }
-      if (lace.mirror) {                               // no repeat: a mirror axis at the middle of neck and hem
-        if (CENTRED[name]) u0[id] = -L / (2 * tile);
-        fitLog[name] = "mirror";
-        continue;
-      }
-      const m = lace.meta, p = 1 / m.periods, r = m.periodRatio * w;     // repeat length in cm at this trim width
-      const lim = L < 3 * r ? 0.10 : 0.05;              // plan fallback: +-10 % on trims shorter than 3 repeats
-      let n = Math.max(1, Math.round(L / r));
-      if (CENTRED[name]) {                             // odd n: a centred motif AND whole motifs at both ends
-        const odd = Math.max(1, 2 * Math.round((L / r - 1) / 2) + 1);
-        if (Math.abs(L / (odd * r) - 1) <= lim) n = odd;
-      }
+      if (!LACEFIT || lace.mirror) { fitLog[name] = LACEFIT ? "mirror" : "off"; continue; }
+      const m = lace.meta, p = 1 / m.periods, r = m.periodRatio * W;   // the repeat in cm
+      if ((t.anchor || "cf") === "cf") { u0[id] = 0.5 * p; fitLog[name] = { anchor: "cf", repeatCm: +r.toFixed(3) }; continue; }
+      const L = t.lengthCm, lim = L < 3 * r ? 0.10 : 0.05;
+      const n = Math.max(1, Math.round(L / r));
       let f = L / (n * r);
       if (Math.abs(f - 1) > lim) f = 1;                 // keep the scale; recorded in fitLog
       fit[id] = f;
-      const S = (u) => u / (tile * f);                 // trim cm -> lace images
-      if (CENTRED[name]) u0[id] = 0.5 * p - S(L / 2);
-      else if (END[name]) u0[id] = -S(L);
-      else u0[id] = 0;
-      fitLog[name] = { n, fit: +f.toFixed(4), repeatCm: +r.toFixed(3) };
+      fitLog[name] = { anchor: t.anchor, n, fit: +f.toFixed(4), repeatCm: +r.toFixed(3) };
     }
     gl.uniform1fv(U("uTrimFit"), fit);
     gl.uniform1fv(U("uTrimU0"), u0);
-    gl.uniform1fv(U("uTrimVMax"), vmax);
     gl.uniform1fv(U("uTrimEdging"), edging);
-    gl.uniform1f(U("uLaceEdge"), edgeDepth);
+    gl.uniform1fv(U("uTrimOrder"), order);
+    gl.uniform1f(U("uLaceW"), W);
+    gl.uniform1f(U("uLaceEdge"), lace.meta?.edgeDepth ?? 0);
     document.documentElement.dataset.lacefit = JSON.stringify(fitLog);   // for the harness (--dump-dom)
   }
 
@@ -1148,7 +1216,6 @@
   // (mmPerPx) around its own landmarks: the corner line (the photographed neck points), the centre front, the grid top (the
   // shoulder line). Recipe: width scales the photographed edge sideways around the centre front; the corners then sit on the
   // grid top; depth scales the dip below the corner line. At the default the live edge IS the photographed edge.
-  const NECK_LIVE = params0.get("neck") !== "baked";                // test: ?neck=baked  the old baked mask and trim
   const REVEAL_FILL = params0.get("revealfill") === "0" ? 0 : 1;     // test: ?revealfill=0  plain colours in the revealed areas
   const NECK_N = 24;
   let look = null;                                     // assets/looks/<look>.json
@@ -1218,27 +1285,24 @@
     if (!n || !look) return;
     const e = n.edge, c0 = e[0], c1 = e[e.length - 1], mmpp = plate.mmPerPx;
     const lineY = (x) => c0[1] + (c1[1] - c0[1]) * (x - c0[0]) / (c1[0] - c0[0]);
-    const tw = n.trimWidthMm / mmpp, away = [n.cf[0], -1e4];
+    const away = [n.cf[0], -1e4];
     // dense parameters: every photographed segment cut into m parts (>= 240 points in all)
     const m = Math.ceil(240 / (e.length - 1)), F = [];
     for (let i = 0; i < e.length - 1; i++) for (let j = 0; j < m; j++) F.push(i + j / m);
     F.push(e.length - 1);
-    const same = n.centre.length === e.length;          // the trim centre has one point per edge point (both plates)
     neckGeo = {
-      n, mmpp, lineY, tw, away, cf: n.cf, F,
+      n, mmpp, lineY, away, cf: n.cf, F,
       depthPx0: n.cf[1] - lineY(n.cf[0]), widthPx0: c1[0] - c0[0],
       E0d: F.map((f) => at(e, f)),                     // the photographed edge, exact
       S0d: F.map((f) => catmull(e, f)),                // its smooth version
-      C0d: same ? F.map((f) => at(n.centre, f)) : null,   // the photographed trim centre, exact
     };
-    gl.uniform1f(U("uNeckTw"), tw);
     gl.uniform3fv(U("uFormRGB"), n.formRGB.map((v) => v / 255));
     gl.uniform3fv(U("uToileRGB"), n.toileRGB.map((v) => v / 255));
     gl.uniform4fv(U("uFormPatch"), n.formPatch);
     gl.uniform2f(U("uCfX"), n.cf[0], 1 / mmpp);
   }
-  // The live curves for a record, as dense point lists. w: 0 at the default (the photographed polyline and the plate's trim
-  // centre, exact), 1 from 8 % of change on (the smooth curve, and a trim centre at exactly half the trim width from the edge).
+  // The live edge for a record, as a dense point list. w: 0 at the default (the photographed polyline, exact), 1 from 8 % of change
+  // on (the smooth curve). The neck lace hangs on this edge (StepA extension: no centre line of its own).
   function neckCurves(rec) {
     const g = neckGeo, L = look.neck;
     const sW = (g.widthPx0 + (rec.widthMm - L.widthMm.default) / g.mmpp) / g.widthPx0;
@@ -1246,17 +1310,11 @@
     const x = Math.min(1, Math.max(Math.abs(sD - 1), Math.abs(sW - 1)) / 0.08), w = x * x * (3 - 2 * x);
     const T = ([px, py]) => {
       const x2 = g.cf[0] + (px - g.cf[0]) * sW;
-      // depth below the grid top (between the corners: the corner line), scaled; the trim centre's ends lie past the corners
+      // depth below the grid top (between the corners: the corner line), scaled
       return [x2, polyY(g.n.top, x2) + (py - polyY(g.n.top, px)) * sD];
     };
     const edge = g.E0d.map((p, i) => T(w ? [p[0] + (g.S0d[i][0] - p[0]) * w, p[1] + (g.S0d[i][1] - p[1]) * w] : p));
-    let centre;
-    if (!w && g.C0d) centre = g.C0d.map(T);
-    else {
-      const off = offsetPoly(g.S0d.map(T), g.tw / 2, g.away);
-      centre = g.C0d ? g.C0d.map((p, i) => { const q = T(p); return [q[0] + (off[i][0] - q[0]) * w, q[1] + (off[i][1] - q[1]) * w]; }) : off;
-    }
-    return { edge, centre, sD, sW, w };
+    return { edge, sD, sW, w };
   }
   function clampNeck(rec) {
     const L = look.neck;
@@ -1264,30 +1322,26 @@
     return { depthMm: c(rec.depthMm, L.depthMm), widthMm: c(rec.widthMm, L.widthMm) };
   }
   function neckUpload() {                              // uniforms of the live curves for state.neck
-    gl.uniform1f(U("uNeckLive"), NECK_LIVE && neckGeo ? 1 : 0);
+    gl.uniform1f(U("uNeckLive"), neckGeo ? 1 : 0);
     gl.uniform1f(U("uRevealFill"), REVEAL_FILL);
     if (!neckGeo) return;
-    const { edge, centre } = neckCurves(state.neck);
-    // 24 points of each dense curve, picked for THIS shape (the most telling ones). The photographed edge goes to the shader
-    // at the same parameters, so segment i of the live edge matches segment i of the photographed one (step 3).
-    const ie = pickIdx(edge, NECK_N), ic = pickIdx(centre, NECK_N);
-    gl.uniform2fv(U("uNE"), new Float32Array(ie.flatMap((i) => edge[i])));
+    const { edge } = neckCurves(state.neck);
+    // 24 points of the dense curve, picked for THIS shape (the most telling ones). The photographed edge goes to the shader at the
+    // same parameters, so segment i of the live edge matches segment i of the photographed one (step 3).
+    const ie = pickIdx(edge, NECK_N), pts = ie.map((i) => edge[i]);
+    gl.uniform2fv(U("uNE"), new Float32Array(pts.flat()));
     gl.uniform2fv(U("uNE0"), new Float32Array(ie.flatMap((i) => neckGeo.E0d[i])));
-    gl.uniform2fv(U("uNC"), new Float32Array(ic.flatMap((i) => centre[i])));
-    neckGeo.sent = { ne: ie.map((i) => edge[i]), nc: ic.map((i) => centre[i]) };   // what the shader has (test hook)
-    // step 5: the lace is fitted to the LIVE trim length (the 24-point centre line the shader measures u along), as a
-    // share of the default length, so the default fit stays exactly the plate's
-    let len = 0;
-    for (let i = 0; i + 1 < ic.length; i++) len += dist(centre[ic[i]], centre[ic[i + 1]]);
-    neckGeo.lenPx = len;
-    if (!neckGeo.defLenPx) neckGeo.defLenPx = neckLen(neckCurves({ depthMm: look.neck.depthMm.default, widthMm: look.neck.widthMm.default }).centre);
-    laceFit();
-  }
-  function neckLen(centre) {
-    const ic = pickIdx(centre, NECK_N);
-    let len = 0;
-    for (let i = 0; i + 1 < ic.length; i++) len += dist(centre[ic[i]], centre[ic[i + 1]]);
-    return len;
+    // the neck lace (StepA extension): the arc length of the live edge at its points, and at the centre front (its anchor)
+    const cum = [0];
+    for (let i = 0; i + 1 < pts.length; i++) cum.push(cum[i] + dist(pts[i], pts[i + 1]));
+    let s0 = cum[cum.length - 1] / 2;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1], cx = neckGeo.cf[0];
+      if ((a[0] - cx) * (b[0] - cx) <= 0 && a[0] !== b[0]) { s0 = cum[i] + dist(a, b) * (cx - a[0]) / (b[0] - a[0]); break; }
+    }
+    gl.uniform1fv(U("uNEcum"), new Float32Array(cum));
+    gl.uniform1f(U("uNeckS0"), s0);
+    neckGeo.sent = { ne: pts, cum, s0 };               // what the shader has (test hook)
   }
 
   // ---------- pivots (halfway.md step 4): three handles in the neckline view, each on a rail, in plate px (SVG viewBox)
@@ -1357,7 +1411,7 @@
   }
   function pivotsUpdate() {                            // handle positions, sizes and ARIA values for state.neck
     neckReadout();
-    const show = !!(neckGeo && PIVOT_VIEWS[state.view] && NECK_LIVE);
+    const show = !!(neckGeo && PIVOT_VIEWS[state.view]);
     svg.classList.toggle("show", show);
     if (!show) return;
     const u = plate.viewBox[0] / (svg.clientWidth || 430), P = pivotPos(state.neck), L = look.neck;   // u: plate px per css px
@@ -1430,7 +1484,7 @@
   document.getElementById("neck-snap").setAttribute("aria-pressed", String(snapOn));
 
   async function loadShared() {                        // samplers and swatches: once for all views
-    ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat"].forEach((n, i) => gl.uniform1i(U(n), i));
+    ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat", "uUVTS"].forEach((n, i) => gl.uniform1i(U(n), i));
     gl.uniform1f(U("uMipBias"), MIP_BIAS);
     gl.uniform1f(U("uAniso"), USE_PLATE_GRAD);
     gl.uniform1f(U("uShadeOn"), SHADE_ON);
@@ -1449,10 +1503,18 @@
     gl.uniform1fv(U("uTrimFit"), new Float32Array(9).fill(1));
   }
 
-  const builtMapsFor = (view) => meshOn(view) && builtMaps && builtMaps.uvt;
+  function flatTexture(rgba, linear) {                 // a 1 x 1 data texture (a missing map)
+    const t = gl.createTexture();
+    // on a scratch unit: binding it on the active unit would replace that unit's map (the neck view, which has no baked trim since
+    // the StepA extension, lost its uv on unit 2 that way: a flat fabric). setUnitTex then binds it to its own unit.
+    gl.activeTexture(gl.TEXTURE0 + 15);
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(rgba));
+    const f = linear ? gl.LINEAR : gl.NEAREST;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+    return t;
+  }
   let builtMaps = null;                               // { id, uv, ms } of the current view when it was built from the mesh
-  const MESH_CELL = params0.has("cell") ? parseFloat(params0.get("cell")) : 4;   // test: ?cell=<px> grid cell of the meshes
-  const MESH_OFF = params0.has("mapoff") ? (([a, b, c, d, g]) => ({ idOff: [a, b], uvOff: [c, d], grow: g }))(params0.get("mapoff").split(",").map(parseFloat)) : {};   // test: ?mapoff=idx,idy,uvx,uvy,grow
   let switchToken = 0;
   // step 7: a step change cross-fades (250 ms) from a still of the old view; none with prefers-reduced-motion
   const fadeCv = document.getElementById("fade");
@@ -1485,40 +1547,28 @@
     const ph = [performance.now()];                    // phase marks (test hook): fetched, decoded, built, uploaded, first draw
     const bm = await decodeView(view, v);              // decode this view only (step 1)
     ph.push(performance.now());
-    if (token !== switchToken) { if (!DECODE_ALL) Object.values(bm).forEach(release); return; }
+    if (token !== switchToken) { Object.values(bm).forEach(release); return; }
     setUnit(0, bm.photo);
-    if (meshOn(view)) {                                // the maps from the curves (numeric.md): id R / B and uv; G, uvt, shade still PNG
-      const built = Maps.build(gl, { plate: v.plate, Z: Plate.prepare(v.zones), photo: MESH_SHADE ? bm.photo : null, sync: params0.get("syncbuild") === "1", cell: MESH_CELL, ...MESH_OFF });
-      ph.push(performance.now());
-      setUnitTex(1, built.id);
-      setUnitTex(2, built.uv);
-      stat.dataset.build = built.ms.toFixed(1);
-      builtMaps = built;
-    } else {
-      setUnit(1, bm.id, { data: true });
-      setUnit(2, bm.uv, { data: true });
-      stat.dataset.build = "";
-      builtMaps = null;
-    }
-    if (builtMapsFor(view)) setUnitTex(3, builtMaps.uvt); else setUnit(3, bm.uvt, { data: true });
-    if (builtMaps && builtMaps.shade) setUnitTex(4, builtMaps.shade); else setUnit(4, bm.shade, { data: true, linear: true }); // texelFetch ignores the filter: one texture for exact and smooth reads
+    // the maps from the plate's numbers (StepA): id, uv (the fabric frames), uv_trim, the shade
+    const built = Maps.build(gl, { plate: v.plate, Z: v.zones, photo: FLOAT_OK ? bm.photo : null, sync: params0.get("syncbuild") === "1" || PERF });
+    ph.push(performance.now());
+    setUnitTex(1, built.id);
+    setUnitTex(2, built.uv);
+    setUnitTex(3, built.uvt || flatTexture([0, 0, 0, 0]));
+    setUnitTex(8, built.uvts || flatTexture([0, 0, 0, 0]));   // the slits' trim field (StepA extension)
+    setUnitTex(4, built.shade || flatTexture([180, 0, 0, 255], true));   // 180 = shade 1.0 (no float targets: flat light)
+    stat.dataset.build = built.ms.toFixed(1);
+    builtMaps = built;
     Object.values(bm).forEach(release);                // on the GPU now: free the decoded images
     plate = v.plate;
     note.classList.remove("show");
     gl.uniform2f(U("uPlate"), plate.viewBox[0], plate.viewBox[1]);
     gl.uniform1f(U("uCmPerPx"), plate.mmPerPx / 10);
-    gl.uniform1f(U("uRange"), plate.uvRangeCm);
+    gl.uniform1f(U("uRange"), Maps.UV_RANGE_CM);
+    perfShow({ build: builtMaps.ms });
     gl.uniform1f(U("uShadeSqrt"), plate.shadeEncoding === "sqrt" ? 1 : 0);
     gl.uniform1f(U("uShadeMed"), (plate.shadeMedian || 213) / 255);
-    const w = new Float32Array(9), flip = new Float32Array(9);
-    const viewFlip = VIEW_FLIP[view] || FLIP;
-    for (const [name, id] of Object.entries(TRIMS)) {
-      w[id] = (plate.trims[name]?.widthMm ?? 20) / 10;
-      // new plates orient V themselves (outerV = 1: 0 inner side, 1 garment edge); old plates use the FLIP table
-      flip[id] = plate.trims[name]?.outerV !== undefined ? 0 : (viewFlip[name] || 0);
-    }
-    gl.uniform1fv(U("uTrimWcm"), w);
-    gl.uniform1fv(U("uTrimFlip"), flip);
+    zonesData = v.zones;
     neckSetup();
     neckUpload();
     laceFit();
@@ -1564,6 +1614,7 @@
     const t0 = performance.now();
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.finish();
+    if (PERF) { gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); perfFrame(performance.now() - t0); }
     stat.textContent = `Load ${stat.dataset.load} ms · draw ${(performance.now() - t0).toFixed(1)} ms · ${canvas.width}×${canvas.height}`;
     canvas.setAttribute("aria-label", describe());
   }
@@ -1800,7 +1851,7 @@
     decodedBytes: () => [...decoded].reduce((n, b) => n + b.width * b.height * 4, 0),
     decodedCount: () => decoded.size,
     buildMs: () => (stat.dataset.build ? +stat.dataset.build : null),
-    readMaps: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt", "shade"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readPNG(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
+    readMapsRaw: () => (builtMaps ? Object.fromEntries(["id", "uv", "uvt", "uvts"].filter((k) => builtMaps[k]).map((k) => [k, Maps.readRaw(gl, builtMaps[k], plate.viewBox[0], plate.viewBox[1])])) : null),
     setStep, reviewImage: async () => { const b = await reviewImage(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); },
     timings: () => ({ show: +stat.dataset.show, step: +stat.dataset.step, phases: stat.dataset.phases }),
   };

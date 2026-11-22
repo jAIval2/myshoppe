@@ -1,5 +1,7 @@
 # Results: numeric plan
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Plan: `numeric.md`. Branch `numeric` (from `halfway`, 65d0be4). Reference: port 8100 (`halfway`).
 
 ## Step 0: Baseline

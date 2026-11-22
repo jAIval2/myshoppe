@@ -1,5 +1,7 @@
 # Plan: polish of the fabric and lace overlay (steps 1–7)
 
+Closed. The silhouette method is replaced by `StepA.md` (one `plate.dat` per view, typed edges, fabric frames, maps built on the page).
+
 Status: **done** on 2026-11-19 (results in `polish-results.md`). Steps 2–7 were checked offline, not in a browser: see step 8 there.
 **Numbering note:** the close step was step 5 before 2026-11-19, and is now **step 8**. In `polish-results.md`, "deleted in step 5" means the close step.
 Scope: `demo/` only: `testing.html`, `tools/make_plate.py`, `tools/prep_lace.py`, `tools/prep_fabric.py`, the plates in `assets/plates/`, the swatches in `assets/swatches/`.

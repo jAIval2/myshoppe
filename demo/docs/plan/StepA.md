@@ -1,6 +1,6 @@
 # Plan: StepA — the silhouette, closed to the photo's edge
 
-Status: **not started**. Branch `stepA` (from `numeric`, 430c3fd), worktree `../myshoppe-stepA`.
+Status: **in progress**: steps 0–7 done (uncommitted from step 3 on; one commit for the rest of StepA); the extension (§8, steps L1–L5) next; then steps 8 and 9. Branch `stepA` (from `numeric`, 430c3fd), worktree `../myshoppe-stepA`.
 Compare: **http://localhost:8200/testing.html** (`numeric`, the reference) and **http://localhost:8300/testing.html** (this worktree).
 Read first: `docs/breather.md` (what is where). Background: `DedhD.md` §11 (option A, and the facts in §11.1). Product: a visualiser, 4 fixed views, **no 3D, no pan, no zoom**.
 Scope: the straight kurta, 4 views (torso, neck, sleeve, hem). Swatches and laces are the next plan; `main` is merged after that one (`DedhD.md` §11, agreed order).
@@ -14,7 +14,7 @@ When StepA is closed, this is true:
 2. Where two parts meet (front and sleeve, front and back pieces), the edge between them is the photographed seam: no hairline, no step, no double edge.
 3. Free edges (garment against wall, form or mannequin arm) are soft like the photo's own edge: no stair steps, no halo.
 4. The print lies on the body as cloth does: warp lines straight down the centre front and along each sleeve, squares of the same real size in all 4 views, no S-curves, no stretch at the sleeve cap. Each print starts from fixed points of the garment (the centre front and the neck-point line; the shoulder point on a sleeve).
-5. Every lace follows its edge at an exact distance and ends at a defined join: hem over slit, cuff to the edge, hem pieces to their seams.
+5. Every lace lies on its edge at its real width and repeat, with no streak, wedge or fan. Where it goes out of sight (cuffs, hem, neck), the silhouette cuts it; the slit and hem laces meet in a mitre. (Extension, §8.)
 6. The live neckline works as now: handles, the area a change reveals, the torso view following.
 
 **What a plate is**
@@ -295,4 +295,114 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 
 ## 7. Out of scope
 
-The swatch frame across views (placement, print continuity across seams, swatch classes, real scale), lace corners and joins beyond the existing ones, new interactions, new silhouettes, merging to `main`. Those are options B–E of `DedhD.md` §11.7, after StepA.
+The swatch frame across views (placement, print continuity across seams, swatch classes, real scale), new interactions, new silhouettes, merging to `main`. Those are options B–E of `DedhD.md` §11.7, after StepA. (Lace corners and joins were out of scope here; the extension, §8, takes the slit / hem corner in.)
+
+## 8. Extension (2026-11-22): the lace laid on the garment, and the last silhouette items
+
+**Why.** The review of steps 0–7 (2026-11-22, the user's marked screenshots of the 4 views) found the silhouette nearly done and the lace the weak part. Every marked lace defect comes from how the lace is laid out, not from the lace images (the inventory is good enough for the demo):
+
+| What the user marked | Cause (measured) |
+|---|---|
+| Vertical streaks through the hem view's lace; a fan of streaks at the slit / hem corner (1126, 1302); the torso hem cut on a diagonal at the right corner | A trim is a centre line cut into 1 px segments, each drawn as its own quad with its own normal. At every bend the quads open a wedge on the outer side and overlap on the inner side: hem view `hem` 106 joints with a wedge over 0.5 px (worst 66 px at a 28° bend), torso `hem` 147 (a 62° bend at the slit corner), cuffs 15–16 (8 px). The wedges show the fabric through the lace (the streaks); the corner folds the strip into a fan. The torso trim mismatch of step 5 (0.37 px) is the same overlap |
+| Square-cut lace ends at both torso cuffs, at the inner end of the sleeve-view cuff and at the far end of the sleeve-view neck | Each trim is an open strip with two ends. The neck, the cuffs and the hem are loops: the lace goes on round the arm or the body, out of sight. It should be cut by the silhouette, and its motifs should crowd toward it as the cloth turns away (the fabric frame already does this for the fabric) |
+| Specks under the cuffs and the hem; the lace almost black over the stand | The overhang (the part of an edging lace past the edge) takes the shade of whatever is behind it (the dark stand). The lace texture's transparent texels are grey (pearl: RGB 128), so its mipmaps grey the lace when it is small |
+| A speckled lace everywhere | One lace image is scaled to every trim's width: the pearl lace (30 mm) shrunk to 12 mm on the neck and 8 mm on the slits. In the torso view (0.88 mm/px) a 25 mm cuff is 28 px tall: the 446 px band is minified 16× |
+
+**Decision (the user, 2026-11-22): the lace decides.** A lace keeps its real width (`widthMm` of its sidecar: fine 15, leaf 25, brocade 28.2, pearl 30, geometric 40, paisley 53.4) and its real repeat on every trim. The plate's trim widths (12 / 25 / 30 / 8 mm) go.
+
+**The model: lace is a strip of cloth sewn along a garment edge.**
+1. **A trim is an edge run, not a centre line.** `line` = the snapped garment edge between the trim's anchors, smoothed over 4 mm. The lace's decorative edge lies on it; its body goes inward.
+2. **The trim field.** For each pixel near the run: `t` = the distance in mm from the edge (+ inward, on the garment), and `s` = the cloth length in cm along the edge to the foot point. `s` is measured with the zone's fabric frame (the length of the edge in (u, v)), so the motifs crowd toward a silhouette as the fabric does. The field is the exact nearest-point field of the run. It is drawn as one quad per segment and a fan at each vertex, with depth = distance, so the nearest segment wins: no wedge, no overlap, no fan of folded quads.
+3. **Band.** The field is written from 8 mm outside the edge to 56 mm inside it (the widest lace, 53.4 mm, and the deepest overhang, 0.123 × 53.4 mm). The page lays the lace in it; the band does not depend on the lace chosen.
+4. **Ends.**
+   - The loops have no ends. A run's end at a silhouette or a corner is "open": the field goes on past it along the end's tangent, and the garment's outline cuts it.
+   - A real end is "cut": a square end. Only the slit top has one.
+   - The overhang exists only along the run itself, never past its ends (none hanging beside a side silhouette).
+5. **Where the lace can be.**
+   - The lace's body: only on its own zone.
+   - The overhang: outside the garment, or over a zone behind its own, never over an object in front (an occluder).
+   - Between the trims of one zone, the nearest edge wins. Where a slit lace meets the hem lace this gives a **mitre** along the corner's bisector.
+   - The slits are a second field, because they can be turned off on their own. The page mitres them against the hem by comparing the two distances.
+   - Across zones, the front zone's trims are drawn last.
+6. **Phase.** The motif sits centred at the frame's u = 0: the centre front for the neck and the hem; the sleeve's axis for a cuff; a back piece's axis. Each lace keeps its own repeat, with no fitting to the visible length. The slits keep whole repeats from the hem corner up to the slit top (the fit of `polish` step 4, ±5 %), with a whole motif at the corner.
+7. **Across.**
+   - An edging lace (the sidecar's `edging`) on an edging trim (hem, cuffs): its decorative edge hangs `edgeDepth` × its width past the garment edge.
+   - Other laces and trims: the lace lies from the edge inward.
+8. **Light.**
+   - The overhang takes the shade of the garment 3 px inside the edge, at its foot point, not of the stand or wall behind it.
+   - The lace keeps its contact shadow, on the fabric and on the background.
+   - The lace texture is uploaded premultiplied, so its mipmaps average only the lace: a small lace softens instead of greying and speckling.
+9. **The live neckline.** In the neck area the lace comes from the live edge: `t` = the shader's signed distance to the live edge (`dL`), and `s` = the arc length along it from the centre front. The neck area is made deep and wide enough to hold the widest lace at the deepest setting, so the baked field never shows there.
+
+### Step L1: The trim field in the plate (Python reference)
+
+**Do:**
+1. Trim data in the annotate scripts: `{edge, from, to, type, anchor, cut}`. `anchor`: `cf` (the default: the frame's u = 0) or `from` / `to` (a whole motif at that end: the hem end of a slit). `cut`: the ends that are real ends (`from` on the slits: the slit top). `widthMm` and `offsetMm` are removed.
+2. `derive_trims` → `line`: the edge, resampled, smoothed over 4 mm, between the anchors (projected on the edge). `plate.dat` stores `line` in place of `centre`; the decisions store each trim's `lengthCm` (the cloth length of the line) and `side` (the inward normal).
+3. `make_plate.py` `rasterise`: the trim field, exact (per pixel: the nearest segment or vertex of the line, its foot point, `s` and `t`), with the rules of §8.
+   - In memory: `uvt` = the main field (`s` + 64 cm; `t` + 64 mm) and `uvts` = the slit field; id G = the main trim.
+   - The neck area grows to the widest lace (`NECK_BAND_MM` 30 → 60; sideways reach + 56 mm).
+4. `plate_invariants.py`, the trim rules become:
+   - the line lies on its edge (mean ≤ 0.3 px, std ≤ 0.5 px);
+   - it is smooth (as before);
+   - it ends at its anchors (≤ 1 px);
+   - the field is complete: no pixel of the zone within the band and the outline lacks a value;
+   - the field is continuous: `s` jumps by at most 2 px of cloth between 4-neighbours, except at a mitre.
+
+**Accept:**
+- [ ] `rebuild_check.sh` deterministic; `platedat.py --check` passes.
+- [ ] The new trim rules PASS on all 4 plates, and the trim smoothness of step 7 (torso hem 0.82 px) is gone with the centre line.
+- [ ] `check.png` shows the bands, the mitres and the overhangs; looked at for the 4 views.
+
+### Step L2: The trim field on the page
+
+**Do:**
+1. `plate.js`: `trimField(P, Z)` builds the geometry of each field: the quads and fans of each line, with `s` from `frameUV` at the vertices. The same numbers as the build (a parity check).
+2. `maps.js`: one depth-tested pass per zone for the main field, then the slits' field, into `uvt` and `uvts` (16-bit, as `uv`); id G by a second pass with `EQUAL` depth. The fragment shader computes `s` and `t` exactly (a fan's distance from its vertex, not interpolated).
+3. `maps_check.py` compares both fields with the build: coverage (only a 1 px band may differ), `s` within 0.01 cm, `t` within 0.05 mm.
+
+**Accept:**
+- [ ] `maps_check.py` PASS on all 4 views (coverage, uv, both fields).
+- [ ] Build time written for each view; the page loads with no console error on all queries (`cdp_shot.mjs` log).
+
+### Step L3: The lace laid by the page
+
+**Do:**
+1. The main shader reads `s`, `t`:
+   - lace across = from `t`, the lace's own width and `edgeDepth`;
+   - along = `s` / the lace's tile length, phase 0.5 period at u = 0;
+   - the slits' fit from the corner;
+   - the slit / hem mitre by the nearer edge;
+   - no lace outside its width.
+2. The live neck from `dL` and the arc length of the live edge. The `uNC` centre line and `uNeckTw` go.
+3. The overhang shade from the foot point; the premultiplied lace upload; the glow only on the lace itself.
+4. Removed: `trimParams`, `trimTriangles`, `uTrimWcm`, `uTrimVMax`, `uTrimFlip`, `FLIP`, `VIEW_FLIP`, the trims' `widthMm` / `vMax` / `outerV`, the whole-repeat fit of the neck and hem.
+
+**Accept:**
+- [ ] Every marked area of the 2026-11-22 review, before / after, in one crop sheet:
+  - torso: cuffs (both ends), hem (left, middle over the stand, right corner);
+  - sleeve view: cuff (both ends), neck (both ends);
+  - hem view: the hem lace, the slit / hem corner.
+- [ ] No streak: in each band, fabric shows through only where the lace has a hole. Measured: the lace alpha along `t` = const has no column of 0 between two lace columns over 1 px wide that the lace image does not have.
+- [ ] The lace's height on the garment = its `widthMm` ± 2 % (the field's `t` at the lace's edges).
+- [ ] The overhang over the stand is within 15 % of the lace's luminance just inside the edge.
+- [ ] `fringe.py` and `edge_crops.py` as in step 7 (no new rim).
+
+### Step L4: The last silhouette items
+
+**Do:**
+0. (Found in step L3: the "lace almost black over the stand".) Torso, the hem over the stand: the first reading ran straight across at y 2200 (source px), but the garment's hem rises over the stand to y 2161. So the front covered 20–37 px of the stand's top, and the fabric and lace there took the stand's dark shade. Read again column by column (x 760–1060).
+1. Torso, the right sleeve's inner edge (the long band beside the sleeve): the photo's dark line along the sleeve lies about 8 px inside the body zone, and the body's pattern runs through it. Read the edge again on `source.png`: is the line the sleeve's turned edge (the seam moves onto it) or its shadow on the body (it stays, and reads as a shadow)?
+2. Torso, the right hem corner at the slit: the strip of the photo's white garment beside the slit edge. Read the edge again; close it.
+3. Neck view, the two gaps between the arms and the body. They were read as the wall seen through the gap, and their jagged, unshaded edges read as tears. **Decided by the user (2026-11-22): they are the kurta's own white fabric in shadow, not the wall.** They close as garment: the front runs under the sleeve up to the sleeve's inner edge (`sleeve-in-l` / `sleeve-in-r` become seams shared by the front and the sleeve).
+
+**Accept:**
+- [ ] Before / after crops of each; `plate_invariants.py` closure and gaps as in step 7 or better; a person approves.
+
+### Step L5: Results
+
+**Accept:**
+- [ ] `StepA-results.md`: one section for the extension, with the numbers above and the crop sheets (into `docs/plan/img/`).
+- [ ] `docs/render.md` (the lace), `docs/plate.md` (trims), `docs/annotate.md` (trim data), `tools/README.md` and the two skills follow the new trim data.
+
+Then steps 8 and 9 as written (step 9 also checks §1 item 5 against the extension).
