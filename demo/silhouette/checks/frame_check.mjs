@@ -1,11 +1,11 @@
-// StepA step 4: plate.js frameUV() against tools/plateframe.py uv(), at the points of
-//   python3 tools/plateframe.py --samples <plate-dir> <samples.json>
-// usage: node tools/frame_check.mjs <plate-dir> <samples.json>        pass: every |du|, |dv| <= 1e-4 cm; exit code 0
+// StepA step 4: plate.js frameUV() against silhouette/pipeline/plateframe.py uv(), at the points of
+//   python3 silhouette/pipeline/plateframe.py --samples <plate-dir> <samples.json>
+// usage: node silhouette/checks/frame_check.mjs <plate-dir> <samples.json>        pass: every |du|, |dv| <= 1e-4 cm; exit code 0
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-const Plate = createRequire(import.meta.url)("../plate.js");
+const Plate = createRequire(import.meta.url)("../../plate.js");
 const [dir, samples] = process.argv.slice(2);
-if (!dir || !samples) { console.error("usage: node tools/frame_check.mjs <plate-dir> <samples.json>"); process.exit(2); }
+if (!dir || !samples) { console.error("usage: node silhouette/checks/frame_check.mjs <plate-dir> <samples.json>"); process.exit(2); }
 const buf = readFileSync(`${dir}/plate.dat`);
 const { zones: Z } = Plate.parseDat(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 const S = JSON.parse(readFileSync(samples, "utf8"));

@@ -1,6 +1,6 @@
 """Is an annotated image drawn on the exact base, or was it regenerated? (plate.md step 2). Read-only.
 
-usage: python3 tools/align_check.py <annotated.png> <source.png> [x0,y0,x1,y1 ...]
+usage: python3 silhouette/measure/align_check.py <annotated.png> <source.png> [x0,y0,x1,y1 ...]
 
 Compares boxes WITHOUT lines (default: wall top-left, wall top-right, knob, form neck).
 Mean abs difference per box: <= 2 aligned, > 5 regenerated. Exit code 0 = aligned, 1 = not.

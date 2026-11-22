@@ -2,7 +2,7 @@
 // Saves the WebGL CANVAS itself (toDataURL: exact pixels, no page chrome) and every console error, for each query.
 // Better than a screenshot: it waits until the page says the frame is drawn, and the shader compile log is captured.
 //
-// usage: node tools/cdp_shot.mjs <out-dir> <port> [--dpr 2] [--win 900x760] [--eval "<js>"] "<query>" ["<query>" ...]
+// usage: node silhouette/checks/cdp_shot.mjs <out-dir> <port> [--dpr 2] [--win 900x760] [--eval "<js>"] "<query>" ["<query>" ...]
 //   --eval: JavaScript run in the page after the first frame (may return a Promise); its JSON result goes to log.json.
 //           The page exposes window.__studio (see testing.html) for tests: setNeck(), state, timings.
 //   --mobile: a phone (mobile viewport, touch); --reduced: prefers-reduced-motion: reduce
@@ -27,7 +27,7 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === "--reduced") opt.reduced = true;
   else pos.push(args[i]);
 }
-// the 8 fixed review queries of the polish plan (tools/polish_metrics.py QUERIES); "--polish [extra]" appends extra to each
+// the 8 fixed review queries of the (closed) polish plan; "--polish [extra]" appends extra to each
 const POLISH = ["view=torso&fabric=sage&lace=pearl", "view=torso&fabric=mocha&lace=geometric", "view=neck&fabric=mustard&lace=leaf",
   "view=neck&fabric=mocha&lace=fine", "view=sleeve&fabric=sage&lace=geometric", "view=hem&fabric=mocha&lace=geometric",
   "view=hem&fabric=mustard&lace=pearl", "view=neck&fabric=off"];
@@ -37,7 +37,7 @@ const HALFWAY = ["view=neck&fabric=mocha&neckDepth=100&neckWidth=158", "view=nec
 let [out, port, ...queries] = pos;
 if (queries[0] === "--numeric") queries = [...POLISH, ...HALFWAY].map((q) => q + (queries[1] || ""));
 if (queries[0] === "--polish") queries = POLISH.map((q) => q + (queries[1] || ""));
-if (!out || !port || !queries.length) { console.error("usage: node tools/cdp_shot.mjs <out> <port> [opts] <query> ..."); process.exit(2); }
+if (!out || !port || !queries.length) { console.error("usage: node silhouette/checks/cdp_shot.mjs <out> <port> [opts] <query> ..."); process.exit(2); }
 mkdirSync(out, { recursive: true });
 const [W, H] = opt.win.split("x").map(Number);
 const CHROME = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";

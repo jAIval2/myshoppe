@@ -1,7 +1,7 @@
 """plate.dat version 2 (BSP2): every number of one view in one small binary file (StepA step 1). Pillow is not needed.
 
-usage: python3 tools/platedat.py --dump <plate-dir | plate.dat>     the file as text, in a stable order (git diff uses it: diff=dat)
-       python3 tools/platedat.py --check <plate-dir> ...           read and validate
+usage: python3 silhouette/pipeline/platedat.py --dump <plate-dir | plate.dat>     the file as text, in a stable order (git diff uses it: diff=dat)
+       python3 silhouette/pipeline/platedat.py --check <plate-dir> ...           read and validate
 As a module: read(path) -> P, write(path, P) -> bytes, encode(P) -> bytes, validate(P) -> [problems], outline(P, zone) -> points,
 dump(P) -> text, legacy(P) -> (plate, zones): the two objects the page and the old tools know (the plate header and the zone data).
 
@@ -19,7 +19,7 @@ The header P (what a plate is; StepA.md section 1, items 7-8):
   edges      {name: {type: free | seam | frame | cut, points, zones: [a, b] (a seam)}}.  A seam is ONE list used by two zones.
              A lower zone's run that lies hidden under a later zone (the sleeve view's body under the sleeve and the cuff) is a seam with "under": <the later zone>, used by that one lower zone.
              free = a visible contour (snapped to the photo, StepA step 3); frame = the image border; cut = the live neck dip.
-  zones      {name: {id, order, outline: [[edge, +1 | -1], ...], frame}}: the frame (tools/plateframe.py) = axis, L, s0, vMm,
+  zones      {name: {id, order, outline: [[edge, +1 | -1], ...], frame}}: the frame (silhouette/pipeline/plateframe.py) = axis, L, s0, vMm,
              thetaDeg, half, sag, and its specification (axisFrom, anchor, sagEdge, skipTop, axisDegree)
              The outline is the chain of its edges; a join point shared by two consecutive edges is written once.
   trims      {name: {id, order, type (edging | insertion), edge, from, to, anchor, cut, line, side, zone}}: a lace hangs on its edge;
@@ -27,7 +27,7 @@ The header P (what a plate is; StepA.md section 1, items 7-8):
              anchor = where the motif sits (cf: the frame's u = 0; from / to: an end); cut = the real (square) ends (StepA extension)
   stitches   {name: points};  occluders: [chain of edges [[edge, +-1], ...] (or points)];  landmarks {name: [x, y]};  invariants {openings}
   settings   view settings: thetaDeg, shadeSmoothMm, shadeSmoothEps, shadeSpace
-  decisions  what tools/make_plate.py takes from the image: shadeMedian, shadeSmoothPx, shadeEncoding, the neck block, each trim's
+  decisions  what silhouette/pipeline/make_plate.py takes from the image: shadeMedian, shadeSmoothPx, shadeEncoding, the neck block, each trim's
              cloth length (lengthCm), each zone's size in cm
 """
 import json, math, os, struct, sys

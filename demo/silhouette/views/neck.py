@@ -2,16 +2,18 @@
 
 Source points are in source.png pixels (2048 x 2048). The plate is the centred 3:4 crop x 252..1788 (CF at x 1020), resized to
 1200 x 1600 (factor 0.78125).
-As a module (tools/make_plate.py): base(plate_dir) -> the base image, measure() -> the plate data (no decisions). Run alone: python3 tools/annotate_neck.py   (the automatic checks; writes nothing)
+As a module (silhouette/pipeline/make_plate.py): base(source image path) -> the base image, measure() -> the plate data (no decisions). Run alone: python3 silhouette/views/neck.py   (the automatic checks; writes nothing)
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw
 
 X0, K = 252, 1200 / 1536
 
 
 def base(D):
-    src = Image.open(f"{D}/source.png").convert("RGB")
+    src = Image.open(D).convert("RGB")
     return src.crop((X0, 0, X0 + 1536, 2048)).resize((1200, 1600), Image.LANCZOS)
 
 

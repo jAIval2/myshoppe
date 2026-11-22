@@ -1,6 +1,6 @@
 """Review crops: zoom one area of an image, or put the same area of several images side by side.
 
-usage: python3 tools/zoom.py <out.png> x0,y0,x1,y1 <image> [image ...] [--scale 2] [--nearest]
+usage: python3 silhouette/measure/zoom.py <out.png> x0,y0,x1,y1 <image> [image ...] [--scale 2] [--nearest]
 
 One image  -> the area enlarged (2x by default). Use it for annotate.png / check.png review.
 Several    -> the same area of each image, side by side with a red gap. Use it to compare

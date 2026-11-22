@@ -397,7 +397,7 @@
     mocha:   { src: "assets/swatches/fabric-mocha-1024.jpg",   repeatCm: 30, name: "Mocha Chikan", sheen: 0, sheenWidth: 1, antiTile: true },
     mustard: { src: "assets/swatches/fabric-mustard-1024.jpg", repeatCm: 20, name: "Mustard Crinkled Gauze", sheen: 0, sheenWidth: 1, antiTile: true },
   };
-  // laces: horizontal band, decorative edge at the bottom (tools/prep_lace.py)
+  // laces: horizontal band, decorative edge at the bottom (swatchprep/prep_lace.py)
   const LACES = {
     pearl:     { src: "assets/swatches/lace-pearl-2048.webp", meta: "assets/swatches/lace-pearl.json", mat: "assets/swatches/lace-pearl-mat.webp",     name: "Pearl Guipure Lace" },
     geometric: { src: "assets/swatches/lace-geometric-2048.webp", meta: "assets/swatches/lace-geometric.json", mat: "assets/swatches/lace-geometric-mat.webp", name: "Woven Diamond Border" },
@@ -1137,7 +1137,7 @@
     gl.uniform1f(U("uAntiTile"), ANTITILE && f.antiTile ? 1 : 0);
   }
   const matCache = {};                                 // url -> Promise of the lace material map
-  const metaCache = {};                                // url -> Promise of the lace sidecar (tools/prep_lace.py --repeat)
+  const metaCache = {};                                // url -> Promise of the lace sidecar (swatchprep/prep_lace.py --repeat)
   const laceMetaOf = (url) => (metaCache[url] ||= fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null));
   let lace = null;                                     // { meta, aspect } of the lace on unit 6
 
@@ -1244,7 +1244,7 @@
     }
     return idx;
   }
-  function offsetPoly(pts, d, away) {                  // the vertex-normal offset of tools/annotate_neck.py and make_plate.py
+  function offsetPoly(pts, d, away) {                  // the vertex-normal offset of silhouette/views/neck.py and make_plate.py
     return pts.map(([x, y], i) => {
       const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
       const tx = b[0] - a[0], ty = b[1] - a[1], n = Math.hypot(tx, ty) || 1;
@@ -1843,7 +1843,7 @@
     if (plate) render();
   }));
 
-  // test hook for tools/cdp_shot.mjs --eval (no UI use)
+  // test hook for silhouette/checks/cdp_shot.mjs --eval (no UI use)
   window.__studio = {
     state, showView, render: () => plate && render(),
     setNeck: (rec) => { state.neck = clampNeck({ ...state.neck, ...rec }); neckUpload(); render(); return state.neck; },

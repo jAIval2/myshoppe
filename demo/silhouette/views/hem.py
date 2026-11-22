@@ -3,16 +3,18 @@
 Source points are in source.png pixels (2048 x 2048). The plate is the 3:4 crop x 214..1750, resized to 1200 x 1600 (factor
 0.78125). The garment is 1583 px wide, the crop 1536: the crop keeps the whole back panel and its hem tip on the right, and cuts at
 most 47 px of the shaded left panel (at the border). The sparkle mark (x 1920-2010) is outside the crop: no patch needed.
-As a module (tools/make_plate.py): base(plate_dir), measure(). Run alone: python3 tools/annotate_hem.py
+As a module (silhouette/pipeline/make_plate.py): base(source image path), measure(). Run alone: python3 silhouette/views/hem.py
 (the automatic checks of annotate.md 9.1; writes nothing).
 
-Every list below was read on gridded crops of source.png (tools/gridcrop.py), or scanned and then confirmed on a crop:
+Every list below was read on gridded crops of source.png (silhouette/measure/gridcrop.py), or scanned and then confirmed on a crop:
   silhouettes: colour distance to the wall on the same row (blur 1.5)
   slit edges, form, hem edges, bar tack, stitches: gridded true-colour and high-contrast crops, x1.2 .. x3
 Zones (back to front): back-l (shaded left panel, order 1), back (panel right of the slit, order 1), front (order 2).
 Left outside every zone: the dress form in the slit, the pale inside of the far wall below the form, the stand.
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw
 
 X0, K = 214, 1200 / 1536
@@ -20,7 +22,7 @@ XMAX = X0 + 1536
 
 
 def base(D):
-    src = Image.open(f"{D}/source.png").convert("RGB")
+    src = Image.open(D).convert("RGB")
     return src.crop((X0, 0, XMAX, 2048)).resize((1200, 1600), Image.LANCZOS)
 
 

@@ -1,6 +1,6 @@
-"""Free edges snapped to the photo (StepA step 3). A module of the build (tools/make_plate.py); Pillow only. Deterministic.
+"""Free edges snapped to the photo (StepA step 3). A module of the build (silhouette/pipeline/make_plate.py); Pillow only. Deterministic.
 
-usage: python3 tools/snap_edges.py <plate-dir> [--dry] [--preview <png>] [--json]     a report (and a preview); --dry writes nothing
+usage: python3 silhouette/pipeline/snap_edges.py <plate-dir> [--dry] [--preview <png>] [--json]     a report (and a preview); --dry writes nothing
                                                                                     (this tool never writes: make_plate.py does)
 As a module: snap(P, base) -> report. P (the plate data of an annotate script) is changed in place: the points of every free and cut
 edge, the corners where edges meet, the seams' ends, the grid points and landmarks that sat on a moved corner.
@@ -259,7 +259,7 @@ def summary(report):
 
 
 if __name__ == "__main__":
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
     import json, make_plate
     a = sys.argv[1:]
     pd = a[0].rstrip("/")

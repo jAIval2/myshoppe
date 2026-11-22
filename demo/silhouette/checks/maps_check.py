@@ -1,14 +1,14 @@
 """StepA step 5: the maps that the page builds (maps.js) against the plate's own numbers. Pillow only.
 
-usage: node tools/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMapsRaw()' "view=<v>"
-       python3 tools/maps_check.py <plate-dir> <out>/log.json [--debug <png>]
+usage: node silhouette/checks/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMapsRaw()' "view=<v>"
+       python3 silhouette/checks/maps_check.py <plate-dir> <out>/log.json [--debug <png>]
 
   coverage  id R (zone) of the page, where id A gives a coverage of one half or more, against make_plate.py's in-memory id (the same outlines and under-strips, Pillow's polygon fill):
             the pixels that differ must lie in the 1 px band along an edge (a 3 x 3 window holds two values).        PASS: none outside
   uv        inside each zone, 2 px from every edge: the page's 16-bit (u, v) minus the view's offset against the frame's exact (u, v)
-            at the pixel centre (tools/plateframe.py).                                                                 PASS: max <= 0.01 cm
+            at the pixel centre (silhouette/pipeline/plateframe.py).                                                                 PASS: max <= 0.01 cm
   fields    (StepA extension) the page's trim fields (uvt with id G: every trim but the slits; uvts: the slits) against the build's
-            (make_plate.py rasterise, tools/trimfield.py): a pixel that only one side has must lie on the field's own border or at the
+            (make_plate.py rasterise, silhouette/pipeline/trimfield.py): a pixel that only one side has must lie on the field's own border or at the
             garment's edge (the page's soft-edge ribbon); on the common pixels the same trim (or the other side of a boundary between
             two trims: a neighbour has the page's trim; or the garment's edge, where the page's zone runs 3 px further), s within 0.01 cm and t within 0.05 mm
             (99.9 %; one 16-bit step is 0.002 cm of s, 0.02 mm of t).
@@ -16,7 +16,7 @@ Exit code 0 = all pass.
 """
 import base64, json, math, os, sys
 from PIL import Image, ImageChops, ImageFilter
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 import make_plate, platedat, plateframe
 
 pd, logp = sys.argv[1].rstrip("/"), sys.argv[2]

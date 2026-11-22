@@ -1,6 +1,6 @@
 ---
 name: make-plate
-description: Make a garment plate (source.png, base.jpg, plate.dat) for one fixed view of the Bespoke Studio demo — torso, neckline, sleeve or hem — from one base image. Use when a new base image arrives for a view, or when a plate must be rebuilt or checked.
+description: Make a garment plate (base.jpg + plate.dat, from silhouette/sources/<plate>.png) for one fixed view of the Bespoke Studio demo — torso, neckline, sleeve or hem — from one base image. Use when a new base image arrives for a view, or when a plate must be rebuilt or checked.
 ---
 
 # Skill: make a plate
@@ -20,17 +20,17 @@ All paths are relative to `demo/`. All tools use Python 3 with Pillow only (Node
 
 ## 1. Output
 
-One folder for each plate: `assets/plates/<view>-<variant>/`, for example `assets/plates/hem-straight/`. **It holds three files, nothing else.**
+One folder for each plate: `assets/plates/<view>-<variant>/`, for example `assets/plates/hem-straight/`. **It holds what ships, two files, nothing else.** The plate's source image is `silhouette/sources/<plate>.png` (it does not ship). Everything that makes and checks a plate is in `demo/silhouette/` (`silhouette/README.md`; one entry point: `python3 silhouette/plate.py`).
 
 | File | What it is | Ships |
 |---|---|---|
-| `source.png` | The image as received (the input; it is measured) | No |
-| `base.jpg` | The 1200 × 1600 photo, made from `source.png` | Yes |
-| `plate.dat` | Every number of the view (`tools/platedat.py`, `BSP2`): typed edges, zone outlines and fabric frames, trims, stitches, landmarks, occluders, scale, settings, and the decisions taken from the image | Yes |
+| `silhouette/sources/<plate>.png` | The image as received (the input; it is measured). Not in the plate folder | No |
+| `base.jpg` | The 1200 × 1600 photo, made from the source | Yes |
+| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP2`): typed edges, zone outlines and fabric frames, trims, stitches, landmarks, occluders, scale, settings, and the decisions taken from the image | Yes |
 
-- The **source** of a plate is `source.png` + `tools/annotate_<view>.py` (the measured points). `tools/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically.
+- The **source** of a plate is `silhouette/sources/<plate>.png` + `silhouette/views/<view>.py` (the measured points). `silhouette/pipeline/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically.
 - **Nothing is edited by hand in a plate.** A change is a change to the annotate script (or to a tool), then `make_plate.py <plate>`.
-- `python3 tools/platedat.py --dump <plate>` prints a `plate.dat` as text; `git diff` shows that text once per clone: `git config diff.dat.textconv "python3 demo/tools/platedat.py --dump"`.
+- `python3 silhouette/pipeline/platedat.py --dump <plate>` prints a `plate.dat` as text; `git diff` shows that text once per clone: `git config diff.dat.textconv "python3 demo/silhouette/pipeline/platedat.py --dump"`.
 - Review images (`annotate.png`, `check.png`, the edge crops) are made on demand into `demo/review/<plate>/` (not committed): `make_plate.py <plate> --review`.
 
 The plate is **done** only when step 6 passes, **and** a person has looked at `annotate.png` and `check.png`.
@@ -47,13 +47,13 @@ The plate is **done** only when step 6 passes, **and** a person has looked at `a
 
 | Tool | Step | Job |
 |---|---|---|
-| `tools/gridcrop.py` | 4 | Gridded crops of `source.png` for measuring |
-| `tools/annotate_<view>.py` | 3–4 | `base()` (the crop), `measure()` (typed edges, zones and frame specifications, trims, landmarks); run alone: the automatic checks |
-| `tools/make_plate.py` | 5 | The build: free edges snapped to the photo (`snap_edges.py`), trims derived from their edges, frames fitted, the maps in memory, the decisions → `base.jpg` + `plate.dat`; `--review` |
-| `tools/plate_invariants.py` | 6 | Closure of the garment, hairline gaps, trim line (on its edge, smooth) and trim field (complete, no seam), landmarks, the fabric frame rules |
-| `tools/rebuild_check.sh` | 6 | Every plate = what its source makes (byte for byte) |
-| `tools/frame_check.mjs`, `tools/maps_check.py` | 6 | The page's maths against Python: the frames (10,000 points), the maps the page builds |
-| `tools/fringe.py`, `tools/edge_crops.py` | 6 | The render: photo garment still showing, the rim along the free edges, the halo; the fixed 2× crops |
+| `silhouette/measure/gridcrop.py` | 4 | Gridded crops of `source.png` for measuring |
+| `silhouette/views/<view>.py` | 3–4 | `base()` (the crop), `measure()` (typed edges, zones and frame specifications, trims, landmarks); run alone: the automatic checks |
+| `silhouette/pipeline/make_plate.py` | 5 | The build: free edges snapped to the photo (`snap_edges.py`), trims derived from their edges, frames fitted, the maps in memory, the decisions → `base.jpg` + `plate.dat`; `--review` |
+| `silhouette/checks/plate_invariants.py` | 6 | Closure of the garment, hairline gaps, trim line (on its edge, smooth) and trim field (complete, no seam), landmarks, the fabric frame rules |
+| `silhouette/checks/rebuild_check.sh` | 6 | Every plate = what its source makes (byte for byte) |
+| `silhouette/checks/frame_check.mjs`, `silhouette/checks/maps_check.py` | 6 | The page's maths against Python: the frames (10,000 points), the maps the page builds |
+| `silhouette/checks/fringe.py`, `silhouette/checks/edge_crops.py` | 6 | The render: photo garment still showing, the rim along the free edges, the halo; the fixed 2× crops |
 
 ---
 
@@ -61,7 +61,7 @@ The plate is **done** only when step 6 passes, **and** a person has looked at `a
 
 ### Step 1: Intake check
 
-Copy the image as received to `source.png`. Then **reject** it, and ask for a new one, if:
+Copy the image as received to `silhouette/sources/<plate>.png` (called `source.png` below). Then **reject** it, and ask for a new one, if:
 
 - [ ] It is **not the same garment** as the other views. The straight kurta is plain white, smooth matte cotton, with a high round neck (no slit, no placket), full sleeves, calf length and side slits. No embroidery, lace or print.
 - [ ] It is **not the same scene**: natural-linen dress form, dark wood knob and stand, warm beige wall, soft light from the upper left.
@@ -82,7 +82,7 @@ for box in [(40, 40, 400, 300), (900, 60, 1140, 220), (820, 380, 1100, 470)]:   
 
 Every box **≤ 2**: aligned, use it as a layout guide for the measuring. Any box **> 5**: **regenerated** (every tool-made annotation in this demo was, 8–60 px off): use it only as a layout guide. Points are always measured on `source.png` (`annotate.md`).
 
-### Step 3: The base (1200 × 1600), in `annotate_<view>.py` `base()`
+### Step 3: The base (1200 × 1600), in `silhouette/views/<view>.py` `base()`
 
 1. **Sparkle mark:** cover it with a feathered patch from the **same rows**, 150–200 px to the side (wall for a mark on the wall, garment for a mark on the garment).
 2. **Crop to 3:4** around the subject. For the front views, centre on the centre-front line. If the garment runs off one side, put the crop against that side.
@@ -90,31 +90,31 @@ Every box **≤ 2**: aligned, use it as a layout guide for the measuring. Any bo
 
 ### Step 4: Annotate
 
-Follow **`annotate.md`**. Result: `tools/annotate_<view>.py` with its automatic checks passing, and a person's approval of `annotate.png` (made by step 5 `--review`).
+Follow **`annotate.md`**. Result: `silhouette/views/<view>.py` with its automatic checks passing, and a person's approval of `annotate.png` (made by step 5 `--review`).
 
 ### Step 5: Build
 
 ```sh
-python3 tools/make_plate.py assets/plates/<plate> --review     # 10-30 s; prints the snap report and the invariants
+python3 silhouette/pipeline/make_plate.py assets/plates/<plate> --review     # 10-30 s; prints the snap report and the invariants
 ```
 
 What the build does, in order:
-1. **Snap** every `free` and `cut` edge to the photo (`tools/snap_edges.py`): a local colour model on each normal, the sub-pixel 50 % crossing, a robust smooth fit. Weak spans (no colour step: white over white, garment against the linen arm) keep their measured points and are listed. Corners and seam ends follow.
-2. **Trims** from their edges (`derive_trims`): the trim's `line` = its edge, smoothed over 4 mm, between the trim's anchors (from `from` to `to`); its `zone` and `side` (the sign that turns the line's left normal onto the zone). The lace hangs on the line at the lace's own width (`tools/trimfield.py`: the trim field, StepA extension).
+1. **Snap** every `free` and `cut` edge to the photo (`silhouette/pipeline/snap_edges.py`): a local colour model on each normal, the sub-pixel 50 % crossing, a robust smooth fit. Weak spans (no colour step: white over white, garment against the linen arm) keep their measured points and are listed. Corners and seam ends follow.
+2. **Trims** from their edges (`derive_trims`): the trim's `line` = its edge, smoothed over 4 mm, between the trim's anchors (from `from` to `to`); its `zone` and `side` (the sign that turns the line's left normal onto the zone). The lace hangs on the line at the lace's own width (`silhouette/pipeline/trimfield.py`: the trim field, StepA extension).
 3. **Frames** (`fit_frames`): each zone's axis, anchor, half-width profile, `thetaDeg`, sag.
 4. **Decisions** from the image (trim sides, the shade median, the neck block) and `plate.dat`.
 
-If you changed a tool, run `tools/rebuild_check.sh`: every plate must rebuild byte-identical (or the change is meant, and the plates are rebuilt and checked again).
+If you changed a tool, run `silhouette/checks/rebuild_check.sh`: every plate must rebuild byte-identical (or the change is meant, and the plates are rebuilt and checked again).
 
 ### Step 6: Acceptance
 
 ```sh
-python3 tools/plate_invariants.py assets/plates/<plate> [--debug uncovered.png]   # magenta = photo garment that no zone covers
-python3 tools/plateframe.py --samples assets/plates/<plate> /tmp/s.json && node tools/frame_check.mjs assets/plates/<plate> /tmp/s.json
-node tools/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMapsRaw()' "view=<v>"; python3 tools/maps_check.py assets/plates/<plate> <out>/log.json
-node tools/cdp_shot.mjs <out> <port> "view=<v>&fabric=mocha&trims=none&stage=600" "view=<v>&fabric=off&trims=none&stage=600"
-python3 tools/fringe.py <out>/canvas-0.png assets/plates/<plate> --photo <out>/canvas-1.png
-python3 tools/edge_crops.py <out>/canvas-0.png assets/plates/<plate> crops.png --photo <out>/canvas-1.png
+python3 silhouette/checks/plate_invariants.py assets/plates/<plate> [--debug uncovered.png]   # magenta = photo garment that no zone covers
+python3 silhouette/pipeline/plateframe.py --samples assets/plates/<plate> /tmp/s.json && node silhouette/checks/frame_check.mjs assets/plates/<plate> /tmp/s.json
+node silhouette/checks/cdp_shot.mjs <out> <port> --eval 'return window.__studio.readMapsRaw()' "view=<v>"; python3 silhouette/checks/maps_check.py assets/plates/<plate> <out>/log.json
+node silhouette/checks/cdp_shot.mjs <out> <port> "view=<v>&fabric=mocha&trims=none&stage=600" "view=<v>&fabric=off&trims=none&stage=600"
+python3 silhouette/checks/fringe.py <out>/canvas-0.png assets/plates/<plate> --photo <out>/canvas-1.png
+python3 silhouette/checks/edge_crops.py <out>/canvas-0.png assets/plates/<plate> crops.png --photo <out>/canvas-1.png
 ```
 
 | Check | Pass |
@@ -172,7 +172,7 @@ Add an entry to `render.md` §11: source and crop, script, scale and its cross-c
 | **Scale** | neck-l → neck-r = 158 mm (the neck view's value; shoulder width then 341 mm) | neck-l → neck-r = 158 mm | shoulder → cuff-out = 470 mm | slit-top → hem-slit = 240 mm |
 | **mm/px** | 0.877 | 0.305 | 0.338 | 0.222 |
 | **Settings** | — | — | `thetaDeg` front 40°, sleeve 70° | `thetaDeg` front 45°, back 60°, back-l 65° |
-| **Script** | `tools/annotate_torso.py` | `tools/annotate_neck.py` | `tools/annotate_sleeve.py` | `tools/annotate_hem.py` |
+| **Script** | `silhouette/views/torso.py` | `silhouette/views/neck.py` | `silhouette/views/sleeve.py` | `silhouette/views/hem.py` |
 
 ---
 

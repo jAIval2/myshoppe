@@ -45,7 +45,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 | File | Lines | Job |
 |---|---|---|
 | `testing.html` | ≈ 1,850 | The visualiser: one canvas, one fragment shader, the journey UI. |
-| `plate.js` | ≈ 330 | The plate maths of the build in JavaScript: `parseDat` (plate.dat version 2), `outlineOf`, `underStrips`, `frameProject` / `frameUV` (the fabric frame), `trimElements` / `trimTriangles` (the trim field, StepA extension), `offset_poly`. A classic script (`window.Plate`), also `require`d in Node by `tools/frame_check.mjs`. |
+| `plate.js` | ≈ 330 | The plate maths of the build in JavaScript: `parseDat` (plate.dat version 2), `outlineOf`, `underStrips`, `frameProject` / `frameUV` (the fabric frame), `trimElements` / `trimTriangles` (the trim field, StepA extension), `offset_poly`. A classic script (`window.Plate`), also `require`d in Node by `silhouette/checks/frame_check.mjs`. |
 | `maps.js` | ≈ 670 | Builds a view's maps on the GPU from `plate.dat`: `id` (R zone, G trim, B neck area, A the soft-edge coverage), `uv` (each zone's frame evaluated per pixel in `FRAME_FS`), the trim field (`TRIM_FS`: `uvt` + id G, `uvts` for the slits; one element per segment of each trim's edge, the nearest edge wins), 16-bit packing; soft free edges (`SOFT_FS`); the shade (from `base.jpg`: luminance ÷ median, a guided filter per zone, the neck-dip fill). |
 
 **Inside `testing.html`** (search for the `// ----` markers):
@@ -54,7 +54,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - Loading: `fetchView` keeps the downloaded blobs of all views (`base.jpg` + `plate.dat`), `decodeView` decodes only the shown one; `Maps.build` makes the maps. Without float render targets the shade is flat (a console warning; StepA step 8).
 - Neckline (halfway): `neckSetup`, `neckCurves`, the three pivots on rails, snap stops, `applyNeck`, the design record `state.neck` in the URL (`?neckDepth=&neckWidth=`).
 - Journey (halfway step 7): steps Cloth → Neckline → Sleeves → Hem → Review, cross-fade, highlight glow, before / after (hold button or Space), review strip, share image (1080 × 1500 PNG), phone layout ≤ 760 px.
-- Test hook: `window.__studio` (for example `readMapsRaw()`, used by `tools/maps_check.py`; `neckCurves()`, `setNeck()`).
+- Test hook: `window.__studio` (for example `readMapsRaw()`, used by `silhouette/checks/maps_check.py`; `neckCurves()`, `setNeck()`).
 - `?perf=1`: an overlay with the build time (with a 1 px readback), the draw time, the frame rate of a drag, and whether float render targets exist.
 
 **Test switches** (URL query): `?view=torso|neck|sleeve|hem`, `?fabric=off|sage|mocha|mustard`, `?lace=pearl|geometric|leaf|fine|paisley|brocade`, `?trims=neck,cuffs,hem,slits|none`, `?checker=1`, `?step=`, `?test`, `?perf=1`, `?syncbuild=1`, `?stage=`.
@@ -64,13 +64,13 @@ Before / after of closed plans: `?shade=0`, `?shadow=`, `?linear=0`, `?lacefit=0
 
 ### 5.1 Plates (`assets/plates/<view>-straight/`), one look: the straight kurta
 
-**A plate folder holds three files** (StepA):
+**A plate folder holds the two files that ship**; its source image is `silhouette/sources/<plate>.png` (the cleanup, `plan/cleanup.md`):
 
 | File | Made by | Ships | What |
 |---|---|---|---|
-| `source.png` | received | no | The AI image as received; measured |
-| `base.jpg` | `make_plate.py` (from `annotate_<view>.py` `base()`) | yes | 1200 × 1600 photo, 3:4 |
-| `plate.dat` | `make_plate.py` | yes | `BSP2` (`tools/platedat.py`): typed edges, zone outlines as chains of edges and their **fabric frames**, trims (from their edges), stitches, landmarks, occluders, settings, and the decisions taken from the image. `platedat.py --dump` prints it; `git diff` shows that text |
+| `silhouette/sources/<plate>.png` | received | no | The AI image as received; measured (not in the plate folder) |
+| `base.jpg` | `make_plate.py` (from `silhouette/views/<view>.py` `base()`) | yes | 1200 × 1600 photo, 3:4 |
+| `plate.dat` | `make_plate.py` | yes | `BSP2` (`silhouette/pipeline/platedat.py`): typed edges, zone outlines as chains of edges and their **fabric frames**, trims (from their edges), stitches, landmarks, occluders, settings, and the decisions taken from the image. `platedat.py --dump` prints it; `git diff` shows that text |
 
 Review images (`annotate.png`, `check.png`, crops) are made on demand into `demo/review/<plate>/` (not committed): `make_plate.py <plate> --review`.
 
@@ -89,103 +89,31 @@ Review images (`annotate.png`, `check.png`, crops) are made on demand into `demo
 | `assets/swatches/lace-<name>-2048.webp` + `lace-<name>.json` + `lace-<name>-mat.webp` | 6 laces: pearl, geometric, leaf, fine, paisley, brocade (brocade has no material map). Band with alpha, decorative edge at the bottom. Sidecar: `periodPx`, `periods`, `motifCentrePx`, `cutFromPx`, `blendPx`, `edge`, `widthMm` (assumption), `edgeDepth`, `bottomOpen`, `edging`, `flipped`, `material`. Material map: R height, G metal, B pearl. |
 | `assets/looks/straight-kurta.json` | The look's design parameters: `neck.depthMm` (default 39.7 since StepA step 3, 20–100, stops), `neck.widthMm` (158, 132–194), rules |
 | `assets/fabric-{mocha,mustard}-src.png` | Fabric sources for `prep_fabric.py` |
-| `assets/fabric-sage-640.png`, `assets/lace-pearl-640.png` | Legacy first swatches (`prep_swatches.py`); left for the swatch plan |
+| `swatchprep/sources/fabric-sage-640.png`, `swatchprep/sources/lace-pearl-640.png` | Legacy first swatches (`prep_swatches.py`); left for the swatch plan |
 
 The old review runs of the `upscale` and `polish` plans (`demo/after-*`, `demo/baseline*`) were removed in StepA step 7; git history keeps them (430c3fd).
 
-## 6. `demo/tools/`
+## 6. `demo/silhouette/` and `demo/swatchprep/`
 
-Python 3 with **Pillow only**; Node for the `.mjs` files. Run from `demo/`. Full usage: `tools/README.md`.
+Two self-contained folders, each with one entry point and a README that states what goes in and what comes out (the cleanup, `plan/cleanup.md`). Python 3 with **Pillow only**; Node for the `.mjs` checks.
 
-| Tool | Job |
-|---|---|
-| `annotate_torso.py`, `annotate_neck.py`, `annotate_sleeve.py`, `annotate_hem.py` | One per view, a module: `base()`, `measure()` (typed edges, zones with frame specifications, trims as specifications); run alone: the automatic checks |
-| `make_plate.py` | The build: source → snap → trims → frames → decisions → `base.jpg` + `plate.dat`; the maps in memory (`maps_of`); `--review`; runs the invariants |
-| `platedat.py`, `plateframe.py`, `snap_edges.py` | `plate.dat` v2 (reader, writer, validator, `--dump`); the fabric frame; the snap of free edges |
-| `plate_invariants.py` | Closure, gaps, trim line / field, landmarks, the frame rules |
-| `rebuild_check.sh`, `frame_check.mjs`, `maps_check.py` | Every plate = its source; `plate.js` = Python; the page's maps = the plate |
-| `fringe.py`, `edge_crops.py`, `plate_edges.py` | The review set: closure, rim and halo in the render; fixed edge crops |
-| `gridcrop.py`, `sample.py`, `zoom.py`, `align_check.py` | Measuring: gridded crops, colour at points, 2× crops, "is an annotation on the exact base" |
-| `cdp_shot.mjs`, `shoot_set.py`, `shoot_views.sh`, `canvas_diff.py` | Headless Chrome via DevTools (exact canvas, console log, input events, `--eval`); review sets; run comparison |
-| `polish_metrics.py`, `reveal_metrics.py` | Fold contrast, fine detail, lace fit and joins; the neck reveal step |
-| `prep_fabric.py`, `prep_lace.py`, `prep_swatches.py` | Swatches (the swatch plan) |
-
-## 7. Data formats (now)
-
-- **Frame:** 1200 × 1600 plate px, origin top left, x right, y down; an integer coordinate is the centre of that pixel. Every curve is in this frame.
-- **`plate.dat` `BSP2`:** "BSP2", u16 version 2, u16 unit (1/1000 px), u32 header length, JSON header (every polyline as `{"@c": index}`), int16 curve deltas. Format and data model in `tools/platedat.py`.
-- **Typed edges:** `free` (snapped to the photo), `seam` (one list, two zones; or `under` a later zone), `frame` (the image border), `cut` (the live neck dip). A zone's outline is a chain of them.
-- **Fabric frame** (`tools/plateframe.py`): axis, anchor (`s0`, `vMm`), half widths (cubics), `thetaDeg`, sag. v = position along the axis (mm), u = the cylinder arc across it.
-- **The maps the page builds** (RGBA8): **id** R = zone id (front 1, sleeve-l 2, sleeve-r 3, back 4, back-l 5), G = trim id (`TRIMS`), B = 1 in the neck area, A = (d + 3) / 4 near a soft free edge (d = signed distance, px); **uv** (u, v) in cm + the view's offset (`uvOffsetCm`), **16-bit**: u = (R × 256 + G) / 65535 × 128, v = (B × 256 + A) / 65535 × 128; **uvt** (the trim field) the same packing, u = s + 64 cm, v = (t mm + 64) / 10; **uvts** the slits' field, u = s + 32 (slit-l) or s + 96 (slit-r); **shade** luminance ÷ the median, linear light, sqrt encoding.
-- **Coverage:** a zone's outline (and at a seam the lower zone's strip 6 px under the upper one); the soft free edge (a 1 px ramp; the background 3 px beyond the edge).
-- **Trims (StepA extension):** a lace hangs on its garment edge (`line`) at its own width and repeat; the trim field gives `s` (cloth cm along the edge, 0 at the anchor) and `t` (mm from the edge, + on the garment). `insertion`: the lace lies from the edge inward; `edging`: an edging lace's decorative edge hangs past it. `side` (±1) turns the line's left normal onto the trim's zone. `docs/render.md` §6.5.
-
-## 8. The docs
-
-| Doc | What it holds | Read when |
+| Folder | Entry point | Inside |
 |---|---|---|
-| `demo/docs/breather.md` | This orientation | First |
-| `demo/docs/render.md` | The method: purpose, non-goals, the 4 views, the journey, surface vs shape options, the UV-pass render method, preload and registry, fallback; §11 the **progress log** of every plate and plan; §12 sources | To understand why the method is what it is; to record a plate or a closed plan (§11) |
-| `demo/docs/DedhD.md` | Plate counts and combinations (§1–9: ≈ 77–89 plates, the anchored model, decisions for the atelier); §10 numeric plates; **§11 the review of 2026-11-21**: off-the-shelf tools, the 3D route and its cost (₹70k–2.1 L), the 2.5D proposal against the repo, the Amber model read again, the process review, **options A–E** | Before choosing work; for the facts in §11.1 |
-| `demo/docs/plate.md` | **Skill "make a plate"**: output files, the pipeline (intake → alignment test → base → annotate → make plate → accept → record), tool limits, view specifications (§5), failure cases | Building or rebuilding a plate |
-| `demo/docs/annotate.md` | **Skill "annotate a base image"**: data rules (§2), colour code, measuring with gridded crops (§6), zone recipes and trims (§7), checks and review (§9), common errors | Measuring a photo |
-| `demo/tools/README.md` | Every tool's usage, grouped by plan; the test switches | Running a tool |
-| `demo/docs/plan/upscale.md` + `-results.md` | Done 2026-11-18: one UV per pixel, swatch tiling, mip bias, device-resolution canvas | History |
-| `demo/docs/plan/polish.md` + `-results.md` | Done 2026-11-19: lace shadow, shade without the weave, linear light, real lace repeat and whole repeats, edging past the edge, lace relief / metal / pearl, fold displacement, sheen, hex anti-tiling | Lace or fabric work |
-| `demo/docs/plan/halfway.md` + `-results.md` | Done: the live neckline (pivots, reveal fills, the lace follows, the torso follows), the showcase journey. §1 defines **the Amber model** | Interaction or neckline work |
-| `demo/docs/plan/numeric.md` + `-results.md` | Steps 0–7, 9–11 done: maps built on the GPU from curves, `plate.dat`, the maps not shipped (first visit 1.67 MB, was 3.64 MB); shoulder closure, hem layout, `plate_invariants.py` | Before StepA (its defects and open items) |
-| `demo/docs/plan/StepA.md` | **Next**: final expected behaviour, why Coons goes, steps 0–9, the removal table | The task |
-| `demo/docs/plan/img/` | Review images cited by the results (≈ 12 MB) | When a result cites one |
-| `.claude/skills/*/SKILL.md` | Short skill entries: the rules never broken and a quick reference; they point to `plate.md` / `annotate.md` | When the skill is invoked |
-
-**Results files:** every plan `X.md` has `X-results.md`, one section per step, with the measurements, what was revised and why, and the open items. A FAIL is always written with its number.
-
-## 9. Work so far, and what is open
-
-| Date | Plan | Outcome |
-|---|---|---|
-| 2026-11-18 | First plates (`render.md` §11) | Torso (traced, legacy tools), then neck, sleeve, hem with measuring scripts |
-| 2026-11-18 | `upscale` | Image quality of the overlay |
-| 2026-11-19 | `polish` | Fabric and lace realism (8 steps) |
-| 2026-11-19/20 | `halfway` | Live neckline + the journey showcase |
-| 2026-11-20 | `numeric` | Curves and a `.dat` in place of map images; shoulders; hem lace; invariants |
-| 2026-11-21 | `DedhD.md` §11 | Review, options A–E; StepA chosen first |
-
-**Open items carried into StepA (or after it):**
-1. **Closure fails on all 4 plates:** outlines 1–3 px inside the real edge (torso 0.138 %, neck 0.239 %, sleeve 0.097 %, hem one 43 px piece). Neck plate: 249 px of thin gaps. Torso: slit landmarks 10 px outside the front, a body-side strip; the right neck-corner speck. Sleeve: `cuff-l` offset.
-2. **The torso plate was never measured** (legacy tools, mirrored left side).
-3. **No shared fabric frame:** a motif is not at the same garment point in two views.
-4. **Neck depth differs between the torso and neckline photos** (25.2 against 40.9 mm): two AI images that disagree. Fix by editing one image.
-5. **Unverified on a device or by a person:** draw time ≤ 5 ms; build time (1.4–3.0 s in software rendering); drag ≥ 30 fps; the 10-second tests; lace relief and anti-tiling at 2×; a person on a phone.
-6. **Assumed scales:** torso shoulder 370 mm; fabric `repeatCm`; lace `widthMm`.
-
-## 10. Rules of work
-
-- **One step = one commit**, on the plan's branch, in its own worktree. Each step has a test switch for the old behaviour until the plan removes it.
-- **Results are written**, with numbers, including FAILs and revised criteria (and why).
-- **Measure on `source.png`**, at full resolution, with gridded crops; never take lines from a regenerated annotation (`plate.md` step 2: every tool-made annotation was a new picture, 8–60 px off).
-- **A shared seam is one list.** Gaps and objects in front stay outside every zone.
-- **A person approves** the review images before a plate is done; your own look is not the approval.
-- **Decide offline, ship numbers:** the page evaluates; it does not search the image.
-- **Headless Chrome uses software rendering:** its draw and build times are not real; close views need a virtual-time budget of about 45 s.
-- **Writing style of the docs:** short declarative sentences, tables, numbered steps with **Do** / **Accept** checkboxes, units on every number (px, mm, cm, %), file names in backticks.
-- **No 3D in the product.** A 3D garment (CLO3D or Blender) is only ever an offline source of plates (`DedhD.md` §11.3).
-
-## 11. How to run
+| `demo/silhouette/` | `python3 silhouette/plate.py views \| measure \| build \| check \| page-check \| rebuild-check` | `views/` (one measured view each: `base()`, `measure()`), `sources/` (the images as received), `pipeline/` (`make_plate.py`, `platedat.py`, `plateframe.py`, `snap_edges.py`, `trimfield.py`), `checks/` (`plate_invariants.py`, `frame_check.mjs`, `maps_check.py`, `cdp_shot.mjs`, `fringe.py`, `edge_crops.py`, `plate_edges.py`, `rebuild_check.sh`), `measure/` (`gridcrop.py`, `sample.py`, `zoom.py`, `align_check.py`). Usage: `silhouette/README.md` |
+| `demo/swatchprep/` | `python3 swatchprep/prep.py fabric \| lace \| lace-repeat \| lace-material \| first-swatches` | `prep_fabric.py`, `prep_lace.py`, `prep_swatches.py`, `sources/` (the source photos of the fabrics and the pearl lace). Usage: `swatchprep/README.md` |
 
 ```sh
 cd demo
 python3 -m http.server 8200 --bind 127.0.0.1 --directory .        # then http://localhost:8200/testing.html?view=torso&fabric=mocha&lace=pearl
-python3 tools/make_plate.py assets/plates/neck-straight [--review]  # rebuild a plate from its source (runs the invariants)
-tools/rebuild_check.sh                                            # every plate = what its source makes
-python3 tools/platedat.py --dump assets/plates/neck-straight       # a plate as text
-python3 tools/plate_invariants.py assets/plates/torso-straight      # the plate's own checks
-node tools/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"        # exact canvas + console log, from the server already on that port
-PORT=8793 DPR=2 python3 tools/shoot_set.py <out> 8793 --polish     # screenshot sets: shoot_views.sh starts its OWN server on a free port
-python3 tools/canvas_diff.py <run-a> <run-b> --blur 2              # compare two runs
+python3 silhouette/plate.py build neck --review                   # rebuild a plate from its source (runs the invariants)
+python3 silhouette/plate.py rebuild-check                          # every plate = what its source makes
+python3 silhouette/plate.py check torso                            # the plate's own checks + the frame parity
+python3 silhouette/plate.py page-check hem --port 8200             # the page's maps and edges against the plate (server on that port)
+python3 silhouette/pipeline/platedat.py --dump assets/plates/neck-straight   # a plate as text
+node silhouette/checks/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"      # exact canvas + console log, from the server already on that port
 ```
 
-`cdp_shot.mjs` does not start a server: serve the worktree first. `shoot_views.sh` (used by `shoot_set.py`) does start one, so give it a port that nothing else uses.
+`cdp_shot.mjs` does not start a server: serve the worktree first, on a port nothing else uses.
 
 ## 12. Glossary
 

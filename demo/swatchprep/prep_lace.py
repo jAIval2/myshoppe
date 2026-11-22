@@ -1,8 +1,8 @@
 """Lace photo on plain paper -> horizontal lace band with alpha, for the trim shader.
 
-usage: python3 tools/prep_lace.py <in> <out.webp> <preview.png> [--flip] [--cut-bottom 0.12] [--paper R,G,B] [--key 8]
-       python3 tools/prep_lace.py --repeat <band.webp> <out.webp> <out.json> <preview.png> [--width-mm 30] [--flip]
-       python3 tools/prep_lace.py --material <tile.webp> <sidecar.json> <out-mat.webp> <preview.png> [--pearls]
+usage: python3 swatchprep/prep_lace.py <in> <out.webp> <preview.png> [--flip] [--cut-bottom 0.12] [--paper R,G,B] [--key 8]
+       python3 swatchprep/prep_lace.py --repeat <band.webp> <out.webp> <out.json> <preview.png> [--width-mm 30] [--flip]
+       python3 swatchprep/prep_lace.py --material <tile.webp> <sidecar.json> <out-mat.webp> <preview.png> [--pearls]
 
 --material (polish.md step 6): R = height, G = metal mask, B = pearl mask, lossless WebP the size of the tile. See make_material().
 

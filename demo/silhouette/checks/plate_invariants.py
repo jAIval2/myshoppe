@@ -1,6 +1,6 @@
 """Invariants that every plate must hold (numeric.md step 11). Pillow only. PASS / FAIL / info per rule; exit 0 = no FAIL.
 
-usage: python3 tools/plate_invariants.py <plate-dir> [--debug <out.png>]
+usage: python3 silhouette/checks/plate_invariants.py <plate-dir> [--debug <out.png>]
 
 A plate must be right in itself, not only equal to its maps: the maps carry the plate's faults too.
 
@@ -12,7 +12,7 @@ A plate must be right in itself, not only equal to its maps: the maps carry the 
   no gaps       R = 0 pixels that the outside cannot reach (flood fill from every border pixel): the THIN parts of them (what an erosion and
                 a dilation by 3 x 3 removes: a hairline between zones) <= 8 px. Wide ones are real openings (the wall between arm and body).
   trim line     (StepA extension, step L1) each trim's line lies on its own edge (exact, plate.dat): mean <= 0.3 px, std <= 0.5 px (the
-                10 % at each end left out). The lace hangs on it at the lace's own width (tools/trimfield.py).
+                10 % at each end left out). The lace hangs on it at the lace's own width (silhouette/pipeline/trimfield.py).
   trim smooth   residual of local quadratic fits (31 px windows) along the line: <= 0.8 px. A quadratic follows a bend, so
                 curvature does not count as wobble; pixel noise does.
   trim ends     information: each end against its anchor landmark.
@@ -25,7 +25,7 @@ A plate must be right in itself, not only equal to its maps: the maps carry the 
 """
 import json, math, os, sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 import make_plate
 
 pd = sys.argv[1].rstrip("/")

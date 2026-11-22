@@ -1,14 +1,16 @@
 """The review set of a plate (StepA step 0): fixed crops of the render along its edges, on one sheet.
 
-usage: python3 tools/edge_crops.py <canvas.png> <plate-dir> <out.png> [--photo <off-canvas.png>] [--box 40] [--zoom 3] [--every 150]
+usage: python3 silhouette/checks/edge_crops.py <canvas.png> <plate-dir> <out.png> [--photo <off-canvas.png>] [--box 40] [--zoom 3] [--every 150]
 
-One crop at each landmark of the plate, and one every 150 px along each FREE edge (tools/plate_edges.py), so the set is computed
+One crop at each landmark of the plate, and one every 150 px along each FREE edge (silhouette/checks/plate_edges.py), so the set is computed
 from the plate and needs no file of its own. Each tile is a pair: the photo (left) and the render (right), the same box of
 40 x 40 plate px, magnified 3x with nearest-neighbour pixels (at a 1200 x 1600 canvas that is 3 screen px per plate px: more
 than a phone at 2x shows). The tile's label is the landmark, or the zone and the distance along the edge in px.
-Make the canvas with tools/cdp_shot.mjs at stage=600 (see tools/fringe.py); --photo is the same view with fabric=off.
+Make the canvas with silhouette/checks/cdp_shot.mjs at stage=600 (see silhouette/checks/fringe.py); --photo is the same view with fabric=off.
 """
 import math, sys
+import os
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw
 import plate_edges as PE
 

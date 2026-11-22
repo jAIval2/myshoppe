@@ -1,7 +1,7 @@
 """Print RGB, HSV, luminance and chromaticity at points. Use it to set mask thresholds
 (garment vs wall vs form, lace vs paper, gap vs fold) before you trust a scan.
 
-usage: python3 tools/sample.py <image> x,y [x,y ...] [--blur 1.5] [--name label=x,y ...]
+usage: python3 silhouette/measure/sample.py <image> x,y [x,y ...] [--blur 1.5] [--name label=x,y ...]
 """
 import sys
 from PIL import Image, ImageFilter

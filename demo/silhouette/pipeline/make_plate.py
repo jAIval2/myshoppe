@@ -1,18 +1,18 @@
 """The plate build (StepA step 1), Pillow only: the source of a plate -> base.jpg + plate.dat. Deterministic.
 
-usage: python3 tools/make_plate.py <plate-dir> [--review] [--no-check]
+usage: python3 silhouette/pipeline/make_plate.py <plate-dir> [--review] [--no-check]
 
-  source     source.png + tools/annotate_<view>.py (the measured points, typed edges, trims, frame specifications; base(), measure()).
+  source     source.png + silhouette/views/<view>.py (the measured points, typed edges, trims, frame specifications; base(), measure()).
              A plate without an annotate script is rebuilt from the source part of its own plate.dat (the "imported" data) and keeps
              its base.jpg (the torso used this from StepA step 1 to step 2; no plate does now).
-  snap       (StepA step 3) the free and cut edges snapped to the photo (tools/snap_edges.py); then each trim's line derived from its
+  snap       (StepA step 3) the free and cut edges snapped to the photo (silhouette/pipeline/snap_edges.py); then each trim's line derived from its
              edge (derive_trims: the edge smoothed over 4 mm, between its anchors; StepA extension, step L1)
   build      the data -> the maps IN MEMORY (rasterise: id, uv, the trim field, shade, as the page builds them) -> the decisions that are
              taken from the image (each trim's side, the shade median, the neck block's colours and form patch, zone sizes) ->
-             plate.dat (tools/platedat.py). No map file is written.
+             plate.dat (silhouette/pipeline/platedat.py). No map file is written.
   --review   annotate.png, check.png (2 cm checker on the fabric, stripes on the trims, times the shade) and the edge crops (the
-             review set of tools/edge_crops.py, cut from check.png) into demo/review/<plate>/ (not committed).
-  At the end: tools/plate_invariants.py on the plate (printed, not fatal); --no-check skips it.
+             review set of silhouette/checks/edge_crops.py, cut from check.png) into demo/review/<plate>/ (not committed).
+  At the end: silhouette/checks/plate_invariants.py on the plate (printed, not fatal); --no-check skips it.
 
 As a module: build(plate_dir) -> P (the data with its decisions), maps_of(plate_dir) -> {id, uv, field, shade, plate, zones, k_of_stored}
 (the maps of the committed plate.dat, in memory), rasterise(zones, base) -> the same from the zone data.
@@ -27,7 +27,7 @@ Maps (in memory; the page builds the same on the GPU):
 import copy, importlib, json, math, os, sys
 from PIL import Image, ImageChops, ImageDraw, ImageMath
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 import platedat, plateframe
 
 STEP = 1.0  # quad size in px (one UV value per pixel)
@@ -85,9 +85,9 @@ def fill_exact(img, poly, value=255):
 
 
 def rasterise(Z, base):
-    """The maps of one plate from its zone data Z (the shape tools/platedat.py legacy() gives), in memory.
+    """The maps of one plate from its zone data Z (the shape silhouette/pipeline/platedat.py legacy() gives), in memory.
     Returns {id, uv, field, shade, plate (the decisions, as the plate header), k_of_stored, base, garment}.
-    field = {"main": {pixel index: (trim id, s cm, t px)}, "slit": {...}}: the trim field (tools/trimfield.py).
+    field = {"main": {pixel index: (trim id, s cm, t px)}, "slit": {...}}: the trim field (silhouette/pipeline/trimfield.py).
     Every zone has a fabric frame (StepA step 4): its (u, v) at each pixel, its coverage = its outline and its under-strips."""
     Z = copy.deepcopy(Z)
     W, H = base.size
@@ -110,7 +110,7 @@ def rasterise(Z, base):
         if edge:
             cfx = Z.get("landmarks", {}).get("cf-neck", [W / 2])[0]
             ylo = max(p[1] for p in edge)
-            reach_w = (NECK_REACH_WIDE_MM + 56.0) / MMPX + 8      # the widest lace (tools/trimfield.py LACE_IN_MM) past the widest reach
+            reach_w = (NECK_REACH_WIDE_MM + 56.0) / MMPX + 8      # the widest lace (silhouette/pipeline/trimfield.py LACE_IN_MM) past the widest reach
             rect = (max(0, int(edge[0][0] - reach_w)), int(min(p[1] for p in edge)) - 2,
                     min(W, int(edge[-1][0] + reach_w) + 1), min(H, int(ylo + (NECK_REACH_DEEP_MM + NECK_BAND_MM) / MMPX) + 1))
             NECK = {"edge": edge, "rect": rect, "cfx": cfx}
@@ -119,7 +119,7 @@ def rasterise(Z, base):
     uv_img = Image.new("RGB", (W, H), (0, 0, 0))
     plate = {"viewBox": [W, H], "mmPerPx": MMPX, "uvRangeCm": CM_RANGE, "zones": {}, "trims": {}}
 
-    # ---- StepA step 4: the fabric frame. Each zone's (u, v) from its frame (tools/plateframe.py), evaluated over the zone's box
+    # ---- StepA step 4: the fabric frame. Each zone's (u, v) from its frame (silhouette/pipeline/plateframe.py), evaluated over the zone's box
     # + 16 px (and, for the front, the whole neck area): exactly on the even pixels, bilinear between them. Coverage = the outline
     # (and the lower zone's strips under the upper one at its seams). The 12-bit packing needs u, v >= 0: an offset for the whole view
     # (decisions "uvOffsetCm"), the same in the page.
@@ -193,7 +193,7 @@ def rasterise(Z, base):
 
     garment = id_img.split()[0].point(lambda p: 255 if p else 0)
 
-    # ---- trims (StepA extension, step L1): the trim field of tools/trimfield.py, exact. The main field holds every trim but the
+    # ---- trims (StepA extension, step L1): the trim field of silhouette/pipeline/trimfield.py, exact. The main field holds every trim but the
     # slits, one group per zone, back to front (inside a group the nearest edge wins: a mitre where two trims meet); the slits have
     # a field of their own (the page turns them on and off apart and mitres them against the hem). The neck of a view with the live
     # neckline is laid by the page from the live edge, so it is not in the field. id G = the main field's trim.
@@ -347,7 +347,7 @@ def rasterise(Z, base):
 
 
     def offset_poly(pts, d, away):
-        """The same vertex-normal offset as tools/annotate_neck.py (and the page): d px, away from the point `away`."""
+        """The same vertex-normal offset as silhouette/views/neck.py (and the page): d px, away from the point `away`."""
         out = []
         for i, (x, y) in enumerate(pts):
             a, b = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
@@ -529,9 +529,19 @@ def view_of(pd):
     return os.path.basename(os.path.normpath(pd)).split("-")[0]
 
 
+SIL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))     # demo/silhouette
+DEMO = os.path.dirname(SIL)                                              # demo
+
+
+def source_png(pd):
+    """The plate's source image: silhouette/sources/<plate>.png (it does not ship; the plate folder holds base.jpg + plate.dat)."""
+    return os.path.join(SIL, "sources", os.path.basename(os.path.normpath(pd)) + ".png")
+
+
 def annotate_module(pd):
-    name = "annotate_" + view_of(pd)
-    if not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), name + ".py")): return None
+    """The view's measured source: silhouette/views/<view>.py."""
+    name = view_of(pd)
+    if not os.path.exists(os.path.join(SIL, "views", name + ".py")): return None
     return importlib.import_module(name)
 
 
@@ -539,7 +549,7 @@ def derive_trims(P):
     """Each trim's line (StepA extension, step L1): its garment edge, resampled every px, smoothed over 4 mm (a moving average whose
     window shrinks toward the ends), and cut between its anchors (from / to: the landmarks' nearest points on it), running from `from`
     to `to`; thinned to 0.05 px. Also the trim's zone (the one whose outline holds the edge) and `side`: the sign that turns the line's
-    left normal toward that zone (a vote 3 px in). The lace itself (its width, its repeat) is the lace's (tools/trimfield.py)."""
+    left normal toward that zone (a vote 3 px in). The lace itself (its width, its repeat) is the lace's (silhouette/pipeline/trimfield.py)."""
     import snap_edges as SE
     mm = P["mmPerPx"]
     O = {zn: platedat.outline(P, zn) for zn in P["zones"]}
@@ -661,7 +671,7 @@ def source(pd):
     if mod:                                                 # the base as the page sees it: encoded once as base.jpg, decoded again
         import io
         buf = io.BytesIO()
-        mod.base(pd).save(buf, "JPEG", quality=94, subsampling=0)
+        mod.base(source_png(pd)).save(buf, "JPEG", quality=94, subsampling=0)
         base = Image.open(io.BytesIO(buf.getvalue())).convert("RGB")
         base.jpeg = buf.getvalue()
         return mod.measure(), base, mod
@@ -727,19 +737,19 @@ def main():
     data = platedat.write(pd, P)
     print(f"{os.path.basename(pd)}: base.jpg + plate.dat ({len(data)} B)")
     if "--review" in a:
-        rd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "review", os.path.basename(pd))
+        rd = os.path.join(DEMO, "review", os.path.basename(pd))
         os.makedirs(rd, exist_ok=True)
         review_image(P, base).save(os.path.join(rd, "annotate.png"), optimize=True)
         chk = check_image(M)
         chk.save(os.path.join(rd, "check.png"), optimize=True)
         import subprocess
-        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "edge_crops.py"),
+        subprocess.run([sys.executable, os.path.join(SIL, "checks", "edge_crops.py"),
                         os.path.join(rd, "check.png"), pd, os.path.join(rd, "crops.png"), "--photo", os.path.join(pd, "base.jpg")])
         print("review:", os.path.normpath(rd))
     # the invariants of the plate itself (closure, gaps, symmetry, trim offset, smoothness, landmarks). Printed, not fatal.
     if "--no-check" not in a:
         import subprocess as _sp
-        _r = _sp.run([sys.executable, "-W", "ignore", os.path.join(os.path.dirname(os.path.abspath(__file__)), "plate_invariants.py"), pd], capture_output=True, text=True)
+        _r = _sp.run([sys.executable, "-W", "ignore", os.path.join(SIL, "checks", "plate_invariants.py"), pd], capture_output=True, text=True)
         print("invariants:", "; ".join(l[5:].strip()[:140] for l in _r.stdout.splitlines() if l.startswith("FAIL")) or "none failing", "|", (_r.stdout.strip().splitlines() or ["?"])[-1])
 
 

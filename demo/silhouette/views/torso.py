@@ -3,7 +3,7 @@
 Source: source.png, 1792 x 2400 (the AI image as received; it was assets/torso-base.png). The base: the sparkle mark (bottom right
 wall) covered with wall from 200 px to the left and 40 px up, the exact 3:4 cut (1792 x 2389: 11 px of plain wall and stand off the
 bottom), resized to 1200 x 1600 (x 0.669643, y 0.669736). This was tools/make_base.py.
-As a module (tools/make_plate.py): base(plate_dir), measure(). Run alone: python3 tools/annotate_torso.py
+As a module (silhouette/pipeline/make_plate.py): base(source image path), measure(). Run alone: python3 silhouette/views/torso.py
 (the automatic checks of annotate.md 9.1; writes nothing).
 
 How the lists were measured (2026-11-21): every edge was read on gridded crops of source.png (2-3x, 10 px grid, true colour and
@@ -23,13 +23,15 @@ Both sides are measured; nothing is mirrored. Where the photo is not symmetric t
               right one, (1150, 880), followed the crease further down; the person review moved it up to the fold.)
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw, ImageFilter
 
 KX, KY = 1200 / 1792, 1600 / 2389
 
 
 def base(D):
-    im = Image.open(f"{D}/source.png").convert("RGB")
+    im = Image.open(D).convert("RGB")
     box = (1600, 2200, 1780, 2390)                       # the sparkle mark: wall from 200 px to the left, 40 px up (the floor light slopes)
     w, h = box[2] - box[0], box[3] - box[1]
     patch = im.crop((box[0] - 200, box[1] - 40, box[2] - 200, box[3] - 40))

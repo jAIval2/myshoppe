@@ -1,6 +1,6 @@
 """Flat fabric photo -> de-lit, seamless 1024 px tile for the fabric shader.
 
-usage: python3 tools/prep_fabric.py <in> <out.jpg> [preview_3x3.png] [--no-delight]
+usage: python3 swatchprep/prep_fabric.py <in> <out.jpg> [preview_3x3.png] [--no-delight]
 
 1. De-light: divide by a large blur (removes the light gradient of the photo), keep the mean colour.
 2. Resize to 1024 x 1024.

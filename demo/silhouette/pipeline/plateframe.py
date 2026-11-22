@@ -1,5 +1,5 @@
 """The fabric frame of a zone (StepA step 4): fabric coordinates (u, v) in cm for any point of the plate. Pure Python, no Pillow.
-plate.js frameUV() is the same arithmetic (tools/frame_check.mjs compares the two).
+plate.js frameUV() is the same arithmetic (silhouette/checks/frame_check.mjs compares the two).
 
 A frame (stored in plate.dat, zones.<name>.frame):
   axis     the warp line through the zone, a polyline in plate px (the centre front; a sleeve's or a panel's centre line), top -> bottom
@@ -15,6 +15,8 @@ signed distance (+ to the right of the axis, walking down it). With h = half(sid
   v_cm = ((s - c r^2 w(s)) - s0) * mmPerPx / 10 + vMm / 10,   w = clamp((s - s0) / (s1 - s0), 0, 1)
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 
 
 def _normals(axis):
@@ -186,13 +188,13 @@ def fit_sag(axis, pts, s0):
 
 
 if __name__ == "__main__":
-    # python3 tools/plateframe.py --samples <plate-dir> <out.json> [n]: n points per zone (default 10,000 in all), in each zone's box
-    # + 16 px, deterministic, with the Python (u, v): the input of tools/frame_check.mjs
+    # python3 silhouette/pipeline/plateframe.py --samples <plate-dir> <out.json> [n]: n points per zone (default 10,000 in all), in each zone's box
+    # + 16 px, deterministic, with the Python (u, v): the input of silhouette/checks/frame_check.mjs
     import json, os, random, sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import platedat
     a = sys.argv[1:]
-    if not a or a[0] != "--samples": sys.exit("usage: python3 tools/plateframe.py --samples <plate-dir> <out.json> [n]")
+    if not a or a[0] != "--samples": sys.exit("usage: python3 silhouette/pipeline/plateframe.py --samples <plate-dir> <out.json> [n]")
     P = platedat.read(a[1])
     zones = [n for n, z in P["zones"].items() if z.get("frame", {}).get("L")]
     n = int(a[3]) if len(a) > 3 else 10000

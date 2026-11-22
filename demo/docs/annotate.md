@@ -1,11 +1,11 @@
 ---
 name: annotate-plate
-description: Annotate one base image of the Bespoke Studio demo — measure garment edges, seams, gaps, objects in front and landmarks on the photo, and write them as typed edges, zones with fabric-frame specifications and trims in tools/annotate_<view>.py, with automatic checks and a colour-coded annotate.png review image. Use for step 4 of the make-plate pipeline, when a base image arrives without a usable annotation, or when an annotation must be corrected.
+description: Annotate one base image of the Bespoke Studio demo — measure garment edges, seams, gaps, objects in front and landmarks on the photo, and write them as typed edges, zones with fabric-frame specifications and trims in silhouette/views/<view>.py, with automatic checks and a colour-coded annotate.png review image. Use for step 4 of the make-plate pipeline, when a base image arrives without a usable annotation, or when an annotation must be corrected.
 ---
 
 # Skill: annotate a base image
 
-This skill makes the **measured data** of a plate: the script `tools/annotate_<view>.py` (the base crop, the measured points as typed edges, the zones with their fabric-frame specifications, the trims, the landmarks). `tools/make_plate.py` builds the plate from it, and draws the review image `annotate.png` (`--review`).
+This skill makes the **measured data** of a plate: the script `silhouette/views/<view>.py` (the base crop, the measured points as typed edges, the zones with their fabric-frame specifications, the trims, the landmarks). `silhouette/pipeline/make_plate.py` builds the plate from it, and draws the review image `annotate.png` (`--review`).
 It is **step 4** of `plate.md`. The pipeline, acceptance and view specifications are in `plate.md`.
 
 **Why we annotate ourselves:** in this demo, every annotated image made by an image-generation tool was a **new picture**. The form, the neck and the garment moved 8–60 px. Lines drawn on such an image do not fit the base. So the default is: **measure on the base, write the data, and let a person review an overlay.**
@@ -18,11 +18,11 @@ All paths are relative to `demo/`. Python 3 with Pillow only.
 
 | In | Out |
 |---|---|
-| `assets/plates/<plate>/source.png` | `tools/annotate_<view>.py`: `base(plate)` (the crop), `measure()` (the data below), the automatic checks when run alone |
+| `silhouette/sources/<plate>.png` | `silhouette/views/<view>.py`: `base(plate)` (the crop), `measure()` (the data below), the automatic checks when run alone |
 | The view type and its specification (`plate.md` §5) | After `make_plate.py <plate> --review`: `base.jpg`, `plate.dat`, and `demo/review/<plate>/annotate.png` for the review |
 | Optional: an annotated image from someone else | (a layout guide only, §4) |
 
-Templates: `tools/annotate_neck.py` (front view, shared seams, gaps that close again), `tools/annotate_sleeve.py` (turned view, an arm notch as an occluder, an axis through measured centres), `tools/annotate_torso.py` (full front view, both sides measured, wall gaps at the cuffs), `tools/annotate_hem.py` (three pieces, slits, an anchor at a known distance).
+Templates: `silhouette/views/neck.py` (front view, shared seams, gaps that close again), `silhouette/views/sleeve.py` (turned view, an arm notch as an occluder, an axis through measured centres), `silhouette/views/torso.py` (full front view, both sides measured, wall gaps at the cuffs), `silhouette/views/hem.py` (three pieces, slits, an anchor at a known distance).
 
 ---
 
@@ -93,7 +93,7 @@ def T(pts):                                      # source px -> plate px
 ### 6.1 Gridded crops: the main instrument
 
 ```sh
-python3 tools/gridcrop.py <source.png> <out.png> x0 y0 x1 y1 [step=50] [contrast=2.2] [scale=1.0]
+python3 silhouette/measure/gridcrop.py <source.png> <out.png> x0 y0 x1 y1 [step=50] [contrast=2.2] [scale=1.0]
 ```
 
 - Labels are in **source px**, so read the points directly.

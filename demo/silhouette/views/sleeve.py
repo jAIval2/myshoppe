@@ -2,22 +2,24 @@
 
 Source points are in source.png pixels (2048 x 2048). The plate is the 3:4 crop x 512..2048 (the garment runs off the right border),
 resized to 1200 x 1600 (factor 0.78125).
-As a module (tools/make_plate.py): base(plate_dir), measure(). Run alone: python3 tools/annotate_sleeve.py
+As a module (silhouette/pipeline/make_plate.py): base(source image path), measure(). Run alone: python3 silhouette/views/sleeve.py
 (the automatic checks of annotate.md 9.1; writes nothing).
 
-Every list below was read on gridded crops of source.png (tools/gridcrop.py), not guessed:
+Every list below was read on gridded crops of source.png (silhouette/measure/gridcrop.py), not guessed:
   silhouette (outer sleeve, far shoulder): colour distance to the wall, checked on crops
   armhole seam, wall gap under the arm, cuff edge, mannequin arm: gridded true-colour and x2.4 crops
   neckline and its top-stitch: x3 crops
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw, ImageFilter
 
 X0, K = 512, 1200 / 1536
 
 
 def base(D):
-    src = Image.open(f"{D}/source.png").convert("RGB")
+    src = Image.open(D).convert("RGB")
     # patch the sparkle mark (it sits on the white garment, bottom right), crop, resize
     patched = src.copy()
     box = (1868, 1868, 2010, 2010)

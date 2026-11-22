@@ -19,7 +19,7 @@ When StepA is closed, this is true:
 
 **What a plate is**
 
-7. **A plate folder holds three files:**
+7. **A plate folder holds three files** (since the cleanup, 2026-11-22, `plan/cleanup.md`: the two that ship; `source.png` lives in `demo/silhouette/sources/<plate>.png`):
 
    | File | What it is | Ships |
    |---|---|---|
@@ -28,13 +28,13 @@ When StepA is closed, this is true:
    | `plate.dat` | Every number of the view: edges, frames, trims, stitches, landmarks, occluders, scale, and the decisions taken from the image | Yes |
 
    - No JSON, no map image, no review image in a plate folder.
-   - The **source** of a plate is `source.png` + `tools/annotate_<view>.py` (the measured points). `tools/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically.
-   - `python3 tools/platedat.py --dump <plate>` prints a `plate.dat` as text. `git diff` shows that text (a `diff=dat` textconv).
+   - The **source** of a plate is `source.png` + `silhouette/views/<view>.py` (the measured points). `silhouette/pipeline/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically.
+   - `python3 silhouette/pipeline/platedat.py --dump <plate>` prints a `plate.dat` as text. `git diff` shows that text (a `diff=dat` textconv).
    - Review images (`annotate.png`, `check.png`, the edge crops) are made on demand into `demo/review/<plate>/`, which is not committed.
 8. A zone's outline is a chain of **typed edges**: `free` (snapped to the photo), `seam` (one list shared by two zones), `frame` (the image border), `cut` (the live neck dip). Trims and stitches are **derived** from the edges (an offset in mm), not traced.
 9. A zone's fabric coordinates come from a **fabric frame** (an axis, an anchor, a cylinder), defined everywhere around the zone. The outline alone decides where the fabric shows. **No Coons patch, no grid edges, no `tuck`, no `widthPx`, no `smooth_under`.**
-10. The torso plate is measured from its photo by `tools/annotate_torso.py`, both sides, like the other views. No traced annotation image, no affine fit, no mirrored side.
-11. Every plate passes `tools/plate_invariants.py` (closure, edge accuracy, gaps, frame, trims, landmarks). A new plate must pass it or say why.
+10. The torso plate is measured from its photo by `silhouette/views/torso.py`, both sides, like the other views. No traced annotation image, no affine fit, no mirrored side.
+11. Every plate passes `silhouette/checks/plate_invariants.py` (closure, edge accuracy, gaps, frame, trims, landmarks). A new plate must pass it or say why.
 12. The shade is built on the GPU. Only if step 8 finds a device without float render targets does a small `shade.webp` ship as a fallback: then it is the one exception to item 7, and step 8 writes why.
 
 **How fast**
@@ -84,13 +84,13 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 - One step = one commit on `stepA`. A step that changes the render on purpose says so, and shows before and after crops.
 - **No pixel-identity gate against `numeric`.** The gates are the invariants of the plate (edges, coverage, frame), the render-level closure check, and a person at 2×. Port 8200 is for before and after views.
 - Each step that changes behaviour has a test switch for the old behaviour **until step 7**. Step 7 removes all of them.
-- **A plate folder holds `source.png`, `base.jpg` and `plate.dat` only**, from step 1 on. Every tool reads and writes plates through `tools/platedat.py`; nothing reads a JSON plate file.
-- **Nothing is edited by hand in a plate.** A change is a change to `tools/annotate_<view>.py` (or to a tool), then `make_plate.py <plate>`. The rebuild check (step 1) proves the folder is what the source makes.
+- **A plate folder holds `source.png`, `base.jpg` and `plate.dat` only**, from step 1 on. Every tool reads and writes plates through `silhouette/pipeline/platedat.py`; nothing reads a JSON plate file.
+- **Nothing is edited by hand in a plate.** A change is a change to `silhouette/views/<view>.py` (or to a tool), then `make_plate.py <plate>`. The rebuild check (step 1) proves the folder is what the source makes.
 - `make_plate.py` (Python, Pillow only) stays the offline reference. It rasterises the maps **in memory**, for the checks and the review images, and writes no map files. `plate.js` is the page's copy of the maths. A parity test keeps the two equal.
 - Measure on `source.png`. Edge snapping reads `base.jpg` and the plate frame.
 - Review images go to `demo/review/<plate>/` (in `.gitignore`). An image that a results file cites is copied into `docs/plan/img/`, as before.
 - Results: `docs/plan/StepA-results.md`, one section for each step. A FAIL is written with its measurement, as an open item.
-- Review shots: `node tools/cdp_shot.mjs <out> <free port> ...`; the edge crops of step 0 at 2×.
+- Review shots: `node silhouette/checks/cdp_shot.mjs <out> <free port> ...`; the edge crops of step 0 at 2×.
 
 ## 4. Steps
 
@@ -98,8 +98,8 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 
 **Do:**
 1. Branch `stepA` from `numeric` (430c3fd), worktree `../myshoppe-stepA`, port 8300. Create `StepA-results.md`.
-2. **Review set:** `tools/edge_crops.py <canvas> <plate>` cuts fixed 2× crops into one sheet: one crop at each landmark (shoulders, underarms, cuffs, neck corners, hem corners, slit top), and one every 150 px along each free edge. The crops are computed from the plate, so they need no file of their own.
-3. **Closure in the render:** `tools/fringe.py <canvas.png> <plate>` counts, with a dark fabric (mocha) and lace off:
+2. **Review set:** `silhouette/checks/edge_crops.py <canvas> <plate>` cuts fixed 2× crops into one sheet: one crop at each landmark (shoulders, underarms, cuffs, neck corners, hem corners, slit top), and one every 150 px along each free edge. The crops are computed from the plate, so they need no file of their own.
+3. **Closure in the render:** `silhouette/checks/fringe.py <canvas.png> <plate>` counts, with a dark fabric (mocha) and lace off:
    - pixels where the photo is garment (the saturation rule of `plate_invariants.py`) and the render still shows the photo (≤ 4 levels from `base.jpg`): the count, the share of the garment, and pieces wider than 1 px;
    - a **rim**: free-edge pixels brighter than both their inner and outer neighbours by more than 8 levels: the share of the free-edge length.
 4. Baseline on 8200, all 4 views: `plate_invariants.py`, `fringe.py`, the edge-crop sheets.
@@ -113,19 +113,19 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 **Why:** a plate must be one set of numbers built from its source, not three files edited by different tools. And an outline must say, for each run, what kind of edge it is: only free edges are snapped, a seam is one list, trims hang on edges.
 
 **Do:**
-1. `tools/platedat.py` (a module and a command, Pillow-free): the version 2 format (`BSP2`), a reader, a writer, a validator and `--dump` (text, stable order).
+1. `silhouette/pipeline/platedat.py` (a module and a command, Pillow-free): the version 2 format (`BSP2`), a reader, a writer, a validator and `--dump` (text, stable order).
    - **edges:** `{name: {type: free | seam | frame | cut, points, zones: [a, b] for a seam}}`;
    - **zones:** `{order, outline: [[edge, +1 | −1], ...], grid (until step 7), frame (step 4)}`;
    - **trims:** `{edge, from, to (landmark or arc fraction), widthMm, type, join}`; **stitches** the same, with `offsetMm`;
    - **occluders, landmarks, openings, scale, the view's settings, and the decisions** that `make_plate.py` takes from the image (trim sides, the shade median, the neck block's fill colours and form patch).
    - The header lists every curve by index, as `BSP1` does; identical curves are stored once.
-2. `tools/annotate_neck.py`, `annotate_sleeve.py` and `annotate_hem.py` become importable: they return the measured data. Run alone, they still run their own checks. The hem's `hem-bl` and `hem-br` (now made by `snap_outline.py edge-trim`) and the trim order (`snap_outline.py trim-order`) become trim data in `annotate_hem.py`.
-3. `tools/make_plate.py <plate> [--review]` = the build: annotation data → (step 3: snap) → decisions → `base.jpg` + `plate.dat`. `--review` writes `annotate.png`, `check.png` and the edge crops into `demo/review/<plate>/`.
+2. `silhouette/views/neck.py`, `annotate_sleeve.py` and `annotate_hem.py` become importable: they return the measured data. Run alone, they still run their own checks. The hem's `hem-bl` and `hem-br` (now made by `snap_outline.py edge-trim`) and the trim order (`snap_outline.py trim-order`) become trim data in `annotate_hem.py`.
+3. `silhouette/pipeline/make_plate.py <plate> [--review]` = the build: annotation data → (step 3: snap) → decisions → `base.jpg` + `plate.dat`. `--review` writes `annotate.png`, `check.png` and the edge crops into `demo/review/<plate>/`.
 4. The torso has no annotate script until step 2: its current data is imported into `plate.dat` once, by a one-off converter that is deleted in the same commit.
 5. Every reader moves to `platedat.py`: `plate_invariants.py`, `plate_checks.py`, `snap_outline.py`, `polish_metrics.py`, `reveal_metrics.py`, `map_diff.py`, `mesh_check.mjs`, `trim_match.py` (the last three until step 7 deletes them), and the page (`parseDat` version 2, in `plate.js`, `maps.js`, `testing.html`). `grep -l "zones\.json\|plate\.json"` over `tools/` and the page code then finds nothing. `BSP1`, `make_dat.py`, `dat_check.mjs` and the page's `?dat=0` path are removed.
 6. **Removed from the 4 plate folders:** `zones.json`, `plate.json`, `annotate.png`, `check.png`. The map PNGs stay until step 7 (they are the `?frame=coons` reference).
 7. `.gitattributes`: `demo/assets/plates/*/plate.dat diff=dat`. `tools/README.md` gives the one-line `git config diff.dat.textconv` setting.
-8. `tools/rebuild_check.sh`: rebuild every plate from its source into a scratch copy; `base.jpg` and `plate.dat` must be byte-identical to the committed ones.
+8. `silhouette/checks/rebuild_check.sh`: rebuild every plate from its source into a scratch copy; `base.jpg` and `plate.dat` must be byte-identical to the committed ones.
 
 **Accept:**
 - [ ] Each plate folder holds `source.png`, `base.jpg`, `plate.dat` (and the map PNGs until step 7), nothing else.
@@ -140,8 +140,8 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 **Why:** the torso is the largest view, and its outlines come from a traced image, an affine fit and a mirrored side (§2).
 
 **Do:**
-1. Move `assets/torso-base.png` to `assets/plates/torso-straight/source.png`.
-2. `tools/annotate_torso.py` from the nearest template (`annotate_neck.py`), with gridded crops of `source.png` (`annotate.md` §6). **Both sides are measured; nothing is mirrored.** Typed edges, the landmarks of both sides, the trims from the edges. `make_base.py` folds into it (the base crop, as the other views do).
+1. Move `assets/torso-base.png` to `silhouette/sources/torso-straight.png`.
+2. `silhouette/views/torso.py` from the nearest template (`annotate_neck.py`), with gridded crops of `source.png` (`annotate.md` §6). **Both sides are measured; nothing is mirrored.** Typed edges, the landmarks of both sides, the trims from the edges. `make_base.py` folds into it (the base crop, as the other views do).
 3. Re-check the scale assumption (shoulder width 370 mm) against the neck view's 158 mm neck width. Write both in the results.
 
 **Accept:**
@@ -152,7 +152,7 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 ### Step 3: Free edges snapped to the photo
 
 **Do:**
-1. `tools/snap_edges.py` (a module of the build, with `--dry --preview <png>` for a look): for every **free** edge (and the occluders' edges):
+1. `silhouette/pipeline/snap_edges.py` (a module of the build, with `--dry --preview <png>` for a look): for every **free** edge (and the occluders' edges):
    - sample along the edge every 2 px; on each normal, a local colour model (the mean colour inside and outside, 3–8 px from the edge) and the **sub-pixel 50 % crossing** of the projection between the two (±8 px search);
    - a robust smooth fit (data term + curvature term; points more than 1.2 px off the fit are dropped), points every 2 px;
    - **weak spans** (inside and outside colours closer than a threshold: a fold against a similar background) keep their measured points and are listed.
@@ -177,7 +177,7 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
    - `thetaDeg` (as now) and `sag`: the curvature of the weft lines (fitted to the hem or the cuff, wavelengths over 40 mm only).
 2. The map, for a pixel: its position along the axis gives v (arc length in mm, plus the sag term) and its distance from the axis gives u (the cylinder arc: `asin`, continued linearly past the silhouette). It is defined everywhere in the zone's box + 16 px.
 3. Coverage = **the outline only**. At a seam, the lower zone runs `underPx` (6 px) under the upper one; the upper zone ends on the seam. This replaces `tuck`.
-4. `make_plate.py` evaluates the frame per pixel (in memory) for the checks and the review images. `plate.js` gets `frameUV(zone, x, y)`. `tools/frame_check.mjs` compares the two at 10,000 points.
+4. `make_plate.py` evaluates the frame per pixel (in memory) for the checks and the review images. `plate.js` gets `frameUV(zone, x, y)`. `silhouette/checks/frame_check.mjs` compares the two at 10,000 points.
 5. The neck area: its uv comes from the frame (it is defined there already); the neck block's corner line is the neck-point line of the anchor, not the grid's top.
 6. Optional, only if the person check at the hem asks for it: a thin-plate-spline correction pinned to the hem line with a low weight, so that the print follows the hem's drape.
 7. Test switch `?frame=coons` (the old map, from the grid that `plate.dat` still carries) until step 7.
@@ -257,7 +257,7 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 | `make_dat.py`, `dat_check.mjs`, `BSP1`, `?dat=0` | `tools/`, `plate.js`, `testing.html` | Two formats for the same numbers | `platedat.py`, `BSP2` | 1 |
 | `make_base.py` | `tools/` | A torso-only base step | The base crop in `annotate_torso.py` | 2 |
 | `extract_zones.py`, `fit_zones.py` | `tools/` | Traced annotation, affine fit, mirrored side | `annotate_torso.py` | 2 |
-| `coons()` | `tools/make_plate.py`, `plate.js` | Coons patch | The fabric frame | 7 (switch `?frame=coons` until then) |
+| `coons()` | `silhouette/pipeline/make_plate.py`, `plate.js` | Coons patch | The fabric frame | 7 (switch `?frame=coons` until then) |
 | Zone `grid` (top, left, right, bottom) | `plate.dat` | Coons patch | `frame` (axis, anchor, half, θ, sag) | 4 (unused), 7 (removed) |
 | `tuck` and `prepare()` (`profile`, `exempt`, `tip`, `reach` ...) | `plate.dat`, `plate.js`, `make_plate.py` | Grid edges stopping at the seam | `underPx` at seams | 4 |
 | `widthPx` | sleeve data, `plate.js`, `make_plate.py` | Width from grid edge lengths | `half` profile + θ | 4 |
@@ -276,7 +276,7 @@ The cylinder is already the model of the cross direction (`thetaDeg`, the `asin`
 
 **Not plate files, so not in this plan:** `assets/looks/*.json` (a look's options and ranges) and the swatch sidecars `assets/swatches/lace-*.json`. They belong to the catalogue and to the swatch and lace plan.
 
-**Left for the swatch and lace plan, on purpose:** `prep_swatches.py` and the first swatches (`assets/fabric-sage-640.png`, `assets/lace-pearl-640.png`, the `-src.png` fabrics); `?linear=0` and `?lacefit=0` (old light maths, mirrored lace).
+**Left for the swatch and lace plan, on purpose:** `prep_swatches.py` and the first swatches (`swatchprep/sources/fabric-sage-640.png`, `swatchprep/sources/lace-pearl-640.png`, the `-src.png` fabrics); `?linear=0` and `?lacefit=0` (old light maths, mirrored lace).
 
 **Docs and skills rewritten in step 7:** `docs/plate.md` (output table: three files; pipeline; tool limits; the view table's settings row; the failure cases on S-curves, `widthPx` and `tuck`), `docs/annotate.md` (§1 outputs, §2 rules 5–10, §7 data, §8 the review image), `docs/render.md` §6.3–6.5 and a §11 entry, `tools/README.md`, `.claude/skills/make-plate/SKILL.md` (the description's files, rules 3–4, quick reference) and `.claude/skills/annotate-plate/SKILL.md` (outputs, rule 3, templates).
 

@@ -1,6 +1,6 @@
 /*
-  plate.js — the plate maths of tools/make_plate.py, in JavaScript (numeric.md step 1, StepA). One file, no dependencies.
-  A classic script: in the page it sets window.Plate; in Node (tools/frame_check.mjs) it is `require`d.
+  plate.js — the plate maths of silhouette/pipeline/make_plate.py, in JavaScript (numeric.md step 1, StepA). One file, no dependencies.
+  A classic script: in the page it sets window.Plate; in Node (silhouette/checks/frame_check.mjs) it is `require`d.
 
   Same names and same arithmetic as make_plate.py / plateframe.py / platedat.py, so that the page can calculate what the build
   calculates: resample, trimElements, trimTriangles (the trim field), offset_poly, outlineOf, frameProject, frameUV, underStrips,
@@ -48,7 +48,7 @@
 
 
 
-  // ---- trims (StepA extension, step L1): the elements of the trim field, as tools/trimfield.py makes them (the same arithmetic).
+  // ---- trims (StepA extension, step L1): the elements of the trim field, as silhouette/pipeline/trimfield.py makes them (the same arithmetic).
   // A lace hangs on its garment edge: the line, resampled every 2 px, with smooth normals (the chord over +-30 mm) onto the zone; s =
   // the cloth length along it (cm, in the zone's fabric frame, 0 at the anchor); open ends carried on by the band. Each segment is one
   // element (part +1 inner, -1 the overhang of an edging trim): { part, a, b, na, nb, sa, sb }. maps.js draws them (TRIM_FS).
@@ -103,7 +103,7 @@
     }
     return { els, tin, tout, lengthCm };
   }
-  // two triangles that hold every pixel an element accepts (1 px margin), as tools/trimfield.py triangles()
+  // two triangles that hold every pixel an element accepts (1 px margin), as silhouette/pipeline/trimfield.py triangles()
   function trimTriangles(el, tin, tout) {
     const { part, a, b, na, nb } = el, L = dist(a, b), tx = (b[0] - a[0]) / L, ty = (b[1] - a[1]) / L;
     const [lo, hi] = part > 0 ? [-1, tin + 1] : [1, -(tout + 1)];
@@ -122,10 +122,10 @@
     });
   }
 
-  // ---- plate.dat version 2 (tools/platedat.py): every number of one view -> { plate, zones, P }. P is the file as written (typed
+  // ---- plate.dat version 2 (silhouette/pipeline/platedat.py): every number of one view -> { plate, zones, P }. P is the file as written (typed
   // edges, zone outlines as chains of edges, trims, decisions); plate and zones are the shapes the map code reads: the plate header
   // (viewBox, ids, sizes, trim sides, the shade median, the neck block) and the zone data (outlines as points, frames, trims, settings),
-  // exactly as tools/platedat.py legacy() makes them.
+  // exactly as silhouette/pipeline/platedat.py legacy() makes them.
   function outlineOf(P, zone) {                          // the chain of edges, a join point written once
     const out = [];
     for (const [name, d] of P.zones[zone].outline) {
@@ -137,7 +137,7 @@
     if (out.length > 1 && out[0][0] === out[out.length - 1][0] && out[0][1] === out[out.length - 1][1]) out.pop();
     return out;
   }
-  // ---- StepA step 4: the fabric frame (tools/plateframe.py, the same arithmetic; tools/frame_check.mjs compares the two)
+  // ---- StepA step 4: the fabric frame (silhouette/pipeline/plateframe.py, the same arithmetic; silhouette/checks/frame_check.mjs compares the two)
   const axisNormals = new WeakMap();                     // axis -> unit vertex normals (the mean of the two segments' normals)
   function frameNormals(axis) {
     let N = axisNormals.get(axis);
@@ -149,7 +149,7 @@
     return N;
   }
   // [s, r]: position along the axis (px) and signed distance (+ right walking down); the normal interpolated along each segment,
-  // t solves (q - P(t)) x N(t) = 0: continuous across the vertices (tools/plateframe.py project, the same arithmetic)
+  // t solves (q - P(t)) x N(t) = 0: continuous across the vertices (silhouette/pipeline/plateframe.py project, the same arithmetic)
   function frameProject(axis, q) {
     const N = frameNormals(axis), n = axis.length;
     let best = null, acc = 0;
@@ -204,7 +204,7 @@
     }
     return c;
   }
-  // at a seam the LOWER zone runs 6 px under the upper one (tools/platedat.py under_strips): { lower zone: [strip polygons] }
+  // at a seam the LOWER zone runs 6 px under the upper one (silhouette/pipeline/platedat.py under_strips): { lower zone: [strip polygons] }
   function underStrips(P) {
     const out = {}, Zs = P.zones, UNDER = 6;
     for (const e of Object.values(P.edges)) {

@@ -116,21 +116,21 @@ Our 2D pattern pieces *are* the UV layout. Each piece has its own grain. Trim st
 
 ### 6.3 What a plate is (since StepA)
 
-A **plate** is one view of one shape variant: a folder of three files (`plan/StepA.md` §1):
+A **plate** is one view of one shape variant: a folder of the two files that ship, made from a source image kept in `demo/silhouette/sources/` (`plan/StepA.md` §1; `plan/cleanup.md`):
 
 | File | Contents | Ships |
 |---|---|---|
-| `source.png` | The image as received; it is measured | No |
-| `base.jpg` | The 1200 × 1600 photo, made from `source.png` | Yes |
-| `plate.dat` | Every number of the view (`tools/platedat.py`, `BSP2`): typed edges (`free`, `seam`, `frame`, `cut`), each zone's outline as a chain of edges and its **fabric frame**, the trims (from their edges), stitches, landmarks, occluders, scale, and the decisions taken from the image (trim sides, the shade median, the neck block) | Yes |
+| `silhouette/sources/<plate>.png` | The image as received; it is measured (not in the plate folder) | No |
+| `base.jpg` | The 1200 × 1600 photo, made from the source | Yes |
+| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP2`): typed edges (`free`, `seam`, `frame`, `cut`), each zone's outline as a chain of edges and its **fabric frame**, the trims (from their edges), stitches, landmarks, occluders, scale, and the decisions taken from the image (trim sides, the shade median, the neck block) | Yes |
 
-The source of a plate is `source.png` + `tools/annotate_<view>.py` (the measured points); `tools/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically (`tools/rebuild_check.sh`). No map image is stored: the page builds the maps.
+The source of a plate is `silhouette/sources/<plate>.png` + `silhouette/views/<view>.py` (the measured points); `silhouette/pipeline/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically (`silhouette/checks/rebuild_check.sh`). No map image is stored: the page builds the maps.
 
-**The fabric frame** of a zone (`tools/plateframe.py`, `Plate.frameUV`): an axis (the centre front, a sleeve's or a panel's centre line), an anchor (v = 0 on the neck-point line, at the shoulder point, or a known distance at the slit top), a half-width profile on each side (a cubic fitted to the outline), `thetaDeg` and a sag (the weft lines curve like the hem or the cuff). v = the position along the axis (mm); u = the arc of a cylinder across it. Defined everywhere around the zone, so the outline alone decides where the fabric shows; the same garment point has the same (u, v) wherever the views agree.
+**The fabric frame** of a zone (`silhouette/pipeline/plateframe.py`, `Plate.frameUV`): an axis (the centre front, a sleeve's or a panel's centre line), an anchor (v = 0 on the neck-point line, at the shoulder point, or a known distance at the slit top), a half-width profile on each side (a cubic fitted to the outline), `thetaDeg` and a sag (the weft lines curve like the hem or the cuff). v = the position along the axis (mm); u = the arc of a cylinder across it. Defined everywhere around the zone, so the outline alone decides where the fabric shows; the same garment point has the same (u, v) wherever the views agree.
 
 ### 6.4 Offline steps (one time for each plate)
 
-`demo/docs/plate.md` (the pipeline) and `demo/docs/annotate.md` (measuring). In short: intake → base crop → measure every edge on gridded crops of `source.png` (typed edges, landmarks, the frame's axis and anchor) → `make_plate.py`: free edges snapped to the photo (`tools/snap_edges.py`), trims derived from their edges, frames fitted, decisions → `plate.dat` → `plate_invariants.py` and a person's review → record (§11).
+`demo/docs/plate.md` (the pipeline) and `demo/docs/annotate.md` (measuring). In short: intake → base crop → measure every edge on gridded crops of `source.png` (typed edges, landmarks, the frame's axis and anchor) → `make_plate.py`: free edges snapped to the photo (`silhouette/pipeline/snap_edges.py`), trims derived from their edges, frames fitted, decisions → `plate.dat` → `plate_invariants.py` and a person's review → record (§11).
 
 A 3D route (CLO3D or Blender) stays possible as an offline source of plates (`DedhD.md` §11.3): its outlines and frames would come from the render instead of a measurement.
 
@@ -143,7 +143,7 @@ Fabric and lace swatches also need one step: remove the light (de-light the swat
 - **Precision:** uv and the trim fields are 16-bit, packed into the RGBA8 textures (RG = u, BA = v, over 128 cm: 0.02 mm steps).
 - **Laces (StepA extension, `docs/plan/StepA.md` §8):** a lace is a strip of cloth sewn along a garment edge, at its **own** width and repeat (the sidecar's `widthMm` and period: the lace decides, not the trim).
   - The **trim field** gives, for each pixel near a trim's edge: `t` = mm from the edge (+ on the garment) and `s` = the cloth length in cm along the edge, measured in the zone's fabric frame and 0 at the anchor. Because `s` is measured in the fabric frame, the motifs crowd toward a silhouette as the fabric does.
-  - The field is built from one element per 2 px segment of the edge, between smooth normals (the chord over ±30 mm). Elements share their normals, so there is no wedge and no overlap at a bend. Where two trims of a zone meet, the nearer edge wins: a mitre. It is built from 8 mm outside the edge to 56 mm inside (the widest lace), so it does not depend on the lace chosen. `tools/trimfield.py` is the reference; `plate.js` `trimElements` and `maps.js` `TRIM_FS` do the same.
+  - The field is built from one element per 2 px segment of the edge, between smooth normals (the chord over ±30 mm). Elements share their normals, so there is no wedge and no overlap at a bend. Where two trims of a zone meet, the nearer edge wins: a mitre. It is built from 8 mm outside the edge to 56 mm inside (the widest lace), so it does not depend on the lace chosen. `silhouette/pipeline/trimfield.py` is the reference; `plate.js` `trimElements` and `maps.js` `TRIM_FS` do the same.
   - Ends: the neck, the cuffs and the hem are loops, so the field goes on past their ends and the garment's outline cuts it. Only the slit top is a square end.
   - The overhang (an edging lace's decorative edge, `edgeDepth` of its width past the edge) exists only along the edge, takes the garment's light 3 px inside the edge (not the stand's or the wall's behind it), and keeps its contact shadow.
   - Phase: a motif is centred at the frame's u = 0 (the centre front, a sleeve's axis). The slits have whole repeats from the hem corner. The slits are a field of their own (`uvts`); the shader mitres them against the hem by the nearer edge.
@@ -284,8 +284,8 @@ python3 tools/make_base.py     assets/torso-base.png assets/plates/torso-straigh
 python3 tools/extract_zones.py assets/plates/torso-straight/annotate.png assets/plates/torso-straight/base.jpg \
                                assets/plates/torso-straight/zones.json /tmp/zones-preview.png
 python3 tools/fit_zones.py     assets/plates/torso-straight/zones.json assets/plates/torso-straight/base.jpg /tmp/zones-fitted.png
-python3 tools/make_plate.py    assets/plates/torso-straight
-python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabric` as a 4th argument to skip the lace
+python3 silhouette/pipeline/make_plate.py    assets/plates/torso-straight
+python3 swatchprep/prep_swatches.py assets assets/swatches /tmp          # add `fabric` as a 4th argument to skip the lace
 ```
 
 `fit_zones.py` has the measured `base.jpg` points written in the code (`REAL`). The neck-dip correction after the fit was a one-time step, and it is not in a script.
@@ -388,8 +388,8 @@ python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabri
 
 ### 2026-11-18: `sleeve-straight` plate (shoulder and sleeve view)
 
-- **Source:** `assets/plates/sleeve-straight/source.png` (2048 × 2048). Plate = crop x 512..2048 (the garment runs off the right border), × 0.78125 → 1200 × 1600. A sparkle mark on the garment (bottom right) is covered with a patch of garment from 190 px to the left.
-- **Script:** `tools/annotate_sleeve.py` (all points measured on `source.png` on gridded crops, `tools/gridcrop.py`; it also runs the checks of `annotate.md` §7.1). Then `tools/make_plate.py` (11 s).
+- **Source:** `silhouette/sources/sleeve-straight.png` (2048 × 2048). Plate = crop x 512..2048 (the garment runs off the right border), × 0.78125 → 1200 × 1600. A sparkle mark on the garment (bottom right) is covered with a patch of garment from 190 px to the left.
+- **Script:** `silhouette/views/sleeve.py` (all points measured on `source.png` on gridded crops, `silhouette/measure/gridcrop.py`; it also runs the checks of `annotate.md` §7.1). Then `silhouette/pipeline/make_plate.py` (11 s).
 - **Scale:** shoulder → cuff-out = 470 mm → 0.3382 mm/px. Cross-check: neck-l → neck-r = 140.4 mm; the agreed 158 mm × cos 31° (the form is turned about 31°) = 135 mm.
 - **Zones:** `front` 32.4 × 49.9 cm (θ 40°), `sleeve-l` 12.3 × 49.5 cm (θ 70°). Trims: `neck` 12 mm, `cuff-l` 25 mm. Stitches: neck top-stitch (5.3 mm, measured), cuff top-stitch (18.5 mm, measured).
 - **Gaps outside every zone:** the wall wedge under the arm (underarm (1042, 977) to (1050, 1399) in source px), and the bare mannequin arm below the cuff, which is in front of the body (a notch in the `front` outline).
@@ -410,9 +410,9 @@ python3 tools/prep_swatches.py assets assets/swatches /tmp          # add `fabri
 
 ### 2026-11-18: `hem-straight` plate (hemline and chaak)
 
-- **Source:** `assets/plates/hem-straight/source.png` (2048 × 2048). Plate = crop x 214..1750 (the garment is 1583 px wide, so the crop keeps the whole back panel and its hem tip, and cuts 47 px of the shaded left panel at the border), × 0.78125 → 1200 × 1600. The sparkle mark (x 1920–2010) is outside the crop: no patch.
+- **Source:** `silhouette/sources/hem-straight.png` (2048 × 2048). Plate = crop x 214..1750 (the garment is 1583 px wide, so the crop keeps the whole back panel and its hem tip, and cuts 47 px of the shaded left panel at the border), × 0.78125 → 1200 × 1600. The sparkle mark (x 1920–2010) is outside the crop: no patch.
 - **Intake:** garment highlights are clipped in the top right (about 120 × 1100 px samples at 252 and above, mostly along the slit and the side seam). Max luminance in the garment is 255, above the limit of 250. I did not reject the image: the clipped area is the lit side seam, about 1 % of the garment, and the folds on the front panel are intact. **Decision needed:** ask for a re-render, or accept.
-- **Script:** `tools/annotate_hem.py` (all points measured on `source.png` on gridded crops; silhouettes scanned, then confirmed on crops). Then `tools/make_plate.py` (11 s).
+- **Script:** `silhouette/views/hem.py` (all points measured on `source.png` on gridded crops; silhouettes scanned, then confirmed on crops). Then `silhouette/pipeline/make_plate.py` (11 s).
 - **Scale:** slit-top → hem-slit = 240 mm → 0.2221 mm/px. Cross-check: the hem top-stitch is 15 mm above the hem edge (67 px), which matches the 30 mm hem trim with its centre 15 mm up.
 - **Zones:** `front` 16.9 × 30.0 cm (θ 45°), `back` (panel right of the slit) 3.0 × 29.5 cm (θ 60°), `back-l` (shaded left panel, seen at a steep angle) 6.3 × 28.0 cm (θ 65°). The shaded left panel is a second front-facing zone, so `ZONE_ID` got `back` = 4 and `back-l` = 5.
 - **Trims:** `hem` 30 mm, `slit-l` 8 mm (front slit edge), `slit-r` 8 mm (back slit edge, on the `back` zone), cut at the slit apex. Stitches: slit facing (about 60–90 px inside the front edge), bar tack, hem top-stitch of the front and of the left panel.
@@ -472,7 +472,7 @@ Plate data: torso 437, neck 381, sleeve 726, hem 481 KB. Lace assets: pearl 524,
 | 6 Torso | one record, per-view mapping; sleeve view keeps its neckline with a note | changes agree within 0.3 mm; the photos' absolute depths differ by 15.7 mm (fallback) |
 | 7 Showcase | journey bar, cross-fade, glow, hold for before, lace cards, review with 3 close views, share PNG, phone layout | each step shows its view in < 0.6 s (SwiftShader) after the first visit |
 
-**Verification:** `tools/cdp_shot.mjs` (headless Chrome through the DevTools protocol) saves the canvas pixels and the console errors, and sends real mouse, touch and key events. The shader compiles. Open: draw time and the frame rate during a drag on a real phone, the memory panel, and a person's walk through the journey.
+**Verification:** `silhouette/checks/cdp_shot.mjs` (headless Chrome through the DevTools protocol) saves the canvas pixels and the console errors, and sends real mouse, touch and key events. The shader compiles. Open: draw time and the frame rate during a drag on a real phone, the memory panel, and a person's walk through the journey.
 
 ### 2026-11-20: numeric plates (`docs/plan/numeric.md`, results in `docs/plan/numeric-results.md`)
 

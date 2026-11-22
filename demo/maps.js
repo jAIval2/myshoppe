@@ -45,7 +45,7 @@
   }`;
 
 
-  // StepA step 5: the fabric frame of a zone at each pixel (Plate.frameUV / tools/plateframe.py, the same arithmetic, in float)
+  // StepA step 5: the fabric frame of a zone at each pixel (Plate.frameUV / silhouette/pipeline/plateframe.py, the same arithmetic, in float)
   const FRAME_FS = `#version 300 es
   precision highp float;
   precision highp int;
@@ -98,7 +98,7 @@
   }`;
 
 
-  // StepA extension, step L2: the trim field (tools/trimfield.py, the same arithmetic). One element = one segment of a trim's line
+  // StepA extension, step L2: the trim field (silhouette/pipeline/trimfield.py, the same arithmetic). One element = one segment of a trim's line
   // with the smooth normals at its two ends (flat inputs); the pixel's foot point solves (q - P(tau)) x N(tau) = 0. The element
   // accepts the pixel when 0 <= tau <= 1 and t lies in its band (inner 0..tin, outer -tout..0); the depth is |t|, so the nearest edge
   // wins. The inner part only on the trim's own zone; the overhang where there is no zone, its own, or one behind it (the stencil
@@ -214,7 +214,7 @@
   }
 
   // ---------------------------------------------------------------------------------------------------------------
-  // Step 4: the shade (folds) from the photo. tools/make_plate.py does, in this order:
+  // Step 4: the shade (folds) from the photo. silhouette/pipeline/make_plate.py does, in this order:
   //   Lum = base.convert("L") (Pillow: (299 R + 587 G + 114 B) with 16 bit fixed point and rounding), shade = Lum / median (the median
   //   is a number of the plate: decided offline), the guided filter of each zone (box windows of radius r, eps, masked by the
   //   zone; off when the plate has no shadeSmoothPx), the linear light encoding stored = sqrt(shade_lin / 2) * 255 (truncated),
@@ -734,7 +734,7 @@
     return { id: idTex, uv: uvTex, uvt: uvtTex, uvts: uvtsTex, shade: shadeTex, ms: performance.now() - t0 };
   }
 
-  // a texture's raw RGBA bytes as base64 (tests only: tools/maps_check.py; alpha carries data since the 16-bit packing)
+  // a texture's raw RGBA bytes as base64 (tests only: silhouette/checks/maps_check.py; alpha carries data since the 16-bit packing)
   function readRaw(gl, tex, w, h) {
     const f = gl.createFramebuffer(), px = new Uint8Array(w * h * 4), prev = gl.getParameter(gl.FRAMEBUFFER_BINDING);
     gl.bindFramebuffer(gl.FRAMEBUFFER, f);

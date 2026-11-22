@@ -1,8 +1,8 @@
 """Closure in the RENDER (StepA step 0): photo garment that the page still shows, and the bright rim along the free edges.
 
-usage: python3 tools/fringe.py <canvas.png> <plate-dir> [--photo <off-canvas.png>] [--debug <out.png>] [--json]
+usage: python3 silhouette/checks/fringe.py <canvas.png> <plate-dir> [--photo <off-canvas.png>] [--debug <out.png>] [--json]
 
-  canvas   a render with a dark fabric and no lace: node tools/cdp_shot.mjs <out> <port> "view=<v>&fabric=mocha&trims=none&stage=600"
+  canvas   a render with a dark fabric and no lace: node silhouette/checks/cdp_shot.mjs <out> <port> "view=<v>&fabric=mocha&trims=none&stage=600"
            (stage 600 at DPR 2 = a 1200 x 1600 canvas: one canvas px = one plate px). Another size is resampled to the plate.
   --photo  the same view with fabric=off (the photo as the page draws it). Without it, base.jpg.
 
@@ -11,7 +11,7 @@ Counts (plate px):
              render still shows the photo (every channel within 4 levels), within 10 px of rendered fabric; the openings of the
              plate's "invariants" are left out. Reported: the count, the share of the rendered fabric, and the pieces wider than 1 px
              (what survives a 2 x 2 erosion), with their boxes.
-  rim        along every FREE edge (tools/plate_edges.py), each 1 px: the brightest luminance from 1.5 px inside to 3.5 px outside
+  rim        along every FREE edge (silhouette/checks/plate_edges.py), each 1 px: the brightest luminance from 1.5 px inside to 3.5 px outside
              the outline, against the luminance 4 px inside and 6 px outside. A rim sample is brighter than both by more than 8
              levels, and that brightest pixel has the garment's colour (saturation < 24 of 255, as the closure rule): the original
              garment's white or grey, not a light band of the wall or the form. Reported: the share of the free-edge length, and where.
@@ -19,6 +19,8 @@ Counts (plate px):
              render minus the photo, 1.5-3.5 px outside the edge, as a share of that step. Median and 95 % (limit 10 %).
 """
 import json, math, sys
+import os
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 import plate_edges as PE
 

@@ -1,11 +1,12 @@
 """The edges of a plate, for the review tools (StepA step 0): which parts of each zone outline are free (garment against wall,
 form or mannequin arm), seam (another zone on the other side), frame (the image border) or cut (the live neck dip).
 
-Since step 1 the type of each outline segment is the type of its edge in plate.dat (tools/platedat.py). A free-edge sample that lies inside a zone drawn later (a free edge that runs under
+Since step 1 the type of each outline segment is the type of its edge in plate.dat (silhouette/pipeline/platedat.py). A free-edge sample that lies inside a zone drawn later (a free edge that runs under
 a sleeve for a few px) counts as hidden ("seam").
-Pillow only. Used by tools/edge_crops.py and tools/fringe.py.
+Pillow only. Used by silhouette/checks/edge_crops.py and silhouette/checks/fringe.py.
 """
 import json, math, os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 from PIL import Image, ImageDraw
 
 W, H = 1200, 1600

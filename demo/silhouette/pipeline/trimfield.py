@@ -1,5 +1,5 @@
 """The trim field (StepA extension, step L1): a lace laid on the garment edge it is sewn to. Pillow-free; plate.js `trimElements`
-builds the same elements and maps.js draws them (tools/maps_check.py compares the two).
+builds the same elements and maps.js draws them (silhouette/checks/maps_check.py compares the two).
 
 A trim's `line` is its garment edge between its anchors (make_plate.py derive_trims), with `side` = the sign that turns the line's
 left normal onto the trim's zone. The line is resampled every SPACING_PX px. Each point gets a SMOOTH normal: the normal of the chord
@@ -17,6 +17,8 @@ direction for the whole band, inward only (the garment's outline cuts it); a "cu
 The overhang exists only along the line itself.
 """
 import math
+import os, sys
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), d) for d in ("pipeline", "checks", "views")]
 
 import plateframe
 
