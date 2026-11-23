@@ -1,0 +1,147 @@
+{
+ "look": "angrakha",
+ "name": "Angrakha",
+ "note": "A look of the 2026-11-23 images.",
+ "garment": {
+  "version": 1,
+  "note": "The garment record of this look (StepB format), 2026-11-23: the pieces and each view's zones and landmark names. No landmark has an agreed or measured garment value yet (compare: none), so the fit leaves every frame as measured and the cross-view checks compare nothing; add values (src agreed / measured) when the atelier gives them.",
+  "pieces": {
+   "front-over": {
+    "grain": "the over panel's straight grain (parallel to the centre front)",
+    "origin": "the centre front on the neck-point line",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the grain"
+   },
+   "front-under": {
+    "grain": "the under panel's straight grain (parallel to the centre front)",
+    "origin": "the centre front on the neck-point line",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the grain"
+   },
+   "skirt": {
+    "grain": "the centre front",
+    "origin": "the centre front at the empire waist (v continues the bodice's)",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the grain"
+   },
+   "sleeve-l": {
+    "grain": "the sleeve's centre line, shoulder point to cuff",
+    "origin": "the shoulder point (shoulder-l)",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the arm"
+   },
+   "sleeve-r": {
+    "grain": "the sleeve's centre line, shoulder point to cuff",
+    "origin": "the shoulder point (shoulder-r)",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the arm"
+   }
+  },
+  "landmarks": {
+   "cf-neck": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "cuff-in-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "cuff-in-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "cuff-out-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "cuff-out-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-cf": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "neck-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "neck-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "shoulder-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "shoulder-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "tie": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "underarm-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "underarm-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "waist-cf": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "waist-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "waist-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   }
+  },
+  "lines": {},
+  "views": {
+   "torso": {
+    "zones": {
+     "wrap": "front-over",
+     "front": "front-under",
+     "skirt": "skirt",
+     "sleeve-l": "sleeve-l",
+     "sleeve-r": "sleeve-r"
+    },
+    "landmarks": {
+     "neck-l": "neck-l",
+     "neck-r": "neck-r",
+     "cf-neck": "cf-neck",
+     "shoulder-l": "shoulder-l",
+     "shoulder-r": "shoulder-r",
+     "underarm-l": "underarm-l",
+     "underarm-r": "underarm-r",
+     "hem-l": "hem-l",
+     "hem-r": "hem-r",
+     "hem-cf": "hem-cf",
+     "cuff-out-l": "cuff-out-l",
+     "cuff-in-l": "cuff-in-l",
+     "cuff-out-r": "cuff-out-r",
+     "cuff-in-r": "cuff-in-r",
+     "waist-l": "waist-l",
+     "waist-r": "waist-r",
+     "waist-cf": "waist-cf",
+     "tie": "tie"
+    }
+   }
+  }
+ }
+}
