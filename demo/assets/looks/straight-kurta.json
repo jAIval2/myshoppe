@@ -31,5 +31,395 @@
    "lace width < neck depth (12 mm lace, 20 mm minimum depth)",
    "corners stay on the shoulder line"
   ]
+ },
+ "garment": {
+  "version": 1,
+  "note": "The garment record (StepB step 2): the garment's pieces and its landmarks in PIECE cm, one record for all views. u, v in cm; src: agreed (a value the atelier gave), measured (one view), fitted (several views: their mean, with the spread), assumed, definition (true by the definition of the piece's frame). A plate names the record's version and hash; the build refuses a plate whose landmarks the record does not name (views.<view>.landmarks).",
+  "pieces": {
+   "front": {
+    "grain": "the centre front",
+    "origin": "the centre front on the neck-point line (the line through neck-l and neck-r)",
+    "u": "+ toward the image right of the front views (the wearer's left)",
+    "v": "+ down the grain"
+   },
+   "back": {
+    "grain": "the centre back",
+    "origin": "the centre back on the neck-point line",
+    "u": "+ toward the image right of the front views (the wearer's left)",
+    "v": "+ down the grain"
+   },
+   "sleeve-l": {
+    "grain": "the sleeve's centre line, shoulder point to cuff",
+    "origin": "the shoulder point (shoulder-l)",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the arm"
+   },
+   "sleeve-r": {
+    "grain": "the sleeve's centre line, shoulder point to cuff",
+    "origin": "the shoulder point (shoulder-r)",
+    "u": "+ toward the image right of the front views",
+    "v": "+ down the arm"
+   }
+  },
+  "landmarks": {
+   "cf-neck": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 0.0,
+      "v": 3.97,
+      "src": "agreed",
+      "note": "the neck depth 39.7 mm (neck.depthMm default, the neckline view); u = 0 by definition"
+     }
+    }
+   },
+   "neck-l": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": -8.13,
+      "v": 0.0,
+      "src": "fitted",
+      "views": [
+       "torso",
+       "neck"
+      ],
+      "spreadMm": [
+       0.4,
+       0.5
+      ],
+      "note": "v = 0 by definition (the neck-point line)"
+     }
+    }
+   },
+   "neck-r": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 8.22,
+      "v": 0.0,
+      "src": "fitted",
+      "views": [
+       "torso",
+       "neck"
+      ],
+      "spreadMm": [
+       1.6,
+       0.5
+      ],
+      "note": "v = 0 by definition"
+     }
+    }
+   },
+   "shoulder-l": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": -22.38,
+      "v": 4.02,
+      "src": "fitted",
+      "views": [
+       "torso",
+       "neck"
+      ],
+      "spreadMm": [
+       1.0,
+       1.2
+      ]
+     },
+     "sleeve-l": {
+      "u": 0.0,
+      "v": 0.0,
+      "src": "definition",
+      "note": "the sleeve's origin"
+     }
+    }
+   },
+   "shoulder-r": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 22.34,
+      "v": 3.78,
+      "src": "fitted",
+      "views": [
+       "torso",
+       "neck"
+      ],
+      "spreadMm": [
+       5.5,
+       1.5
+      ]
+     },
+     "sleeve-r": {
+      "u": 0.0,
+      "v": 0.0,
+      "src": "definition",
+      "note": "the sleeve's origin"
+     }
+    }
+   },
+   "underarm-l": {
+    "compare": "none",
+    "note": "each view's point is the visible junction of the sleeve's inner edge and the body's side (a silhouette point); the seam's underarm point is hidden (StepB step 0)"
+   },
+   "underarm-r": {
+    "compare": "none",
+    "note": "as underarm-l"
+   },
+   "hem-cf": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 0.0,
+      "v": 105.01,
+      "src": "measured",
+      "views": [
+       "torso"
+      ],
+      "note": "the front length at the centre front"
+     }
+    }
+   },
+   "hem-slit-l": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": -23.8,
+      "v": 101.04,
+      "src": "measured",
+      "views": [
+       "torso"
+      ],
+      "note": "the hem's corner at the slit: 4 cm above the centre-front hem in the torso view (open: the photographed hem, or the torso frame's sag)"
+     }
+    }
+   },
+   "hem-slit-r": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 23.71,
+      "v": 100.93,
+      "src": "measured",
+      "views": [
+       "torso"
+      ],
+      "note": "as hem-slit-l"
+     }
+    }
+   },
+   "hem-slit-r-back": {
+    "compare": "uv",
+    "at": {
+     "back": {
+      "u": 23.71,
+      "v": 100.93,
+      "src": "assumed",
+      "note": "the back's hem corner = the front's (in the hem view the two are 1.5 mm apart in v)"
+     }
+    }
+   },
+   "slit-top-l": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": -22.96,
+      "v": 77.04,
+      "src": "agreed",
+      "views": [
+       "torso"
+      ],
+      "note": "v = hem-slit-l - the agreed slit length 240 mm (the hem view's scale); u measured in the torso view. The torso photo's slits are 9.5 and 15.9 cm"
+     }
+    }
+   },
+   "slit-top-r": {
+    "compare": "uv",
+    "at": {
+     "front": {
+      "u": 22.29,
+      "v": 76.93,
+      "src": "agreed",
+      "views": [
+       "torso"
+      ],
+      "note": "as slit-top-l"
+     }
+    }
+   }
+  },
+  "lines": {
+   "cuff-l": {
+    "piece": "sleeve-l",
+    "v": 47.0,
+    "src": "agreed",
+    "note": "the sleeve length, shoulder -> cuff-out 470 mm (the sleeve view's agreed scale); a weft line: only v is compared"
+   },
+   "cuff-r": {
+    "piece": "sleeve-r",
+    "v": 47.0,
+    "src": "agreed",
+    "note": "as cuff-l"
+   }
+  },
+  "views": {
+   "torso": {
+    "zones": {
+     "front": "front",
+     "sleeve-l": "sleeve-l",
+     "sleeve-r": "sleeve-r"
+    },
+    "landmarks": {
+     "cf-neck": "cf-neck",
+     "neck-l": "neck-l",
+     "neck-r": "neck-r",
+     "shoulder-l": "shoulder-l",
+     "shoulder-r": "shoulder-r",
+     "underarm-l": "underarm-l",
+     "underarm-r": "underarm-r",
+     "slit-l": "slit-top-l",
+     "slit-r": "slit-top-r",
+     "hem-l": "hem-slit-l",
+     "hem-r": "hem-slit-r",
+     "hem-cf": "hem-cf",
+     "cuff-out-l": {
+      "line": "cuff-l"
+     },
+     "cuff-in-l": {
+      "line": "cuff-l"
+     },
+     "cuff-out-r": {
+      "line": "cuff-r"
+     },
+     "cuff-in-r": {
+      "line": "cuff-r"
+     }
+    },
+    "acceptedResiduals": {
+     "cf-neck": "the photos disagree (owner, 2026-11-23: accepted): neck depth, torso 32.6 mm against the agreed 39.7 mm of the neckline view",
+     "slit-l": "the photos disagree (owner, 2026-11-23: accepted): slit length, torso 9.5 / 15.9 cm against the agreed 24 cm of the hem view",
+     "slit-r": "the photos disagree (owner, 2026-11-23: accepted): slit length, torso 9.5 / 15.9 cm against the agreed 24 cm of the hem view",
+     "cuff-out-l": "the photos disagree (owner, 2026-11-23: accepted): sleeve length, torso 54.4 cm against the agreed 47 cm of the sleeve view",
+     "cuff-in-l": "the photos disagree (owner, 2026-11-23: accepted): sleeve length, torso 54.4 cm against the agreed 47 cm of the sleeve view",
+     "cuff-out-r": "the photos disagree (owner, 2026-11-23: accepted): sleeve length, torso 54.4 cm against the agreed 47 cm of the sleeve view",
+     "cuff-in-r": "the photos disagree (owner, 2026-11-23: accepted): sleeve length, torso 54.4 cm against the agreed 47 cm of the sleeve view"
+    }
+   },
+   "neck": {
+    "zones": {
+     "front": "front",
+     "sleeve-l": "sleeve-l",
+     "sleeve-r": "sleeve-r"
+    },
+    "landmarks": {
+     "cf-neck": "cf-neck",
+     "neck-l": "neck-l",
+     "neck-r": "neck-r",
+     "shoulder-l": "shoulder-l",
+     "shoulder-r": "shoulder-r",
+     "underarm-l": "underarm-l",
+     "underarm-r": "underarm-r",
+     "cf-low": null
+    }
+   },
+   "sleeve": {
+    "zones": {
+     "front": "front",
+     "sleeve-l": "sleeve-l"
+    },
+    "landmarks": {
+     "neck-l": "neck-l",
+     "neck-r": "neck-r",
+     "shoulder": "shoulder-l",
+     "underarm": "underarm-l",
+     "cuff-out": {
+      "line": "cuff-l"
+     },
+     "cuff-in": {
+      "line": "cuff-l"
+     },
+     "elbow": null
+    },
+    "acceptedResiduals": {
+     "neck-l": "accepted (owner, 2026-11-23): the sleeve view is turned, but 3 landmarks cannot fix the turn (StepB step 4); a centre-front point measured in this view would",
+     "neck-r": "accepted (owner, 2026-11-23): the sleeve view is turned, but 3 landmarks cannot fix the turn (StepB step 4); a centre-front point measured in this view would",
+     "shoulder": "accepted (owner, 2026-11-23): the sleeve view is turned, but 3 landmarks cannot fix the turn (StepB step 4); a centre-front point measured in this view would",
+     "cuff-out": "accepted (owner, 2026-11-23): the cuff edge slants in this turned view, +-15 mm about the agreed 47 cm",
+     "cuff-in": "accepted (owner, 2026-11-23): the cuff edge slants in this turned view, +-15 mm about the agreed 47 cm"
+    }
+   },
+   "hem": {
+    "zones": {
+     "front": "front",
+     "back": "back",
+     "back-l": "front"
+    },
+    "landmarks": {
+     "slit-top": "slit-top-r",
+     "hem-slit": "hem-slit-r",
+     "hem-slit-back": "hem-slit-r-back",
+     "hem-l": null,
+     "hem-l-back": null,
+     "hem-back-r": null
+    },
+    "note": "back-l (the shaded panel left of the front, its hem higher) is read as the FRONT turning away past a fold: in this view the front runs from about u = +6 cm to the slit at +22 cm, and a straight kurta has no seam near u = +6 cm, nor can a back panel show on that side (StepB step 3). Open: the owner to confirm.",
+    "acceptedResiduals": {
+     "slit-top": "the photos disagree (owner, 2026-11-23: accepted): the slit edge leans 2.4 cm more in the hem view than in the torso view",
+     "hem-slit": "the photos disagree (owner, 2026-11-23: accepted): the slit edge leans 2.4 cm more in the hem view than in the torso view"
+    }
+   }
+  },
+  "placement": {
+   "note": "Where each class of print sits (StepB step 5; testing.html placeOf). buta: the motif's centre on (u, v) of each piece. border: the band's lower edge on the piece's hem line hemV (a weft line of the frame: where the photographed hem curves off it, as at the torso's slit corners, 4 cm, the band is cut there; following the hem exactly is StepC, the hem trim's field).",
+   "buta": {
+    "front": {
+     "u": 0.0,
+     "v": 25.0,
+     "src": "assumed",
+     "note": "the centre front at the bust line, about 25 cm below the neck-point line"
+    },
+    "back": {
+     "u": 0.0,
+     "v": 25.0,
+     "src": "assumed",
+     "note": "as the front"
+    },
+    "sleeve-l": {
+     "u": 0.0,
+     "v": 15.0,
+     "src": "assumed",
+     "note": "the sleeve's centre line, 15 cm below the shoulder point"
+    },
+    "sleeve-r": {
+     "u": 0.0,
+     "v": 15.0,
+     "src": "assumed",
+     "note": "as sleeve-l"
+    }
+   },
+   "border": {
+    "front": {
+     "hemV": 105.01,
+     "src": "measured",
+     "note": "hem-cf (the torso view)"
+    },
+    "back": {
+     "hemV": 105.01,
+     "src": "assumed",
+     "note": "as the front"
+    },
+    "sleeve-l": {
+     "hemV": 47.0,
+     "src": "agreed",
+     "note": "the cuff line"
+    },
+    "sleeve-r": {
+     "hemV": 47.0,
+     "src": "agreed",
+     "note": "the cuff line"
+    }
+   }
+  }
  }
 }

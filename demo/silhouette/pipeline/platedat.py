@@ -1,4 +1,7 @@
-"""plate.dat version 2 (BSP2): every number of one view in one small binary file (StepA step 1). Pillow is not needed.
+"""plate.dat version 4 (BSP4; StepC step 2): every number of one view in one small binary file (StepA step 1). Pillow is not needed.
+Version 3 (StepB) = version 2 + the garment header, each zone's piece, the zone and trim tables (ids, groups, roles), each trim's lace
+band and join. Version 4 = version 3 + the trim fields' packing (trimPack), each trim's field slot, its ends and its corners; the
+slits' field is the "open" field. Only version 4 is read: rebuild an older plate from its source (silhouette/plate.py build <view>).
 
 usage: python3 silhouette/pipeline/platedat.py --dump <plate-dir | plate.dat>     the file as text, in a stable order (git diff uses it: diff=dat)
        python3 silhouette/pipeline/platedat.py --check <plate-dir> ...           read and validate
@@ -6,8 +9,8 @@ As a module: read(path) -> P, write(path, P) -> bytes, encode(P) -> bytes, valid
 dump(P) -> text, legacy(P) -> (plate, zones): the two objects the page and the old tools know (the plate header and the zone data).
 
 Format (little endian):
-  "BSP2"     4 bytes
-  u16 version (2), u16 unit (coordinate unit in 1/1000 px: 100 = 0.1 px), u32 hlen
+  "BSP4"     4 bytes
+  u16 version (4), u16 unit (coordinate unit in 1/1000 px: 100 = 0.1 px), u32 hlen
   header     UTF-8 JSON, hlen bytes (padded with spaces to a multiple of 2)
   curves     int16 (dx, dy) per point, every curve one after the other, the first point from (0, 0); "curves" in the header lists the
              number of points of each curve, in the same order.
@@ -15,14 +18,24 @@ In the header every polyline (a list of 2 or more [x, y] pairs) is replaced by {
 A curve's points are rounded to the unit when written.
 
 The header P (what a plate is; StepA.md section 1, items 7-8):
-  v, view, variant, viewBox, mmPerPx, uvRangeCm, scaleNote, source
+  v, view, variant (the look), viewBox, mmPerPx, scaleNote, source
+  garment    {look, version, hash}: the garment record the plate was built against (silhouette/pipeline/garment.py)
+  trimPack   {rangeCm, mainSOffCm, openSOffCm: [slot 0, slot 1], tOffMm}: the page's 16-bit packing of the trim fields (StepC step 2)
+  uvPack     {rangeCm, offsetCm: [u, v]}: the 16-bit packing of the fabric (u, v) on the page, the same for every plate (StepB step 1);
+             the page decodes (u, v) = stored - offsetCm
   edges      {name: {type: free | seam | frame | cut, points, zones: [a, b] (a seam)}}.  A seam is ONE list used by two zones.
              A lower zone's run that lies hidden under a later zone (the sleeve view's body under the sleeve and the cuff) is a seam with "under": <the later zone>, used by that one lower zone.
              free = a visible contour (snapped to the photo, StepA step 3); frame = the image border; cut = the live neck dip.
-  zones      {name: {id, order, outline: [[edge, +1 | -1], ...], frame}}: the frame (silhouette/pipeline/plateframe.py) = axis, L, s0, vMm,
+  zones      {name: {id, order, piece, outline: [[edge, +1 | -1], ...], frame}}: id by draw order, then name, from 1 (at most 15);
+             piece = the garment record's piece the zone shows (views.<view>.zones); the frame (silhouette/pipeline/plateframe.py) = axis, L, s0, vMm,
              thetaDeg, half, sag, and its specification (axisFrom, anchor, sagEdge, skipTop, axisDegree)
              The outline is the chain of its edges; a join point shared by two consecutive edges is written once.
-  trims      {name: {id, order, type (edging | insertion), edge, from, to, anchor, cut, line, side, zone}}: a lace hangs on its edge;
+  trims      {name: {id, order, type (edging | insertion), group, field, live, bandInMm, bandOutMm, join, edge, from, to, anchor, cut,
+             line, side, zone}}: a lace hangs on its edge; id as the zones'; group = the page's button (neck | cuffs | hem | slits);
+             field = main | open (the slits' own field, 2 slots: slot); ends = {from, to}: runout | cut | piece; corners = [{at,
+             deg, side}] (the line turns over 35 deg within 5 mm); live = the page lays it on the live neckline (its edge is the cut edge);
+             bandInMm / bandOutMm = the depth the trim field covers inward and (an edging) outward; join = {kind: mitre | butt | overlap
+             | open, with: [trims]};
              line = the edge between the anchors (derived in the build), side = the sign of the inward normal, zone = the edge's zone;
              anchor = where the motif sits (cf: the frame's u = 0; from / to: an end); cut = the real (square) ends (StepA extension)
   stitches   {name: points};  occluders: [chain of edges [[edge, +-1], ...] (or points)];  landmarks {name: [x, y]};  invariants {openings}
@@ -32,7 +45,10 @@ The header P (what a plate is; StepA.md section 1, items 7-8):
 """
 import json, math, os, struct, sys
 
-MAGIC, VERSION, UNIT = b"BSP2", 2, 100
+MAGIC, VERSION, UNIT = b"BSP4", 4, 100
+GROUPS, JOINS, FIELDS = ("neck", "cuffs", "hem", "slits"), ("mitre", "butt", "overlap", "open"), ("main", "open")
+ENDS = ("runout", "cut", "piece")
+MAX_IDS = 15
 EDGE_TYPES = ("free", "seam", "frame", "cut")
 
 
@@ -72,7 +88,7 @@ def encode(P):
 
 
 def decode(data):
-    if data[:4] != MAGIC: raise ValueError("plate.dat: not BSP2")
+    if data[:4] != MAGIC: raise ValueError(f"plate.dat: {data[:4]!r}, not BSP4 (rebuild the plate from its source)")
     version, unit, hlen = struct.unpack("<HHI", data[4:12])
     if version != VERSION: raise ValueError(f"plate.dat: version {version}")
     head = json.loads(data[12:12 + hlen].decode("utf-8"))
@@ -119,8 +135,15 @@ def outline(P, zone):
 
 def validate(P):
     bad = []
-    for k in ("view", "viewBox", "mmPerPx", "edges", "zones"):
+    for k in ("view", "viewBox", "mmPerPx", "edges", "zones", "garment", "uvPack", "trimPack"):
         if k not in P: bad.append(f"no {k}")
+    g = P.get("garment", {})
+    if not (g.get("look") and isinstance(g.get("version"), int) and len(str(g.get("hash", ""))) == 16): bad.append(f"garment header {g}")
+    for kind, items in (("zone", P.get("zones", {})), ("trim", P.get("trims", {}))):
+        ids = sorted(x.get("id", 0) for x in items.values())
+        if ids != list(range(1, len(ids) + 1)) or len(ids) > MAX_IDS: bad.append(f"{kind} ids {ids} (1..n, at most {MAX_IDS})")
+    for zn, z in P.get("zones", {}).items():
+        if not z.get("piece"): bad.append(f"zone {zn}: no piece")
     E = P.get("edges", {})
     refs = {n: set() for n in E}
     for zn, z in P.get("zones", {}).items():
@@ -159,6 +182,16 @@ def validate(P):
         if t.get("zone") and t["zone"] not in P.get("zones", {}): bad.append(f"trim {tn}: unknown zone {t['zone']}")
         if t.get("type") not in ("edging", "insertion"): bad.append(f"trim {tn}: type {t.get('type')}")
         if t.get("edge") and t["edge"] not in E: bad.append(f"trim {tn}: unknown edge {t['edge']}")
+        if t.get("group") not in GROUPS: bad.append(f"trim {tn}: group {t.get('group')}")
+        if t.get("field") not in FIELDS: bad.append(f"trim {tn}: field {t.get('field')}")
+        if not isinstance(t.get("live"), bool): bad.append(f"trim {tn}: live {t.get('live')}")
+        if not (isinstance(t.get("bandInMm"), (int, float)) and t["bandInMm"] > 0): bad.append(f"trim {tn}: bandInMm {t.get('bandInMm')}")
+        if not (isinstance(t.get("bandOutMm"), (int, float)) and t["bandOutMm"] >= 0): bad.append(f"trim {tn}: bandOutMm {t.get('bandOutMm')}")
+        if t.get("field") == "open" and t.get("slot") not in (0, 1): bad.append(f"trim {tn}: open field slot {t.get('slot')}")
+        if set((t.get("ends") or {}).keys()) != {"from", "to"} or any(k not in ENDS for k in t["ends"].values()): bad.append(f"trim {tn}: ends {t.get('ends')}")
+        if not isinstance(t.get("corners"), list): bad.append(f"trim {tn}: corners {t.get('corners')}")
+        j = t.get("join") or {}
+        if j.get("kind") not in JOINS or any(w not in P.get("trims", {}) for w in j.get("with", [])): bad.append(f"trim {tn}: join {j}")
     return bad
 
 
@@ -166,33 +199,36 @@ def legacy(P):
     """(plate, zones): the plate header and the zone data in the shapes that the map code reads (the plate header and the zone data), which the page and
     the map code read. Nothing is computed here."""
     D = P.get("decisions", {}); S = P.get("settings", {})
-    plate = {"viewBox": P["viewBox"], "mmPerPx": P["mmPerPx"], "uvRangeCm": P.get("uvRangeCm", 128.0),
-             "zones": {n: {"id": z["id"], **D.get("zones", {}).get(n, {})} for n, z in P["zones"].items()},
+    plate = {"viewBox": P["viewBox"], "mmPerPx": P["mmPerPx"], "uvPack": P.get("uvPack"),
+             "zones": {n: {"id": z["id"], "piece": z.get("piece", n), **D.get("zones", {}).get(n, {})} for n, z in P["zones"].items()},
              "trims": {}}
     for n, t in P.get("trims", {}).items():
         plate["trims"][n] = {"id": t["id"], "type": t["type"], **D.get("trims", {}).get(n, {}), "side": t["side"], "zone": t["zone"],
-                             "anchor": t.get("anchor", "cf")}
+                             "anchor": t.get("anchor", "cf"), **{k: t[k] for k in ROLE_KEYS if k in t}}
     for k in ("shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck"):
         if k in D: plate[k] = D[k]
     Z = {"view": P["view"], "mmPerPx": P["mmPerPx"], "viewBox": P["viewBox"], "zones": {}, "trims": {}}
     for k in ("thetaDeg", "shadeSmoothEps", "shadeSmoothMm", "shadeSpace"):
         if k in S: Z[k] = S[k]
-    if "uvRangeCm" in P: Z["uvRangeCm"] = P["uvRangeCm"]
+    if "uvPack" in P: Z["uvPack"] = P["uvPack"]
+    if "trimPack" in P: Z["trimPack"] = P["trimPack"]
     for n, z in P["zones"].items():
-        Z["zones"][n] = {"order": z["order"], "outline": outline(P, n)}
+        Z["zones"][n] = {"order": z["order"], "outline": outline(P, n), "id": z.get("id"), "piece": z.get("piece", n)}
         if "frame" in z and "L" in z["frame"]: Z["zones"][n]["frame"] = z["frame"]
     for n, strips in under_strips(P).items(): Z["zones"][n]["under"] = strips
-    if "uvOffsetCm" in D: Z["uvOffsetCm"] = D["uvOffsetCm"]
     for n, t in P.get("trims", {}).items():
-        Z["trims"][n] = {k: t[k] for k in ("order", "type", "line", "side", "zone", "anchor", "cut") if k in t}
+        Z["trims"][n] = {k: t[k] for k in ("order", "type", "line", "side", "zone", "anchor", "cut", "id", *ROLE_KEYS) if k in t}
     for k in ("landmarks", "stitches", "invariants"):
         if k in P: Z[k] = P[k]
     if P.get("occluders"): Z["occluders"] = [chain(P, o) if o and isinstance(o[0][0], str) else o for o in P["occluders"]]
-    cuts = [e["points"] for e in P["edges"].values() if e["type"] == "cut"]
-    if cuts: Z["neckEdge"] = cuts[0]
+    cuts = [n for n, e in P["edges"].items() if e["type"] == "cut"]
+    if cuts:
+        Z["neckEdge"] = P["edges"][cuts[0]]["points"]
+        Z["neckZone"] = next((zn for zn, z in P["zones"].items() if any(e == cuts[0] for e, _ in z["outline"])), None)
     return plate, Z
 
 
+ROLE_KEYS = ("group", "field", "slot", "live", "bandInMm", "bandOutMm", "join", "ends", "corners")   # a trim's tables and roles (StepB, StepC)
 UNDER_PX = 6.0
 
 

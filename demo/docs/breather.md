@@ -1,7 +1,7 @@
 # Breather: what is where, and why
 
-Date: 2026-11-21. Status: orientation for an agent (or a person) that picks up a task such as `plan/StepA.md`. **Read this first, then the plan you work on.**
-Keep it current: when a plan closes, a file moves, or a rule changes, update the section concerned (§12).
+Date: 2026-11-21, updated 2026-11-23 (StepB step 0). Status: orientation for an agent (or a person) that picks up a task such as `plan/StepA.md`. **Read this first, then the plan you work on.**
+Keep it current: when a plan closes, a file moves, or a rule changes, update the section concerned (§13).
 
 ## 1. Start here
 
@@ -9,20 +9,23 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - **Method:** each view is a **plate**: a photo of the garment + numbers that say where each part is (zones, trims, fabric coordinates). A WebGL shader paints the chosen fabric and lace onto the photo and keeps the photo's light and folds.
 - **All images are AI-generated** (base photos, swatches, laces). The swatches' physical scale is assumed, not measured.
 - **Code of the visualiser:** `demo/` only. The rest of the repository is the storefront app (§3).
-- **Current branch:** `main` (`30dff16`), one checkout: `/Users/kayan/Developer/myshoppe`. StepA is closed (`plan/StepA.md`, results `plan/StepA-results.md`; step 8 pending on devices). **Next:** the swatches and laces on the 4 views (option B and C of `DedhD.md` §11.7).
-- **Agreed order** (`DedhD.md` §11): StepA (done) → perfect the swatches and laces on the 4 views → push `main` → more silhouettes. The branches were consolidated into `main` on 2026-11-22 (all were its ancestors); not pushed yet.
+- **Current branch:** `main`, with StepB and StepC merged (2026-11-23; not pushed: `origin/main` is `fbd2446`). StepA's step 8 passed (the owner, 2026-11-23). StepB and StepC are closed (`plan/StepB.md`, `plan/StepC.md`, results beside them). **Next:** the owner's choice: the person and device checks, the image route (`DedhD.md` §11.3), then more silhouettes.
+- **To make a plate from an image:** `make -C demo help` (the Makefile, after StepC).
+- **The data contract for the portal:** `docs/formats.md` (the plate, the garment record, the fabric sidecar, the design record).
+- **Agreed order** (`DedhD.md` §11): StepA (done) → StepB (fabric) → StepC (laces) → more silhouettes. The demo is the **test bed for the portal**: what the portal takes from it is the data (`plate.dat`, the garment record, the swatch sidecars), so those must be exact and self-describing.
 
-**Read in this order:** this file → `DedhD.md` §11 → `plan/StepA-results.md` (step 9: what is done and open) → `plate.md` and `annotate.md` (the pipeline) → `silhouette/README.md`, `swatchprep/README.md`.
+**Read in this order:** this file → `DedhD.md` §11 → `plan/StepB.md` (the plan in work) → `plan/StepA-results.md` (step 9: what is done and open) → `plate.md` and `annotate.md` (the pipeline) → `silhouette/README.md`, `swatchprep/README.md`.
 
 ## 2. Branch and server
 
 | Branch | Checkout | Port | State |
 |---|---|---|---|
-| `main` | `/Users/kayan/Developer/myshoppe` | 8300 | Everything: StepA and the cleanup (`30dff16`). 26 commits ahead of `origin/main` (not pushed). `polish`, `halfway`, `numeric` and `stepA` were its ancestors and are deleted (2026-11-22) |
+| `main` | the repository root | 8300 (start it when needed) | StepA, the cleanup, StepB. `stepB` was merged into it and deleted; `polish`, `halfway`, `numeric` and `stepA` were its ancestors and are deleted (2026-11-22) |
 
 - Serve: `python3 -m http.server 8300 --bind 127.0.0.1 --directory demo`, then open `http://localhost:8300/testing.html`.
 - Two review runs on the same port kill each other's server: always pass a free port to the tools.
-- Outside the repository: the Salon page whose option counts `DedhD.md` uses (`C_GROUPS`, `C_FIELDS_BY_SILHOUETTE`) is `/Users/kayan/Downloads/demo 22.26.03/index.html`.
+- Outside the repository: the Salon page whose option counts `DedhD.md` uses (`C_GROUPS`, `C_FIELDS_BY_SILHOUETTE`) was `/Users/kayan/Downloads/demo 22.26.03/index.html` on the first machine; it is not in the repository.
+- The tools need Python 3 with Pillow, Node ≥ 22 (`cdp_shot.mjs` uses the built-in `WebSocket`) and a Chrome: `cdp_shot.mjs` reads its path from `CHROME` (default: the macOS app). On Linux, a Chrome for Testing works; it may need `--no-sandbox` (a two-line wrapper script as `CHROME`).
 
 ## 3. The repository
 
@@ -41,11 +44,11 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 | File | Lines | Job |
 |---|---|---|
 | `testing.html` | ≈ 1,850 | The visualiser: one canvas, one fragment shader, the journey UI. |
-| `plate.js` | ≈ 330 | The plate maths of the build in JavaScript: `parseDat` (plate.dat version 2), `outlineOf`, `underStrips`, `frameProject` / `frameUV` (the fabric frame), `trimElements` / `trimTriangles` (the trim field, StepA extension), `offset_poly`. A classic script (`window.Plate`), also `require`d in Node by `silhouette/checks/frame_check.mjs`. |
+| `plate.js` | ≈ 330 | The plate maths of the build in JavaScript: `parseDat` (plate.dat version 3), `outlineOf`, `underStrips`, `frameProject` / `frameUV` (the fabric frame), `trimElements` / `trimTriangles` (the trim field, StepA extension), `offset_poly`. A classic script (`window.Plate`), also `require`d in Node by `silhouette/checks/frame_check.mjs`. |
 | `maps.js` | ≈ 670 | Builds a view's maps on the GPU from `plate.dat`: `id` (R zone, G trim, B neck area, A the soft-edge coverage), `uv` (each zone's frame evaluated per pixel in `FRAME_FS`), the trim field (`TRIM_FS`: `uvt` + id G, `uvts` for the slits; one element per segment of each trim's edge, the nearest edge wins), 16-bit packing; soft free edges (`SOFT_FS`); the shade (from `base.jpg`: luminance ÷ median, a guided filter per zone, the neck-dip fill). |
 
 **Inside `testing.html`** (search for the `// ----` markers):
-- Registries: `VIEWS` (view → plate folder), `FABRICS` (src, `repeatCm`, sheen, anti-tiling), `LACES` (band, sidecar json, material map), `TRIMS` (trim name → id 1–8), `GROUP` (button groups: neck, cuffs, hem, slits).
+- Registries: `VIEWS` (view → plate folder), `FABRICS` (tile + sidecar per fabric; the sidecar holds the facts, StepB step 5), `LACES` (band, sidecar json, material map). `TRIMS` and `GROUP` are filled per view from the plate (`setTables`, StepB step 2); `placeOf` / `setPlacement` place the print by its class (StepB step 5).
 - Shader samplers: `uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace, uLaceMat`. Sections: live neckline (in the neck area the garment is below the live edge; reveal fills), the soft free edge (StepA step 6), hex anti-tiling, form detail, lace shadow, relief / metal / pearl, fold displacement, sheen, linear light.
 - Loading: `fetchView` keeps the downloaded blobs of all views (`base.jpg` + `plate.dat`), `decodeView` decodes only the shown one; `Maps.build` makes the maps. Without float render targets the shade is flat (a console warning; StepA step 8).
 - Neckline (halfway): `neckSetup`, `neckCurves`, the three pivots on rails, snap stops, `applyNeck`, the design record `state.neck` in the URL (`?neckDepth=&neckWidth=`).
@@ -53,7 +56,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 - Test hook: `window.__studio` (for example `readMapsRaw()`, used by `silhouette/checks/maps_check.py`; `neckCurves()`, `setNeck()`).
 - `?perf=1`: an overlay with the build time (with a 1 px readback), the draw time, the frame rate of a drag, and whether float render targets exist.
 
-**Test switches** (URL query): `?view=torso|neck|sleeve|hem`, `?fabric=off|sage|mocha|mustard`, `?lace=pearl|geometric|leaf|fine|paisley|brocade`, `?trims=neck,cuffs,hem,slits|none`, `?checker=1`, `?step=`, `?test`, `?perf=1`, `?syncbuild=1`, `?stage=`.
+**Test switches** (URL query): `?view=torso|neck|sleeve|hem`, `?fabric=off|sage|mocha|mustard|reg|buta|border`, `?lace=pearl|geometric|leaf|fine|paisley|brocade|reg` (every line) and `?lace.neck=`, `?lace.cuffs=`, `?lace.hem=`, `?lace.slits=` (one line), `?laceN=neck.pearl:5`, `?joinkind=<trim>:<butt|overlap|mitre>`, `?trims=neck,cuffs,hem,slits|none`, `?checker=1`, `?step=`, `?test`, `?perf=1`, `?syncbuild=1`, `?stage=`.
 `?neckDepth=<mm>&neckWidth=<mm>` (the design record). The before / after switches of the closed plans (`?shade=0`, `?linear=0`, `?lacefit=0`, `?sheen=`, `?revealfill=0`, `?bias=`, `?aniso=0`, `?snap=0` and the rest) were removed in the cleanup, with their code paths; StepA step 7 had removed the switches of the old methods.
 
 ## 5. `demo/assets/`
@@ -66,7 +69,7 @@ Keep it current: when a plan closes, a file moves, or a rule changes, update the
 |---|---|---|---|
 | `silhouette/sources/<plate>.png` | received | no | The AI image as received; measured (not in the plate folder) |
 | `base.jpg` | `make_plate.py` (from `silhouette/views/<view>.py` `base()`) | yes | 1200 × 1600 photo, 3:4 |
-| `plate.dat` | `make_plate.py` | yes | `BSP2` (`silhouette/pipeline/platedat.py`): typed edges, zone outlines as chains of edges and their **fabric frames**, trims (from their edges), stitches, landmarks, occluders, settings, and the decisions taken from the image. `platedat.py --dump` prints it; `git diff` shows that text |
+| `plate.dat` | `make_plate.py` | yes | `BSP3` (`silhouette/pipeline/platedat.py`; StepB step 2): the garment header, typed edges, zone outlines as chains of edges and their **fabric frames**, trims (from their edges), stitches, landmarks, occluders, settings, and the decisions taken from the image. `platedat.py --dump` prints it; `git diff` shows that text |
 
 Review images (`annotate.png`, `check.png`, crops) are made on demand into `demo/review/<plate>/` (not committed): `make_plate.py <plate> --review`.
 
@@ -83,7 +86,7 @@ Review images (`annotate.png`, `check.png`, crops) are made on demand into `demo
 |---|---|
 | `assets/swatches/fabric-{sage,mocha,mustard}-1024.jpg` | De-lit seamless fabric tiles. `repeatCm` in `FABRICS`: 30, 30, 20 (assumptions). |
 | `assets/swatches/lace-<name>-2048.webp` + `lace-<name>.json` + `lace-<name>-mat.webp` | 6 laces: pearl, geometric, leaf, fine, paisley, brocade (brocade has no material map). Band with alpha, decorative edge at the bottom. Sidecar: `periodPx`, `periods`, `motifCentrePx`, `cutFromPx`, `blendPx`, `edge`, `widthMm` (assumption), `edgeDepth`, `bottomOpen`, `edging`, `flipped`, `material`. Material map: R height, G metal, B pearl. |
-| `assets/looks/straight-kurta.json` | The look's design parameters: `neck.depthMm` (default 39.7 since StepA step 3, 20–100, stops), `neck.widthMm` (158, 132–194), rules |
+| `assets/looks/straight-kurta.json` | The **garment record** (block `garment`, StepB step 2: pieces, landmarks in piece cm with their sources, each view's zones and landmark names; `silhouette/pipeline/garment.py`) and the look's design parameters: `neck.depthMm` (default 39.7 since StepA step 3, 20–100, stops), `neck.widthMm` (158, 132–194), rules |
 | `assets/fabric-{mocha,mustard}-src.png` | Fabric sources for `prep_fabric.py` |
 | `swatchprep/sources/fabric-sage-640.png`, `swatchprep/sources/lace-pearl-640.png` | Legacy first swatches (`prep_swatches.py`); left for the swatch plan |
 
@@ -113,6 +116,48 @@ node silhouette/checks/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"      # ex
 
 `cdp_shot.mjs` does not start a server: serve the worktree first, on a port nothing else uses.
 
+## 7. Checks: what proves what
+
+| Check | Proves | Run |
+|---|---|---|
+| `silhouette/plate.py rebuild-check` | every plate = what its source makes (byte-identical) | after any change to a view, a tool or the garment record |
+| `silhouette/plate.py check <view>` | the plate's invariants (closure, gaps, frame rules, trims) and the frame parity (`frame_check.mjs`) | after a rebuild |
+| `silhouette/plate.py page-check <view> --port <p>` | the page's maps = the build's (`maps_check.py`); closure in the render (`fringe.py`); the edge crops | with the page served on `<p>` |
+| `silhouette/checks/xview_check.py` | one cloth point = one fabric (u, v) in every view (StepB): each shared landmark's spread in mm | numbers only, no render |
+| `silhouette/checks/xview_sheet.py` | the same, as an image: 10 cm crops of each shared landmark in each view, rendered with `?fabric=reg` | for a person |
+
+## 8. Plans
+
+| Plan | State | Results |
+|---|---|---|
+| `plan/StepC.md` | closed 2026-11-23 | `plan/StepC-results.md` |
+| `plan/StepB.md` | closed 2026-11-23 | `plan/StepB-results.md` |
+| `plan/StepA.md` | closed 2026-11-22; step 8 passed 2026-11-23 | `plan/StepA-results.md` |
+| `plan/cleanup.md` | closed | — |
+| `upscale`, `polish`, `halfway`, `numeric` | closed; removed in the cleanup | `git show da48bfc:demo/docs/plan/<name>.md` |
+
+## 9. Open items (carried between plans)
+
+- From StepB (`plan/StepB-results.md`, the close): a centre-front point to measure in the sleeve view (so the fit can apply its turn); the hem view's shaded panel read as the front past a fold (the owner to confirm); the person checks of StepB's sheets.
+- From StepC (`plan/StepC-results.md`, the close): corner pieces are data, not drawn (the torso's hem fans its motifs at the bend into the right slit corner); an `overlap` join is drawn as a `butt`; the lace widths are assumed; the person and device checks (4 laces at once).
+- The photos disagree on the neck depth (7 mm), the slit length (8 cm) and the sleeve length (7 cm): **accepted by the owner** (2026-11-23), listed in the garment record (`acceptedResiduals`).
+
+- From StepA: closure FAILs (sleeve 0.0596 %, torso 6 px, hem 10 px); the rim on the sleeve and hem views; the halo's 95th percentile on 3 views; 1 px of map coverage on the torso; the neck-depth agreement of the two front views (7 mm).
+- The swatches' and laces' physical scales are assumptions (`repeatCm`, `widthMm`).
+
+## 10. Rules
+
+- **Nothing is edited by hand in a plate** (or a sidecar): change the source (a view, a tool, the garment record), then rebuild.
+- **One step = one commit**, its numbers in the plan's results file; a FAIL is written with its number.
+- **A person approves** what a render shows; an agent's own look is not the approval.
+- **Every number has a source** (agreed, measured, fitted, assumed) once it is in the garment record, a plate or a sidecar (StepB).
+
+## 11. Where the numbers come from
+
+- Each view's scale (`mmPerPx`) comes from one agreed distance (`plate.md` §5). The torso borrows the neck view's 158 mm neck width.
+- Each zone's fabric frame is measured in its view (StepA step 4). StepB ties the views together through the garment record.
+- The swatch tile sizes and the lace widths are assumptions (AI images).
+
 ## 12. Glossary
 
 | Term | Meaning |
@@ -135,6 +180,16 @@ node silhouette/checks/cdp_shot.mjs <out> 8200 "view=hem&fabric=mocha"      # ex
 | **`mmPerPx`** | The plate's scale, from an agreed value (`plate.md` §5) |
 | **Lace fit** | Whole repeats on each trim, a defined start, a scale of 1.00–1.03 |
 | **Review set** | Fixed 2× crops of the edges (StepA step 0) |
+| **Garment record** | `assets/looks/<look>.json` block `garment` (StepB): the pieces, the landmarks in piece cm with their sources, each view's zones and landmark names, the placement points, the accepted residuals |
+| **Piece** | A pattern piece of the garment (front, back, sleeve-l, sleeve-r); each zone of a view shows one |
+| **Fit** | StepB step 3: a zone's free frame offsets (`uMm`, `vMm`) fitted to the garment record; `fit` in `plate.dat` holds the residuals |
+| **Yaw** | StepB step 4: the body's turn about a zone's axis in a view (`yawDeg`); applied only when the landmarks over-determine it |
+| **Placement** | StepB step 5: where a print sits by its class (all-over, buta on a point, border on the hem line) |
+| **Sidecar** | The JSON next to a swatch tile (`fabric-<name>.json`, `lace-<name>.json`): its scale with the source, class and placement data |
+| **Open field** | StepC: the slits' own trim field (two slots), toggled apart from the main field and mitred against the hem |
+| **Piece end** | StepC: a trim end where the lace stops on its last whole motif (the slit tops) |
+| **Lace slot** | StepC: one of 4 texture slots; each line's lace occupies one, so the neck, cuffs, hem and slits can differ |
+| **Hysteresis** | StepC: a trim keeps its count of whole repeats while the lace stretches by at most 6 %, so motifs do not jump while dragging |
 
 ## 13. Keeping this file current
 

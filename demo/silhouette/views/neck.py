@@ -105,7 +105,7 @@ def measure():
         "source": "source.png crop x 252..1788, resized x0.78125. Points measured on source.png by Claude.",
         "landmarks": L, "edges": edges, "zones": zones,
         # trims: the lace hangs on the neck edge between the corners (the build derives the line: StepA extension, step L1)
-        "trims": {"neck": {"order": 3, "type": "insertion", "edge": "neck", "from": "neck-l", "to": "neck-r"}},
+        "trims": {"neck": {"order": 3, "type": "insertion", "group": "neck", "edge": "neck", "from": "neck-l", "to": "neck-r"}},
         "stitches": {"neck-topstitch": offset(neck, 5.5 / mm_per_px, opening)},          # visible top-stitch line (measured)
         "settings": {},
     }

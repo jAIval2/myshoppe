@@ -262,12 +262,15 @@ def measure():
     # trims: each lace hangs on its garment edge between its anchors (the build derives the line: StepA extension, step L1); the
     # lace's own width and repeat are the lace's. anchor: where the motif is placed (default the frame's u = 0); cut: a real end
     trims = {
-        "neck": {"order": 3, "type": "insertion", "edge": "neck", "from": "neck-l", "to": "neck-r"},
-        "cuff-l": {"order": 3, "type": "edging", "edge": "cuff-l"},
-        "cuff-r": {"order": 3, "type": "edging", "edge": "cuff-r"},
-        "slit-l": {"order": 3, "type": "insertion", "edge": "body-l", "from": "slit-l", "to": "hem-l", "anchor": "to", "cut": ["from"]},
-        "slit-r": {"order": 3, "type": "insertion", "edge": "body-r", "from": "slit-r", "to": "hem-r", "anchor": "to", "cut": ["from"]},
-        "hem": {"order": 3, "type": "edging", "edge": "hem", "from": "hem-l", "to": "hem-r", "join": "mitre with the slits"},
+        "neck": {"order": 3, "type": "insertion", "group": "neck", "edge": "neck", "from": "neck-l", "to": "neck-r"},
+        "cuff-l": {"order": 3, "type": "edging", "group": "cuffs", "edge": "cuff-l", "bandInMm": 100.0},   # StepC step 6: a border fabric
+        "cuff-r": {"order": 3, "type": "edging", "group": "cuffs", "edge": "cuff-r", "bandInMm": 100.0},   # follows the edge 100 mm in
+        "slit-l": {"order": 3, "type": "insertion", "group": "slits", "edge": "body-l", "from": "slit-l", "to": "hem-l", "anchor": "to", "cut": ["from"],
+                   "ends": {"from": "piece", "to": "runout"}},          # StepC step 3: the slit top ends on a whole motif
+        "slit-r": {"order": 3, "type": "insertion", "group": "slits", "edge": "body-r", "from": "slit-r", "to": "hem-r", "anchor": "to", "cut": ["from"],
+                   "ends": {"from": "piece", "to": "runout"}},
+        "hem": {"order": 3, "type": "edging", "group": "hem", "edge": "hem", "from": "hem-l", "to": "hem-r", "join": {"kind": "mitre", "with": ["slit-l", "slit-r"]},
+                "bandInMm": 100.0},
     }
     P["trims"] = trims
     return P

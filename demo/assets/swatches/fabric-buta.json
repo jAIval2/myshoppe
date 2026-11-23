@@ -1,0 +1,25 @@
+{
+ "name": "Buta placement (test)",
+ "tile": "fabric-buta-1024.png",
+ "tilePx": [
+  1024,
+  1024
+ ],
+ "repeatCm": 30.0,
+ "repeatSrc": "measured",
+ "class": "buta",
+ "oneWay": true,
+ "sheen": 0.0,
+ "sheenWidth": 1.0,
+ "antiTile": false,
+ "meanRgb": [
+  238,
+  227,
+  213
+ ],
+ "motifCentrePx": [
+  512.0,
+  512.0
+ ],
+ "test": true
+}

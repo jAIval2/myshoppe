@@ -15,12 +15,19 @@ usage: python3 demo/swatchprep/prep.py <command> <args ...>
   first-swatches <src-dir> <out-dir> <debug-dir>
                        the first sage fabric and pearl lace, from sources/fabric-sage-640.png and lace-pearl-640.png
                        (prep_swatches.py: the record of how those two were made)
+  test-print reg | buta | border <out.png>
+                       a test fabric made by a script (test_prints.py; StepB): reg = the registration print (30 cm tile, labelled
+                       10 cm cells, 1 cm lines, a red crosshair at the tile origin); buta = one placed motif; border = a hem border
+  fabric-sidecar <tile> <out.json> --name "<name>" --repeat-cm <cm> [--src assumed|measured] [--class ...] [--motif x,y]
+                 [--border-bottom px] [--sheen n] [--sheen-width n] [--anti-tile] [--test]
+                       the fabric's sidecar (fabric_sidecar.py; StepB step 5): scale and its source, class, placement data
 """
 import os, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = {"fabric": ("prep_fabric.py", []), "lace": ("prep_lace.py", []), "lace-repeat": ("prep_lace.py", ["--repeat"]),
-        "lace-material": ("prep_lace.py", ["--material"]), "first-swatches": ("prep_swatches.py", [])}
+        "lace-material": ("prep_lace.py", ["--material"]), "first-swatches": ("prep_swatches.py", []),
+        "test-print": ("test_prints.py", []), "fabric-sidecar": ("fabric_sidecar.py", [])}
 
 
 def main(a):

@@ -14,6 +14,10 @@ Procedures: `docs/plate.md` (the pipeline) and `docs/annotate.md` (measuring).
 
 `<plate>` is `<view>-<variant>` (`torso-straight`); `<view>` is `torso`, `neck`, `sleeve` or `hem`.
 
+## From an image: `make` (in demo/)
+
+`make intake VIEW=<view> IMAGE=<path>` checks that the image lines up with the one the view was measured on, installs it, builds the plate and runs its checks; a different photo is stopped (the view must be measured again: `make replace`, then `docs/annotate.md`). `make plate VIEW=`, `make plates`, `make check`, `make serve`; `make help` lists all.
+
 ## One entry point
 
 ```
@@ -35,7 +39,8 @@ It runs from anywhere (it works in `demo/`). Exit code 0 = pass.
 | `views/` | `torso.py`, `neck.py`, `sleeve.py`, `hem.py` | One per view. `base(source)` is the crop. `measure()` gives typed edges, zones with their outline chains and fabric-frame specifications, trims as specifications, landmarks and occluders. Run alone: the automatic checks. Templates for new views |
 | `sources/` | `<plate>.png` | The images as received |
 | `pipeline/` | `make_plate.py <plate-dir> [--review] [--no-check]` | The build: source → free and cut edges snapped → trim lines from their edges → frames fitted → the maps in memory → decisions → `base.jpg` + `plate.dat`. As a module: `build()`, `maps_of(plate)`, `rasterise()`, `review_image()` |
-| | `platedat.py --dump / --check` | `plate.dat` version 2 (`BSP2`): reader, writer, validator, text dump. The format and the data model are in its docstring |
+| | `platedat.py --dump / --check` | `plate.dat` version 3 (`BSP3`, StepB step 2): reader, writer, validator, text dump. The format and the data model are in its docstring |
+| | `garment.py --check / --dump [look]` | The garment record (`assets/looks/<look>.json`, block `garment`): pieces, landmarks in piece cm with their sources, lines, each view's zones and landmark names. The build reads it; a plate carries its version and hash |
 | | `snap_edges.py` | Every free and cut edge snapped to the photo (local colour model, sub-pixel 50 % crossing, robust smooth fit). Alone: the report |
 | | `plateframe.py` | The fabric frame of a zone: (u, v) in cm for any point. `--samples <plate> <out.json>`: points for `frame_check.mjs` |
 | | `trimfield.py` | The trim field: a lace laid on its garment edge, `s` (cloth cm along the edge) and `t` (mm from it). The page's `plate.js` `trimElements` and `maps.js` `TRIM_FS` are the same |
@@ -46,6 +51,9 @@ It runs from anywhere (it works in `demo/`). Exit code 0 = pass.
 | | `fringe.py <canvas> <plate> [--photo <off>]` | Closure in the render: leftover photo garment, the rim along free edges, the halo |
 | | `edge_crops.py <canvas> <plate> <out.png> [--photo <off>]` | The review set: a crop at each landmark and every 150 px of each free edge, 3× |
 | | `plate_edges.py` | Module: the outline samples with edge types and outward normals |
+| | `xview_check.py [--json out] [plate ...]` | One cloth point = one fabric (u, v) in every view (StepB): each shared landmark's spread in mm, and its residual against the garment record |
+| | `xview_sheet.py <out.png> <shots-dir>` | The same as an image: 10 cm crops of each shared landmark in each view, rendered with `?fabric=reg` |
+| | `ba_sheet.py <out.png> <before> <after>` | Before / after of two `cdp_shot.mjs` runs, with the mean difference per query |
 | | `rebuild_check.sh [plate ...]` | Every plate rebuilt into a scratch copy, compared byte for byte |
 | `measure/` | `gridcrop.py <source> <out> x0 y0 x1 y1 [step] [contrast] [scale]` | Gridded crop in source px, for reading points |
 | | `sample.py <image> label=x,y ...` | Colour, luminance, chromaticity at points |

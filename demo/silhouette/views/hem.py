@@ -132,14 +132,17 @@ def measure():
     # trims: each lace hangs on its garment edge between its anchors (the build derives the line: StepA extension, step L1). The
     # slits end square at the slit top (cut) and keep whole motifs from the hem corner (anchor "to"); a slit meets its hem in a mitre
     trims = {
-        "slit-l": {"order": 3, "type": "insertion", "edge": "slit-front", "from": "slit-top", "to": "hem-slit", "anchor": "to", "cut": ["from"]},
-        "slit-r": {"order": 3, "type": "insertion", "edge": "slit-back", "from": "slit-top", "to": "hem-slit-back", "anchor": "to", "cut": ["from"]},
-        "hem": {"order": 3, "type": "edging", "edge": "hem-front", "from": "hem-l", "to": "hem-slit", "join": "mitre with slit-l"},
-        "hem-bl": {"order": 3, "type": "edging", "edge": "hem-left"},
-        "hem-br": {"order": 3, "type": "edging", "edge": "hem-back", "join": "mitre with slit-r"},
+        "slit-l": {"order": 3, "type": "insertion", "group": "slits", "edge": "slit-front", "from": "slit-top", "to": "hem-slit", "anchor": "to", "cut": ["from"],
+                   "ends": {"from": "piece", "to": "runout"}},          # StepC step 3: the slit top ends on a whole motif
+        "slit-r": {"order": 3, "type": "insertion", "group": "slits", "edge": "slit-back", "from": "slit-top", "to": "hem-slit-back", "anchor": "to", "cut": ["from"],
+                   "ends": {"from": "piece", "to": "runout"}},
+        "hem": {"order": 3, "type": "edging", "group": "hem", "edge": "hem-front", "from": "hem-l", "to": "hem-slit", "join": {"kind": "mitre", "with": ["slit-l"]},
+                "bandInMm": 100.0},                                  # StepC step 6: a border fabric follows the hem 100 mm in
+        "hem-bl": {"order": 3, "type": "edging", "group": "hem", "edge": "hem-left", "bandInMm": 100.0},
+        "hem-br": {"order": 3, "type": "edging", "group": "hem", "edge": "hem-back", "join": {"kind": "mitre", "with": ["slit-r"]}, "bandInMm": 100.0},
     }
     return {
-        "view": "hem", "variant": "straight-kurta", "viewBox": [1200, 1600], "mmPerPx": round(mm_per_px, 4), "uvRangeCm": 40,
+        "view": "hem", "variant": "straight-kurta", "viewBox": [1200, 1600], "mmPerPx": round(mm_per_px, 4),
         "scaleNote": "slit-top -> hem-slit = 240 mm (agreed value, hem view)",
         "source": "source.png crop x 214..1750, resized x0.78125. Points measured on source.png by Claude. "
                   "Sparkle mark (x 1920-2010, y 1850-1950) is outside the crop.",

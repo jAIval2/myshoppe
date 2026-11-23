@@ -122,7 +122,7 @@ A **plate** is one view of one shape variant: a folder of the two files that shi
 |---|---|---|
 | `silhouette/sources/<plate>.png` | The image as received; it is measured (not in the plate folder) | No |
 | `base.jpg` | The 1200 × 1600 photo, made from the source | Yes |
-| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP2`): typed edges (`free`, `seam`, `frame`, `cut`), each zone's outline as a chain of edges and its **fabric frame**, the trims (from their edges), stitches, landmarks, occluders, scale, and the decisions taken from the image (trim sides, the shade median, the neck block) | Yes |
+| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP3` since StepB step 2): typed edges (`free`, `seam`, `frame`, `cut`), each zone's outline as a chain of edges and its **fabric frame**, the trims (from their edges), stitches, landmarks, occluders, scale, and the decisions taken from the image (trim sides, the shade median, the neck block) | Yes |
 
 The source of a plate is `silhouette/sources/<plate>.png` + `silhouette/views/<view>.py` (the measured points); `silhouette/pipeline/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically (`silhouette/checks/rebuild_check.sh`). No map image is stored: the page builds the maps.
 
@@ -496,6 +496,69 @@ The page builds `id`, `uv`, `uv_trim` and the shade itself, on the GPU, from the
   - the halo's 95th percentile on 3 views;
   - step 8 on a phone and a laptop;
   - the neck-depth agreement of the two front views.
+
+### 2026-11-23: StepB, one fabric frame for the garment (`docs/plan/StepB.md`, results `docs/plan/StepB-results.md`)
+
+| Step | What changed |
+|---|---|
+| 1 Phase | One packing for every plate (`uvPack`, 256 cm, offset [128, 32]); the page takes the offset out, so the print's phase is the garment's: the same cell at the same cloth point in the torso and neck views (was 110 mm apart at the centre-front neck) |
+| 2 Format | `plate.dat` version 3: the garment it was built against, each zone's piece, ids assigned by the build, each trim's group, field, live role, lace band and join. The garment record (`assets/looks/<look>.json`, block `garment`). No id tables in code |
+| 3 Fit | Each zone's free offsets (`uMm`, `vMm`) fitted to the record; the hem view now meets the torso at the hem (0.7 mm, was 140 mm); the sleeves' shoulder points agree exactly |
+| 4 Yaw | The body's turn in the frame (`yawDeg`); applied only when over-determined (not on these plates: the sleeve view needs a measured centre-front point) |
+| 5 Swatches | Fabric sidecars (`fabric-<name>.json`); placement by class: all-over, buta on a point, border on the hem line |
+| 6 Formats | `docs/formats.md`: the data contract for the portal |
+
+The photos disagree on the neck depth (7 mm), the slit length (8 cm) and the sleeve length (7 cm): accepted by the owner, listed in the record.
+
+### 2026-11-23: StepC, lace as parts (`docs/plan/StepC.md`, results `docs/plan/StepC-results.md`)
+
+| Step | What changed |
+|---|---|
+| 1 Sidecar | Lace sidecar version 2: name, class, width and repeat with their sources, the material file; `LACES` holds the band and the sidecar only |
+| 2 Format | `plate.dat` version 4: the trim fields' packing (`trimPack`, ±128 cm along an edge), the slits' "open" field with slots assigned by the build (no names in the field code), each trim's ends and corners |
+| 3 Ends, joins | The slit tops end on a whole motif (`piece` ends); a `butt` join from the plate's data (the hem runs through, the slit stops at it) |
+| 4 Laces | A lace per line (neck, cuffs, hem, slits): 4 lace slots, each trim with its own lace's width, repeat and material |
+| 5 Repeats | The neckline in whole repeats, both corners on motif boundaries; a count is kept while the lace stretches by at most 6 % (no jumping while dragging) and is part of the design record |
+| 6 Border | A border fabric lies on the photographed hem and cuff edges (the trim field's distance from the edge), the curved hem and the slit corners included |
+
+### 2026-11-23: four plates of new looks (`torso-angrakha`, `torso-lehenga`, `torso-sharara`, `neck-anarkali`)
+
+Six AI images arrived (765 x 1024 each, a sparkle mark on each); four are plates, two wait. Each plate: `assets/plates/<plate>/`
+(base.jpg + plate.dat, BSP4), its source `silhouette/sources/<plate>.png`, its view `silhouette/views/<view>_<variant>.py`, its look
+record `assets/looks/<look>.json` (garment v1: pieces, zones and landmark names; every landmark `compare: none`, so the fit moves
+nothing and the cross-view checks compare nothing until the atelier gives values). Review images: `review/<plate>/`
+(annotate.png, check.png, crops.png); **not yet approved by a person**. Rebuild: `make plate VIEW=<view> VARIANT=<look>`.
+
+How they were measured: the silhouette is read from the image by `silhouette/views/_kit.py` (new): the wall grown from seeds under a
+gradient barrier and a running-colour limit, the garment = the rest minus the form above the neckline, the floor and other
+excluded polygons; seams (measured polylines) cut it into zones, each boundary is split into free / seam / frame runs, and the named
+free runs (neck, cuffs, hems) are cut at measured landmarks. Seams, necklines and landmarks were read by eye on gridded crops of the
+source. Scale: neck-l -> neck-r = 158 mm on every plate (the straight kurta's agreed value: the same dress form); an assumption, not a
+measurement of these garments.
+
+Tool changes (every existing plate rebuilds byte-identical):
+- `make_plate.py`: a look's own view module (`views/<view>_<variant>.py`) when it exists; a frame may take its body from several
+  zones (`bodyOf`, the angrakha's two front panels); a trim's smoothing window from its spec (`smoothMm`, default 4).
+- `snap_edges.py`: the seam-end taper no longer moves the seam's far end (a short seam's far end was moved 0.08 px off its partner).
+- `plate.py measure` uses the look's own view module.
+
+| Plate | Zones | Invariants FAIL (number, reason) |
+|---|---|---|
+| torso-angrakha | wrap, front (the panel under the wrap), skirt, sleeve-l, sleeve-r | 11: closure 112 px = 0.0233 % (limit 0.02 %; slivers along the wrap seam); hairline 30 px (limit 8); neck smooth 0.96 px (limit 0.8); hem line mean 1.15 / std 1.21 px and smooth 2.11 px, 17 field seams (a gathered, wavy hem: `smoothMm` 40 is the trade-off); grain wrap 3.59°, front 21.0°, skirt 7.36°, sleeve-l 6.12° (limit 3: shaped and flared pieces, the under-panel shows a sliver only); frame cf front 1.06 px (limit 1) |
+| torso-lehenga | top, skirt, sleeve-l, sleeve-r | 6: neck smooth 0.88 px; hem line 0.75 / 0.90 px, smooth 2.06 px, 230 field seams (the flared hem's folds); grain top 8.72°, skirt 6.51° (a circular skirt has no straight grain) |
+| torso-sharara | kurta, leg-l, leg-r, sleeve-l, sleeve-r | 9: closure 306 px = 0.0571 % (a strip at source y 917 .. 924 below the hem, inside the excluded floor: the check reads the sunlit floor as cloth; to be confirmed on check.png); neck smooth 0.96 px; cuff-r 33 field seams; hem-leg-l line 1.22 / 1.25 px, 1 field seam; hem-leg-r line 1.00 / 1.20 px, smooth 1.06 px, 33 field seams (tiered, gathered hems); grain leg-l 3.38° |
+| neck-anarkali | front (bodice), skirt, sleeve-l, sleeve-r | 6: closure 50 px = 0.0049 % passes the area limit, but one piece is wider than 1 px (24 px at source (299 .. 307, 207 .. 214): the neckline's left end against the excluded form); hairline 19 px (limit 8); neck smooth 0.82 px (limit 0.8); cuff-l 53 field seams; grain front 5.72°, skirt 4.77°. The left underarm gap is wall only at y 396 .. 480; below it the sleeve meets the bodice on a fold (a seam, not a gap) |
+
+Known problems: the grain limit (3°) is written for straight pieces; flared skirts, tiers and the wrap fail it by nature. The hems of
+the flared and tiered pieces are wavy in the photo, so the trim line follows a smoothed hem (40 mm window) and misses the photo's
+edge by about a pixel. The neck-anarkali's cloth is close to the wall's colour: its outer silhouette is a barrier drawn by eye 3 px
+outside the edge, and the build's snap brings the edges onto the photo (13 of 16 snapped edges report weak samples).
+
+Waiting: `sleeve-anarkali` and `hem-anarkali` (sources in `silhouette/sources/pending/`, outside the default rebuild loop). The sleeve
+view's points read so far (source px): the armhole from about (318, 201) to (377, 420); the sleeve's front edge x 377 at y 420 to
+x 407 at the cuff; the cuff (297, 927) -> (407, 917); the sleeve's outer edge leaves the skirt at about (265, 735). Both need a
+scale (the sleeve: shoulder -> cuff-out = 470 mm as on the straight sleeve; the hem: none visible) and the mannequin arm below the
+sleeve's cuff as an occluder.
 
 ## 12. Sources
 

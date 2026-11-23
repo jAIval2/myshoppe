@@ -18,7 +18,8 @@ For every FREE or CUT edge (the occluders are chains of these edges, so they fol
      taken again at the fitted edge and steps 2-3 run once more;
   4. points every 2 px, thinned to 0.05 px (Douglas-Peucker).
 Corners: the corner of two snapped edges is the mean of their snapped ends; on the image border it stays on the border; a seam that
-meets it gets the new end, and its points within 12 px move with it (a linear taper). Seams are not moved otherwise.
+meets it gets the new end, and its points within 12 px move with it (a linear taper; never its other end: a seam shorter than 12 px
+keeps the junction at its far end, 2026-11-23). Seams are not moved otherwise.
 Report per edge: samples, weak share and spans, dropped samples, and the accuracy of the fit against the crossings (median, 95 %, max).
 """
 import math, os, sys
@@ -229,10 +230,11 @@ def snap(P, base):
             else:                                               # a seam or a frame edge: the end moves, its first 12 px follow (taper)
                 dx, dy = new[0] - pts[end][0], new[1] - pts[end][1]
                 seq = range(len(pts)) if end == 0 else range(len(pts) - 1, -1, -1)
+                far = len(pts) - 1 if end == 0 else 0           # a seam shorter than 12 px keeps its other end (a junction of 3 zones)
                 acc, prev = 0.0, None
                 for i in seq:
                     if prev is not None: acc += math.dist(pts[i], pts[prev])
-                    if acc > 12: break
+                    if acc > 12 or i == far: break
                     f = 1 - acc / 12
                     pts[i] = [pts[i][0] + dx * f, pts[i][1] + dy * f]
                     prev = i

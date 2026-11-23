@@ -6,7 +6,6 @@
  ],
  "edge": "bottom",
  "widthMm": 25.0,
- "widthMmNote": "assumption: the real band width is not measured yet",
  "edgeDepth": 0.0,
  "bottomOpen": 0.039,
  "edging": false,
@@ -25,5 +24,12 @@
   "metalPixelShare": 0.0,
   "pearls": 0,
   "pearlsPerRepeat": null
- }
+ },
+ "version": 2,
+ "name": "Resham Bel Lace",
+ "class": "insertion",
+ "widthSrc": "assumed",
+ "repeatSrc": "assumed",
+ "materialFile": "lace-leaf-mat.webp",
+ "endRule": "boundary"
 }

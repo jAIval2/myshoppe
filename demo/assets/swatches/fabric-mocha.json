@@ -1,0 +1,20 @@
+{
+ "name": "Mocha Chikan",
+ "tile": "fabric-mocha-1024.jpg",
+ "tilePx": [
+  1024,
+  1024
+ ],
+ "repeatCm": 30.0,
+ "repeatSrc": "assumed",
+ "class": "allover",
+ "oneWay": false,
+ "sheen": 0.0,
+ "sheenWidth": 1.0,
+ "antiTile": true,
+ "meanRgb": [
+  131,
+  88,
+  55
+ ]
+}

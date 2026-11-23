@@ -354,8 +354,8 @@ What costs us:
 | Option | Covers | Effort | Risk |
 |---|---|---|---|
 | **A. Close the demarcation** | Silhouette | Small to medium | **Done** (2026-11-22): `plan/StepA.md`, results `plan/StepA-results.md` |
-| **B. One fabric frame** | Swatches | Medium | Medium (depends on A) |
-| **C. Lace as parts** | Laces | Medium | Low to medium |
+| **B. One fabric frame** | Swatches | Medium | **Done** (2026-11-23): `plan/StepB.md`, results `plan/StepB-results.md` |
+| **C. Lace as parts** | Laces | Medium | **Done** (2026-11-23): `plan/StepC.md`, results `plan/StepC-results.md` |
 | **D. Interactions on the design record** | Interactions | Medium | Low; needs a real phone |
 | **E. Catalogue factory** | More clothes | Large | Medium; pays back from the 2nd silhouette |
 
@@ -365,14 +365,14 @@ What costs us:
 - Make the two front views agree: edit the torso or neckline image so that the neckline depth agrees within ±3 mm, then re-annotate.
 - Option: soft edges (alpha) from a matting model (SAM 2 with ZIM or SAM2Matting) in place of hard outlines.
 
-**B. One fabric frame for the garment**
+**B. One fabric frame for the garment** — **done** 2026-11-23 (`plan/StepB.md`; open items in `plan/StepB-results.md`, the close). The garment record, `plate.dat` version 3, the frames fitted to the record, swatch sidecars and placement; the data contract is `docs/formats.md`.
 - (u, v) from the centre front and the neck point (§5 C), the same in all 4 views. Front, sleeve and back pieces keep their own grain but join at the seams.
 - Placement: the motif offset is a design value (a buta on the centre front, a border at the hem): the minimum-image rule.
 - Swatch classes: all-over, border (daaman), buta, one-way print, irregular (bandhani, ikat); sheen (cotton, silk, velvet); metal (zari); relief (chikankari).
 - Scale: a swatch sidecar with mm per px from a ruler scan; colour from a card.
 - Optional: normals from the base image, to compress the print where the surface turns away.
 
-**C. Lace as parts**
+**C. Lace as parts** — **done** 2026-11-23 (`plan/StepC.md`; open items in `plan/StepC-results.md`, the close): lace sidecar version 2, `plate.dat` version 4 (the trim fields without names, ends, corners), piece ends and butt joins, a lace per line, whole repeats with hysteresis, a border fabric on the curved hem.
 - Corner and end pieces, as in a pattern brush (side, outer corner, inner corner, start, end tiles): V and square necklines, slit tops, the hem-to-slit join (a butt join now).
 - A join type for each seam: butt, mitre, overlap.
 - A repeat rule while dragging: keep the motif count inside a small scale band (as SHAKE keeps a length), change the count only past a threshold (hysteresis), so that motifs do not jump.

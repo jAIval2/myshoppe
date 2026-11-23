@@ -1,0 +1,20 @@
+{
+ "name": "Mustard Crinkled Gauze",
+ "tile": "fabric-mustard-1024.jpg",
+ "tilePx": [
+  1024,
+  1024
+ ],
+ "repeatCm": 20.0,
+ "repeatSrc": "assumed",
+ "class": "allover",
+ "oneWay": false,
+ "sheen": 0.0,
+ "sheenWidth": 1.0,
+ "antiTile": true,
+ "meanRgb": [
+  222,
+  151,
+  16
+ ]
+}

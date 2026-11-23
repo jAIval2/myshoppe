@@ -1,0 +1,23 @@
+{
+ "name": "Hem border (test)",
+ "tile": "fabric-border-1024.png",
+ "tilePx": [
+  1024,
+  1024
+ ],
+ "repeatCm": 30.0,
+ "repeatSrc": "measured",
+ "class": "border",
+ "oneWay": true,
+ "sheen": 0.0,
+ "sheenWidth": 1.0,
+ "antiTile": false,
+ "meanRgb": [
+  193,
+  197,
+  197
+ ],
+ "borderBottomPx": 1024.0,
+ "borderTopPx": 751.0,
+ "test": true
+}

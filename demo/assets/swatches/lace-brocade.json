@@ -6,7 +6,6 @@
  ],
  "edge": "bottom",
  "widthMm": 28.2,
- "widthMmNote": "measured from the ruler in the photo (18.13 px/mm); 2 pattern periods tall",
  "edgeDepth": 0.0,
  "bottomOpen": 0.0,
  "edging": false,
@@ -20,5 +19,12 @@
  "blendPx": 24,
  "mirror": false,
  "periodMm": 14.12,
- "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between"
+ "note": "the tile starts at a gap between motifs: motif boundaries at multiples of periodPx, centres in between",
+ "version": 2,
+ "name": "Navy & Gold Brocade Border",
+ "class": "border",
+ "widthSrc": "assumed",
+ "repeatSrc": "assumed",
+ "materialFile": null,
+ "endRule": "boundary"
 }

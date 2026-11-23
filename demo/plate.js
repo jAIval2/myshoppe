@@ -52,8 +52,7 @@
   // A lace hangs on its garment edge: the line, resampled every 2 px, with smooth normals (the chord over +-30 mm) onto the zone; s =
   // the cloth length along it (cm, in the zone's fabric frame, 0 at the anchor); open ends carried on by the band. Each segment is one
   // element (part +1 inner, -1 the overhang of an edging trim): { part, a, b, na, nb, sa, sb }. maps.js draws them (TRIM_FS).
-  const LACE_IN_MM = 56, LACE_OUT_MM = 8, SPACING_PX = 2, NORMAL_MM = 30;
-  const S_OFF_CM = 64, T_OFF_MM = 64, SLIT_OFF_CM = { "slit-l": 32, "slit-r": 96 };
+  const SPACING_PX = 2, NORMAL_MM = 30;          // the lace band is the trim's own (bandInMm, bandOutMm: plate.dat, StepB step 2)
   const fround = (x) => Math.floor(x + 0.5);
   function trimAnchorS(s, uv, anchor) {
     if (anchor === "from") return 0;
@@ -70,7 +69,7 @@
     return s[k] - uv[k][0] * rate;
   }
   function trimElements(t, F, mm) {
-    const tin = LACE_IN_MM / mm, tout = t.type === "edging" ? LACE_OUT_MM / mm : 0;
+    const tin = t.bandInMm / mm, tout = t.type === "edging" ? t.bandOutMm / mm : 0;
     const line = t.line, L = length(line), n = Math.max(2, fround(L / SPACING_PX));
     let P = resample(line, n);
     const uv = P.map(([x, y]) => frameUV(F, mm, x, y));
@@ -83,7 +82,10 @@
       const a = P[Math.max(0, i - k)], b = P[Math.min(n, i + k)], tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1;
       return [(-ty / l) * t.side, (tx / l) * t.side];
     });
-    const ok = new Array(P.length - 1).fill(true), cut = t.cut || [], E = tin + 2;
+    const ok = new Array(P.length - 1).fill(true), E = tin + 2;
+    // the ends that stop square (StepC step 3: "cut" and "piece"; trimfield.py square_ends); a "runout" end carries on
+    const cut = t.ends ? ["from", "to"].filter((e) => t.ends[e] !== "runout") : t.cut || [];
+    const sFrom = S[0], sTo = S[S.length - 1];          // the trim's cloth s at its ends (cm, 0 at the anchor)
     P = P.slice(); S = S.slice(); N = N.slice();
     for (const end of ["from", "to"]) {
       if (cut.includes(end)) continue;
@@ -101,7 +103,7 @@
       els.push({ part: 1, a: P[j], b: P[j + 1], na: N[j], nb: N[j + 1], sa: S[j], sb: S[j + 1] });
       if (ok[j] && tout > 0) els.push({ part: -1, a: P[j], b: P[j + 1], na: N[j], nb: N[j + 1], sa: S[j], sb: S[j + 1] });
     }
-    return { els, tin, tout, lengthCm };
+    return { els, tin, tout, lengthCm, sFrom, sTo };
   }
   // two triangles that hold every pixel an element accepts (1 px margin), as silhouette/pipeline/trimfield.py triangles()
   function trimTriangles(el, tin, tout) {
@@ -188,13 +190,21 @@
   function frameUV(F, mm, x, y) {                        // [u, v] in cm
     const [s, r] = frameProject(F.axis, [x, y]);
     const h = Math.max(4, frameCubic(F.half[r >= 0 ? "right" : "left"], s / F.L));
-    const th = (F.thetaDeg * Math.PI) / 180, st = Math.sin(th), ct = Math.cos(th), a = Math.abs(r);
-    let up = a <= h ? (h / st) * Math.asin((a / h) * st) : (h / st) * th + (a - h) / ct;
-    if (r < 0) up = -up;
+    const th = (F.thetaDeg * Math.PI) / 180, yaw = ((F.yawDeg ?? 0) * Math.PI) / 180;
+    let up;
+    if (yaw === 0) {                                     // the arithmetic of StepA, exactly
+      const st = Math.sin(th), ct = Math.cos(th), a = Math.abs(r);
+      up = a <= h ? (h / st) * Math.asin((a / h) * st) : (h / st) * th + (a - h) / ct;
+      if (r < 0) up = -up;
+    } else {                                             // a turned view (StepB step 4; plateframe.py)
+      const sg = r >= 0 ? 1 : -1, ae = sg * th, sp = Math.sin(yaw);
+      const R = h / Math.abs(Math.sin(ae + yaw) - sp);
+      up = Math.abs(r) <= h ? R * (Math.asin(Math.max(-1, Math.min(1, sp + r / R))) - yaw) : R * ae + (r - sg * h) / Math.cos(ae + yaw);
+    }
     const sg = F.sag || {}, c = sg.c ?? 0, s1 = sg.s1 ?? F.s0;
     const w = s1 === F.s0 ? 0 : Math.min(1, Math.max(0, (s - F.s0) / (s1 - F.s0)));
     const sc = s - c * r * r * w;
-    return [(up * mm) / 10, ((sc - F.s0) * mm + (F.vMm ?? 0)) / 10];
+    return [(up * mm + (F.uMm ?? 0)) / 10, ((sc - F.s0) * mm + (F.vMm ?? 0)) / 10];   // uMm: the u shift fitted to the garment (StepB step 3)
   }
   function insidePoly(pt, poly) {                        // the same even-odd test as the Python (edge pairs i - 1, i)
     let c = false;
@@ -236,9 +246,9 @@
   }
   function parseDat(buf) {
     const dv = new DataView(buf), u8 = new Uint8Array(buf);
-    if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "BSP2") throw new Error("plate.dat: not BSP2");
+    if (String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== "BSP4") throw new Error("plate.dat: not BSP4 (rebuild the plate from its source)");
     const version = dv.getUint16(4, true), unit = dv.getUint16(6, true), hlen = dv.getUint32(8, true);
-    if (version !== 2) throw new Error("plate.dat: version " + version);
+    if (version !== 4) throw new Error("plate.dat: version " + version);
     const head = JSON.parse(new TextDecoder().decode(u8.subarray(12, 12 + hlen)));
     let off = 12 + hlen;
     const curves = head.curves.map((n) => {
@@ -261,33 +271,39 @@
       return v;
     };
     const P = walk(head), D = P.decisions || {}, S = P.settings || {};
-    const plate = { viewBox: P.viewBox, mmPerPx: P.mmPerPx, uvRangeCm: P.uvRangeCm ?? 128, zones: {}, trims: {} };
-    for (const [n, z] of Object.entries(P.zones)) plate.zones[n] = { id: z.id, ...((D.zones || {})[n] || {}) };
+    const plate = { viewBox: P.viewBox, mmPerPx: P.mmPerPx, uvPack: P.uvPack, zones: {}, trims: {} };
+    const ROLE = ["group", "field", "slot", "live", "bandInMm", "bandOutMm", "join", "ends", "corners"];   // a trim's tables and roles (StepB, StepC)
+    const roles = (t) => Object.fromEntries(ROLE.filter((k) => t[k] !== undefined).map((k) => [k, t[k]]));
+    plate.garment = P.garment; plate.trimPack = P.trimPack;
+    for (const [n, z] of Object.entries(P.zones)) plate.zones[n] = { id: z.id, piece: z.piece || n, ...((D.zones || {})[n] || {}) };
     for (const [n, t] of Object.entries(P.trims || {}))
-      plate.trims[n] = { id: t.id, type: t.type, ...((D.trims || {})[n] || {}), side: t.side, zone: t.zone, anchor: t.anchor || "cf" };
+      plate.trims[n] = { id: t.id, type: t.type, ...((D.trims || {})[n] || {}), side: t.side, zone: t.zone, anchor: t.anchor || "cf", ...roles(t) };
     for (const k of ["shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck"]) if (D[k] !== undefined) plate[k] = D[k];
     const Z = { view: P.view, mmPerPx: P.mmPerPx, viewBox: P.viewBox, zones: {}, trims: {} };
     for (const k of ["thetaDeg", "shadeSmoothEps", "shadeSmoothMm", "shadeSpace"]) if (S[k] !== undefined) Z[k] = S[k];
-    if (P.uvRangeCm !== undefined) Z.uvRangeCm = P.uvRangeCm;
+    if (P.uvPack !== undefined) Z.uvPack = P.uvPack;
+    if (P.trimPack !== undefined) Z.trimPack = P.trimPack;      // StepC step 2: the trim fields' packing          // StepB step 1: the fabric packing, the same for every plate
     for (const [n, z] of Object.entries(P.zones)) {
-      Z.zones[n] = { order: z.order, outline: outlineOf(P, n) };
+      Z.zones[n] = { order: z.order, outline: outlineOf(P, n), id: z.id, piece: z.piece || n };
       if (z.frame && z.frame.L !== undefined) Z.zones[n].frame = z.frame;
     }
     for (const [n, strips] of Object.entries(underStrips(P))) Z.zones[n].under = strips;
     // StepA step 6: each zone's free edges, in the direction of its outline (the soft edges)
     for (const [n, z] of Object.entries(P.zones))
       Z.zones[n].freeEdges = z.outline.filter(([e]) => P.edges[e].type === "free").map(([e, d]) => (d > 0 ? P.edges[e].points : P.edges[e].points.slice().reverse()).map((p) => [p[0], p[1]]));
-    if (D.uvOffsetCm) Z.uvOffsetCm = D.uvOffsetCm;
     for (const [n, t] of Object.entries(P.trims || {}))
-      Z.trims[n] = Object.fromEntries(["order", "type", "line", "side", "zone", "anchor", "cut"].filter((k) => t[k] !== undefined).map((k) => [k, t[k]]));
+      Z.trims[n] = Object.fromEntries(["order", "type", "line", "side", "zone", "anchor", "cut", "id", ...ROLE].filter((k) => t[k] !== undefined).map((k) => [k, t[k]]));
     for (const k of ["landmarks", "stitches", "invariants"]) if (P[k] !== undefined) Z[k] = P[k];
     if (P.occluders && P.occluders.length) Z.occluders = P.occluders.map((o) => (typeof o[0][0] === "string" ? chainOf(P, o) : o));
-    const cut = Object.values(P.edges).find((e) => e.type === "cut");
-    if (cut) Z.neckEdge = cut.points;
+    const cutName = Object.keys(P.edges).find((n) => P.edges[n].type === "cut");
+    if (cutName) {
+      Z.neckEdge = P.edges[cutName].points;
+      Z.neckZone = Object.keys(P.zones).find((zn) => P.zones[zn].outline.some(([e]) => e === cutName)) || null;   // the live neckline's zone
+    }
     return { plate, zones: Z, P };
   }
 
-  const Plate = { STEP, pyRound, length, resample, trimElements, trimTriangles, LACE_IN_MM, LACE_OUT_MM, S_OFF_CM, T_OFF_MM, SLIT_OFF_CM, offset_poly, outlineOf, frameProject, frameUV, underStrips, insidePoly, parseDat };
+  const Plate = { STEP, pyRound, length, resample, trimElements, trimTriangles, offset_poly, outlineOf, frameProject, frameUV, underStrips, insidePoly, parseDat };
   if (typeof module !== "undefined" && module.exports) module.exports = Plate;
   else root.Plate = Plate;
 })(typeof window !== "undefined" ? window : globalThis);

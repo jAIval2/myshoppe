@@ -6,7 +6,6 @@
  ],
  "edge": "bottom",
  "widthMm": 53.4,
- "widthMmNote": "measured from the ruler in the photo (16.52 px/mm): band 883 px high",
  "edgeDepth": 0.123,
  "bottomOpen": 0.695,
  "edging": true,
@@ -31,5 +30,12 @@
   "pearls": 0,
   "pearlsPerRepeat": 0.0
  },
- "periodMm": 28.56
+ "periodMm": 28.56,
+ "version": 2,
+ "name": "Zari Paisley Lotus Lace",
+ "class": "edging",
+ "widthSrc": "assumed",
+ "repeatSrc": "assumed",
+ "materialFile": "lace-paisley-mat.webp",
+ "endRule": "boundary"
 }

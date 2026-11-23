@@ -6,7 +6,6 @@
  ],
  "edge": "bottom",
  "widthMm": 40.0,
- "widthMmNote": "assumption: the real band width is not measured yet",
  "edgeDepth": 0.112,
  "flipped": true,
  "bottomOpen": 0.752,
@@ -31,5 +30,12 @@
   "metalPixelShare": 0.08,
   "pearls": 0,
   "pearlsPerRepeat": 0.0
- }
+ },
+ "version": 2,
+ "name": "Woven Diamond Border",
+ "class": "edging",
+ "widthSrc": "assumed",
+ "repeatSrc": "assumed",
+ "materialFile": "lace-geometric-mat.webp",
+ "endRule": "boundary"
 }

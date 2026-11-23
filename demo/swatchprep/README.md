@@ -9,7 +9,7 @@ any swatch.
 | | |
 |---|---|
 | **In** | A photo in `sources/`: the fabric flat and lit evenly, or the lace on plain paper. Sources do not ship |
-| **Out** | `../assets/swatches/fabric-<name>-1024.jpg`; `lace-<name>-2048.webp` + its sidecar `lace-<name>.json` + its material map `lace-<name>-mat.webp`. The page's registries (`FABRICS`, `LACES` in `testing.html`) point at them |
+| **Out** | `../assets/swatches/fabric-<name>-1024.jpg`; `lace-<name>-2048.webp` + its sidecar `lace-<name>.json` + its material map `lace-<name>-mat.webp`. `fabric-<name>.json`, the fabric's sidecar (`fabric-sidecar`, StepB step 5: name, real width and its source, class, placement data, sheen, anti-tiling; `docs/formats.md` §3). The page's registries (`FABRICS`, `LACES` in `testing.html`) point at the files |
 
 ## One entry point
 
@@ -23,11 +23,28 @@ python3 demo/swatchprep/prep.py first-swatches <src-dir> <out-dir> <debug-dir>
 
 | Command | Tool | What it does |
 |---|---|---|
-| `fabric` | `prep_fabric.py` | De-lights the photo (divides by a large blur), resizes to 1024 px and makes it seamless (a minimum-error seam to the half-offset copy). The tile's real width (`repeatCm`) is set in `testing.html` `FABRICS` |
+| `fabric` | `prep_fabric.py` | De-lights the photo (divides by a large blur), resizes to 1024 px and makes it seamless (a minimum-error seam to the half-offset copy). The tile's real width (`repeatCm`) goes in its sidecar (`fabric-sidecar`) |
 | `lace` | `prep_lace.py` | A lace on paper: keys out the paper by chromaticity, turns the band horizontal and crops it. The decorative edge goes at the bottom (`--flip` turns it), 446 px tall |
 | `lace-repeat` | `prep_lace.py --repeat` | The band becomes a seamless tile of whole periods (the period found by autocorrelation), plus the sidecar: `periodPx`, `periods`, `periodRatio`, `edgeDepth` (the decorative edge's share of the height), `widthMm` (the lace's real width: the page lays the lace at this width) |
 | `lace-material` | `prep_lace.py --material` | The material map: R height, G metal (zari), B pearl. **It writes into the sidecar it is given** (its `material` block, and `pearls` with `--pearls`): give it the real sidecar only when you mean to update it |
 | `first-swatches` | `prep_swatches.py` | How the first sage fabric and pearl lace were made, from `sources/fabric-sage-640.png` and `sources/lace-pearl-640.png` (kept as the record) |
+
+| `fabric-sidecar` | `fabric_sidecar.py` | The fabric's sidecar `fabric-<name>.json` (StepB step 5). The AI swatches' `repeatCm` is `assumed` |
+| `test-print` | `test_prints.py` | Test fabrics made by a script: `reg` (the registration grid), `buta` (one placed motif), `border` (a hem border). With their sidecars (`--test`), they are `?fabric=<name>` only |
+
+## Lace sidecars, version 2 (StepC step 1)
+
+`lace_sidecar.py upgrade <lace.json> --name "<name>" --class <class> [--width-mm <mm> --src measured]` adds to what `prep_lace.py` writes: `version` 2, `name`, `class` (insertion, edging, border, gota, zari, pearl, mirror, latkan), `widthSrc`, `repeatSrc`, `materialFile`, `endRule`. `lace_sidecar.py check` validates. The page reads the lace's facts from it (`LACES` holds only the band and the sidecar). The six AI laces are `widthSrc: assumed`.
+
+**Measuring a real lace:** photograph it flat on plain paper with a ruler across the band (perpendicular to it). `prep.py lace`, then `lace-repeat --width-mm <the band's measured width>`, then `lace_sidecar.py upgrade … --width-mm <mm> --src measured`. The repeat in cm follows (period ÷ band height × width), so it becomes `measured` too.
+
+## Measuring a real swatch (the scale)
+
+The AI swatches have no physical scale: their `repeatCm` is an assumption and their sidecar says `"repeatSrc": "assumed"`. For a real fabric:
+1. Scan it flat (or photograph it square-on, evenly lit) with a **ruler** along one edge and a **colour card** (a grey and a white patch) in the frame.
+2. `prep.py fabric` makes the seamless tile; note which part of the scan the tile covers.
+3. Measure the tile's real width on the ruler (mm), and write the sidecar with `--repeat-cm <cm> --src measured`. A print's motif (`--motif`) or a border's edge (`--border-bottom`) is read on the tile in px.
+4. The colour card: the tile's white patch should read as the card's white after the de-light; if it does not, the scan's colour is off (re-scan).
 
 ## Sources
 

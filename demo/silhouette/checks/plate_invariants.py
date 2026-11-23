@@ -125,12 +125,12 @@ for name, tr in Z["trims"].items():
             report("trim ends", f"{name} {end}: {math.dist(q, Z['landmarks'][lm]):.1f} px from {lm} (its nearest point on the edge)", True, info=True)
     # the field: complete (every pixel of the zone that the band reaches, 1 px to 30 mm in, along the line's normals, has a value) and
     # continuous (between 4-neighbours of this trim, s changes by at most 4 px of face-on cloth: the frame crowds it at most 1 / cos 70 deg)
-    key = "slit" if name in TF.SLIT_OFF_CM else "main"
-    if name == "neck" and P.get("neck"):
+    key = PT["field"]                                    # the plate's own roles (StepB step 2)
+    if PT["live"] and P.get("neck"):
         report("trim field", f"{name}: laid by the page from the live neck edge (not in the field)", True, info=True)
         continue
     F_ = FIELD[key]
-    zid = make_plate.ZONE_ID[PT["zone"]]
+    zid = MAPS["P"]["zones"][PT["zone"]]["id"]
     pts = resample(tr["line"], 2.0)
     miss = tot = 0
     skip = int(TF.NORMAL_MM / MM / 2.0)                  # a cut end is square to its smooth normal: its first 30 mm are left out
@@ -150,7 +150,7 @@ for name, tr in Z["trims"].items():
     # it (a steep but smooth ramp, where the frame crowds the cloth toward a silhouette, is no seam). Within 30 mm of the edge (the
     # default lace): FAIL; deeper (only the widest laces reach there): information.
     lim = 2 * MM / 10
-    tid0 = make_plate.TRIM_ID[name]
+    tid0 = PT["id"]
     def sv(i):
         o = F_.get(i)
         return o[1] if o and o[0] == tid0 else None
@@ -215,12 +215,34 @@ for zn, z in Z["zones"].items():
     for k in range(1, 20):
         (px, py), _ = plateframe.point_at(F["axis"], F["L"] * k / 20)
         ua, va = f(px + 0.5, py); ub, vb = f(px - 0.5, py); uc, vc = f(px, py + 0.5); ud, vd = f(px, py - 0.5)
-        rates += [math.hypot(ua - ub, uc - ud) / (MM / 10), math.hypot(va - vb, vc - vd) / (MM / 10)]
+        cy = math.cos(math.radians(F.get("yawDeg", 0.0)))   # a turned view: u is foreshortened by 1 / cos(yaw) at the axis (StepB step 4)
+        rates += [math.hypot(ua - ub, uc - ud) * cy / (MM / 10), math.hypot(va - vb, vc - vd) / (MM / 10)]
     report("frame rate", f"{zn}: UV rate at the axis {min(rates):.3f} .. {max(rates):.3f} x face-on (limits 0.98 .. 1.02)", all(0.98 <= r_ <= 1.02 for r_ in rates))
     cfs = [k for k in ("cf-neck", "cf-low", "hem-cf") if k in Z.get("landmarks", {})]
     if zn == "front" and cfs and F.get("axisFrom") != "midline":
         off = [abs(plateframe.project(F["axis"], Z["landmarks"][k])[1]) for k in cfs]
         report("frame cf", f"{zn}: u = 0 through {', '.join(cfs)}: {max(off):.2f} px (limit 1)", max(off) <= 1.0)
+
+# ---- StepB step 3: the frames against the garment record. Each landmark of the fit (plate.dat fit.zones.<z>.residualsMm, the
+# record's value minus the frame's, mm): |du|, |dv| <= 3 mm, or accepted BY THE OWNER in the record (garment.views.<view>.
+# acceptedResiduals: {view landmark: reason}). An agent does not add to that list.
+import garment as GM
+FIT = MAPS["P"].get("fit")
+if FIT is None:
+    report("garment fit", "plate.dat has no fit block (built before StepB step 3)", False)
+else:
+    acc = GM.load(MAPS["P"]["garment"]["look"])["views"][MAPS["P"]["view"]].get("acceptedResiduals", {})
+    for zn, r in FIT["zones"].items():
+        for lab, (du, dv) in r.get("residualsMm", {}).items():
+            lm = lab.split("=")[0]
+            big = max(abs(du or 0.0), abs(dv))
+            ok = big <= 3.0
+            note = f" (accepted: {acc[lm]})" if not ok and lm in acc else ""
+            report("garment fit", f"{zn}: {lab}: du {'-' if du is None else f'{du:.1f}'} mm, dv {dv:.1f} mm (limit 3)" + note, ok or bool(note), info=bool(note))
+        if "seamSpreadMm" in r: report("garment fit", f"{zn}: tied by {r['by']}; spread along the seam {r['seamSpreadMm']} mm", True, info=True)
+    sc = FIT["scale"]
+    if sc.get("pairs"):
+        report("garment fit", f"scale: agreed {sc['agreed']} mm/px; the landmarks fit {sc['fitted']} ({sc['factor']:.3f} x, {sc['pairs']} pairs; information: the agreed scale stays)", True, info=True)
 
 if "--debug" in sys.argv:
     ov = photo.copy(); ov.paste((255, 0, 255), mask=U); ov.save(sys.argv[sys.argv.index("--debug") + 1])

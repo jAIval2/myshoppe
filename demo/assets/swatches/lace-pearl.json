@@ -6,7 +6,6 @@
  ],
  "edge": "bottom",
  "widthMm": 30.0,
- "widthMmNote": "assumption: the real band width is not measured yet",
  "edgeDepth": 0.096,
  "bottomOpen": 0.766,
  "edging": true,
@@ -38,5 +37,12 @@
   "metalPixelShare": 0.0,
   "pearls": 12,
   "pearlsPerRepeat": 6.0
- }
+ },
+ "version": 2,
+ "name": "Pearl Guipure Lace",
+ "class": "pearl",
+ "widthSrc": "assumed",
+ "repeatSrc": "assumed",
+ "materialFile": "lace-pearl-mat.webp",
+ "endRule": "boundary"
 }

@@ -30,7 +30,7 @@
   const FS = `#version 300 es
   precision highp float;
   precision highp int;
-  uniform float uRange;     // UV range in cm (UV_RANGE_CM)
+  uniform float uRange;     // the packing range in cm of the pass (the plate's trimPack.rangeCm; the frame pass: its uvPack.rangeCm)
   ${PACK16}
   in vec2 vUV;
   uniform sampler2D uMask;  // unit 14: the garment (id R > 0), copied from the id once the zones are drawn (trims, step 3)
@@ -59,6 +59,8 @@
   uniform int   uN;          // number of axis points
   uniform vec4  uHalfL, uHalfR;
   uniform float uLen, uTheta, uS0, uVmm, uSagC, uSagS1, uMm;
+  uniform float uUShiftMm;  // the frame's u shift (frame.uMm, StepB step 3; uMm here is the plate's mm per px)
+  uniform float uYaw;       // the body's turn in this view, radians (frame.yawDeg, StepB step 4; 0 = StepA's arithmetic)
   uniform vec2  uUVOff;
   out vec4 outColor;
   float cubic(vec4 c, float t) { t = clamp(t, 0.0, 1.0); return c.x + t * (c.y + t * (c.z + t * c.w)); }
@@ -89,12 +91,19 @@
       }
     }
     float h = max(4.0, cubic(br >= 0.0 ? uHalfR : uHalfL, bs / uLen));
-    float st = sin(uTheta), ct = cos(uTheta), ar = abs(br);
-    float up = ar <= h ? (h / st) * asin(min(1.0, ar / h * st)) : (h / st) * uTheta + (ar - h) / ct;
-    if (br < 0.0) up = -up;
+    float up;
+    if (uYaw == 0.0) {
+      float st = sin(uTheta), ct = cos(uTheta), ar = abs(br);
+      up = ar <= h ? (h / st) * asin(min(1.0, ar / h * st)) : (h / st) * uTheta + (ar - h) / ct;
+      if (br < 0.0) up = -up;
+    } else {                                               // a turned view (plateframe.py)
+      float sg = br >= 0.0 ? 1.0 : -1.0, ae = sg * uTheta, sp = sin(uYaw);
+      float R = h / abs(sin(ae + uYaw) - sp);
+      up = abs(br) <= h ? R * (asin(clamp(sp + br / R, -1.0, 1.0)) - uYaw) : R * ae + (br - sg * h) / cos(ae + uYaw);
+    }
     float wgt = uSagS1 == uS0 ? 0.0 : clamp((bs - uS0) / (uSagS1 - uS0), 0.0, 1.0);
     float sc = bs - uSagC * br * br * wgt;
-    outColor = pack16(vec2(up * uMm / 10.0 + uUVOff.x, ((sc - uS0) * uMm + uVmm) / 10.0 + uUVOff.y));
+    outColor = pack16(vec2((up * uMm + uUShiftMm) / 10.0 + uUVOff.x, ((sc - uS0) * uMm + uVmm) / 10.0 + uUVOff.y));
   }`;
 
 
@@ -102,7 +111,7 @@
   // with the smooth normals at its two ends (flat inputs); the pixel's foot point solves (q - P(tau)) x N(tau) = 0. The element
   // accepts the pixel when 0 <= tau <= 1 and t lies in its band (inner 0..tin, outer -tout..0); the depth is |t|, so the nearest edge
   // wins. The inner part only on the trim's own zone; the overhang where there is no zone, its own, or one behind it (the stencil
-  // keeps it off the objects in front). uMode 1: the field, 16-bit (u = s + uSOff cm, v = (t mm + 64) / 10 cm); 0: id G.
+  // keeps it off the objects in front). uMode 1: the field, 16-bit (u = s + uSOff cm, v = (t mm + uTOff) / 10 cm); 0: id G.
   const TRIM_VS = `#version 300 es
   layout(location = 0) in vec2 aPos;
   layout(location = 1) in vec4 aAB;
@@ -123,8 +132,8 @@
   uniform float uRange;
   ${PACK16}
   uniform sampler2D uMask;   // the zones (id R), copied once the zones and the soft edges are drawn
-  uniform float uZone, uOrder, uTin, uTout, uMm, uSOff, uMode, uTrimId;
-  uniform float uOrderOf[8]; // the order of each zone id
+  uniform float uZone, uOrder, uTin, uTout, uMm, uSOff, uMode, uTrimId, uTOff;
+  uniform float uOrderOf[16]; // the order of each zone id (ids 1..15: plate.dat, StepB step 2)
   flat in vec4 vAB;
   flat in vec4 vN;
   flat in vec3 vSP;
@@ -157,7 +166,7 @@
     if (!found) discard;
     gl_FragDepth = abs(br) / 4096.0;
     if (uMode < 0.5) { outColor = vec4(0.0, uTrimId / 255.0, 0.0, 1.0); return; }
-    outColor = pack16(vec2(bs + uSOff, (br * uMm + 64.0) / 10.0));
+    outColor = pack16(vec2(bs + uSOff, (br * uMm + uTOff) / 10.0));
   }`;
 
   // StepA step 6: a soft free edge. vUV.x = the signed distance d to the edge in px (+ inside), from -3 to +1. id R = the zone, A =
@@ -409,15 +418,19 @@
     One draw for each zone: its outline (and, at a seam, the lower zone's strip under the upper one) into the stencil, one polygon at
     a time, then one quad over the zone's box whose fragment shader evaluates the zone's fabric frame at the pixel (FRAME_FS: the
     arithmetic of Plate.frameUV); the trim field (one element per segment of each trim's line, the nearest edge wins). Exact shapes.
-    id: R zone, G trim, B neck area. uv: the fabric (u, v) in cm + the view's offset, 16-bit: RG = u, BA = v, over UV_RANGE_CM.
-    uvt: the trim field (u = s + 64 cm along the edge, v = (t mm from the edge + 64) / 10), the same packing; uvts: the slits' field
-    (u = s + 32 for slit-l, s + 96 for slit-r). All RGBA8, NEAREST.
+    id: R zone, G trim, B neck area. uv: the fabric (u, v) in cm + the garment offset, 16-bit: RG = u, BA = v, over the plate's
+    uvPack (StepB step 1: {rangeCm, offsetCm}, the same for every plate; the page decodes (u, v) = stored - offsetCm).
+    uvt: the main trim field (u = s + mainSOffCm along the edge, v = (t mm from the edge + tOffMm) / 10); uvts: the open field (the
+    slits: u = s + openSOffCm[slot]); over the plate's trimPack (StepC step 2). All RGBA8, NEAREST.
   */
-  const UV_RANGE_CM = 128;
   const AXIS_MAX = 33;
   function build(gl, { plate, Z, photo = null, sync = false }) {
     const t0 = performance.now();
     const [W, H] = plate.viewBox;
+    const pack = Z.uvPack;
+    if (!pack || !pack.rangeCm || !pack.offsetCm) throw new Error("maps.js: the plate has no uvPack (plate.dat from before StepB step 1: rebuild it)");
+    const tpack = Z.trimPack;
+    if (!tpack) throw new Error("maps.js: the plate has no trimPack (plate.dat from before StepC step 2: rebuild it)");
     // ---- keep the state of the page: the program, the vertex array, the bound buffers, the viewport, the texture unit
     const saved = {
       prog: gl.getParameter(gl.CURRENT_PROGRAM), vao: gl.getParameter(gl.VERTEX_ARRAY_BINDING), vp: gl.getParameter(gl.VIEWPORT),
@@ -447,7 +460,7 @@
     for (const p of [prog, fprog, sprog, tprog]) {
       use(p);
       // an integer plate coordinate is the centre of that pixel (as Pillow draws, and as FRAME_FS evaluates: gl_FragCoord - 0.5)
-      gl.uniform2f(U("uPlate"), W, H); gl.uniform2f(U("uOff"), 0.5, 0.5); gl.uniform1f(U("uRange"), UV_RANGE_CM);
+      gl.uniform2f(U("uPlate"), W, H); gl.uniform2f(U("uOff"), 0.5, 0.5); gl.uniform1f(U("uRange"), p === fprog ? pack.rangeCm : tpack.rangeCm);
     }
     use(prog);
     const vao = gl.createVertexArray();
@@ -493,9 +506,10 @@
     gl.bindFramebuffer(gl.FRAMEBUFFER, uvFbo);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
-    const ZONE_ID = { front: 1, "sleeve-l": 2, "sleeve-r": 3, back: 4, "back-l": 5 };
+    const ZONE_ID = Object.fromEntries(Object.entries(plate.zones).map(([n, z]) => [n, z.id]));   // the plate's own ids (StepB step 2)
+    if (Object.values(ZONE_ID).some((i) => !(i >= 1 && i <= 15))) throw new Error("maps.js: zone ids outside 1..15");
     const rect = plate.neck && plate.neck.rect, dip = plate.neck && plate.neck.edge;
-    const frameOff = Z.uvOffsetCm || [0, 0];
+    const frameOff = pack.offsetCm;
     const setFrame = (F) => {                                // the frame's numbers as uniforms of FRAME_FS (the end normals as Plate)
       const ax = F.axis, n = ax.length;
       if (n > AXIS_MAX) throw new Error(`maps.js: an axis of ${n} points (at most ${AXIS_MAX})`);
@@ -518,12 +532,12 @@
       gl.uniform2fv(U("uAxis"), a); gl.uniform4fv(U("uSegN"), nn); gl.uniform1fv(U("uCum"), cum); gl.uniform1i(U("uN"), n);
       gl.uniform4fv(U("uHalfL"), F.half.left); gl.uniform4fv(U("uHalfR"), F.half.right);
       gl.uniform1f(U("uLen"), F.L); gl.uniform1f(U("uTheta"), (F.thetaDeg * Math.PI) / 180); gl.uniform1f(U("uS0"), F.s0);
-      gl.uniform1f(U("uVmm"), F.vMm ?? 0); gl.uniform1f(U("uSagC"), (F.sag && F.sag.c) || 0); gl.uniform1f(U("uSagS1"), F.sag && F.sag.s1 !== undefined ? F.sag.s1 : F.s0);
+      gl.uniform1f(U("uVmm"), F.vMm ?? 0); gl.uniform1f(U("uUShiftMm"), F.uMm ?? 0); gl.uniform1f(U("uYaw"), ((F.yawDeg ?? 0) * Math.PI) / 180); gl.uniform1f(U("uSagC"), (F.sag && F.sag.c) || 0); gl.uniform1f(U("uSagS1"), F.sag && F.sag.s1 !== undefined ? F.sag.s1 : F.s0);
       gl.uniform1f(U("uMm"), Z.mmPerPx); gl.uniform2f(U("uUVOff"), frameOff[0], frameOff[1]);
     };
     for (const [name, zone] of Object.entries(Z.zones).sort((a, b) => a[1].order - b[1].order)) {
       const polys = [zone.outline, ...(zone.under || [])];
-      const neckZone = name === "front" && rect && dip;
+      const neckZone = name === Z.neckZone && rect && dip;
       const fans = polys.map((p) => fanBuffer(gl, p));
       buffers.push(...fans.map((f) => f.vb));
       if (!zone.frame) throw new Error(`maps.js: zone ${name} has no fabric frame`);
@@ -617,7 +631,7 @@
     // meet), a later group overwrites. The neck of a view with the live neckline is laid by the page from the live edge: not here.
     let uvtTex = null, uvtsTex = null, maskTex = null;
     const fbos = [];
-    const trimList = !Z.trims ? [] : Object.entries(Z.trims).filter(([name]) => !(name === "neck" && plate.neck));
+    const trimList = !Z.trims ? [] : Object.entries(Z.trims).filter(([, t]) => !(t.live && plate.neck));   // the live trim: laid by the page
     if (trimList.length) {
       gl.activeTexture(gl.TEXTURE0 + 14);                   // the zones as they are now (the soft edges included): a sampler, no feedback
       maskTex = dataTexture(gl, W, H, null);
@@ -643,11 +657,11 @@
       use(tprog);
       gl.uniform1i(U("uMask"), 14);
       gl.uniform1f(U("uMm"), plate.mmPerPx);
-      const order = new Float32Array(8).fill(99);
+      const order = new Float32Array(16).fill(99);
       for (const [n, z] of Object.entries(Z.zones)) order[ZONE_ID[n]] = z.order;
       gl.uniform1fv(U("uOrderOf"), order);
       // the elements of each trim: 6 vertices each, 13 floats a vertex (x y, a b, na nb, sa sb part)
-      const groups = { main: new Map(), slit: new Map() };
+      const groups = { main: new Map(), open: new Map() };
       for (const [name, trim] of trimList) {
         const info = plate.trims[name], F = Z.zones[trim.zone].frame;
         const { els, tin, tout } = root.Plate.trimElements(trim, F, plate.mmPerPx);
@@ -662,10 +676,10 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, out, gl.STATIC_DRAW);
           return { vb, n: sel.length * 6 };
         };
-        const key = root.Plate.SLIT_OFF_CM[name] !== undefined ? "slit" : "main";
+        const key = trim.field;                          // main | slit (plate.dat, StepB step 2)
         const zid = ZONE_ID[trim.zone];
         if (!groups[key].has(zid)) groups[key].set(zid, []);
-        groups[key].get(zid).push({ id: info.id, tin, tout, sOff: key === "slit" ? root.Plate.SLIT_OFF_CM[name] : root.Plate.S_OFF_CM,
+        groups[key].get(zid).push({ id: info.id, tin, tout, sOff: key === "open" ? tpack.openSOffCm[trim.slot] : tpack.mainSOffCm,
                                     inner: arr(1), outer: arr(-1) });
       }
       const draw = (g, zid, mode) => {
@@ -685,7 +699,8 @@
         gl.disable(gl.STENCIL_TEST);
       };
       gl.enable(gl.DEPTH_TEST);
-      for (const [key, target] of [["main", uvtFbo], ["slit", uvtsFbo]]) {
+      gl.uniform1f(U("uTOff"), tpack.tOffMm);
+      for (const [key, target] of [["main", uvtFbo], ["open", uvtsFbo]]) {
         for (const zid of [...groups[key].keys()].sort((p, q) => order[p] - order[q])) {
           const g = groups[key].get(zid);
           gl.bindFramebuffer(gl.FRAMEBUFFER, target);
@@ -747,5 +762,5 @@
     return btoa(bin);
   }
 
-  root.Maps = { build, readRaw, UV_RANGE_CM };
+  root.Maps = { build, readRaw };
 })(typeof window !== "undefined" ? window : globalThis);

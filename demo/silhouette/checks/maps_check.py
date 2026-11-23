@@ -20,7 +20,7 @@ sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 import make_plate, platedat, plateframe
 
 pd, logp = sys.argv[1].rstrip("/"), sys.argv[2]
-RANGE = 128.0
+# the trim fields' packing is the plate's trimPack (StepC step 2); the fabric's its uvPack (StepB step 1)
 log = json.load(open(logp))
 res = next(e for e in log if isinstance(e.get("result"), dict))["result"]
 P = platedat.read(pd)
@@ -53,7 +53,7 @@ nd, no = sum(diff.histogram()[1:]), sum(outside.histogram()[1:])
 say("coverage", no == 0, f"{nd} px differ, {no} outside the 1 px edge band" + (f" (bbox {outside.getbbox()})" if no else ""))
 # ---- uv
 puv = raw("uv")
-off = Z.get("uvOffsetCm", [0.0, 0.0])
+FR, off = Z["uvPack"]["rangeCm"], Z["uvPack"]["offsetCm"]
 core = ref_r.filter(ImageFilter.MinFilter(5))
 eq = ref_r.filter(ImageFilter.MaxFilter(5))
 rp, cp, ep = ref_r.load(), core.load(), eq.load()
@@ -66,19 +66,21 @@ for zn, z in Z["zones"].items():
         for x in range(0, W, 3):
             if rp[x, y] != zid or cp[x, y] != zid or ep[x, y] != zid: continue
             i = (y * W + x) * 4
-            u = (puv[i] * 256 + puv[i + 1]) / 65535 * RANGE - off[0]
-            v = (puv[i + 2] * 256 + puv[i + 3]) / 65535 * RANGE - off[1]
+            u = (puv[i] * 256 + puv[i + 1]) / 65535 * FR - off[0]
+            v = (puv[i + 2] * 256 + puv[i + 3]) / 65535 * FR - off[1]
             eu, ev = plateframe.uv(F, MM, x, y)
             errs.append(max(abs(u - eu), abs(v - ev)))
 errs.sort()
 if errs:
-    say("uv", errs[-1] <= 0.01, f"{len(errs)} px: |du|, |dv| median {errs[len(errs) // 2]:.5f}, 99 % {errs[int(len(errs) * 0.99)]:.5f}, max {errs[-1]:.5f} cm (limit 0.01; a 16-bit step is {RANGE / 65535:.5f})")
+    say("uv", errs[-1] <= 0.01, f"{len(errs)} px: |du|, |dv| median {errs[len(errs) // 2]:.5f}, 99 % {errs[int(len(errs) * 0.99)]:.5f}, max {errs[-1]:.5f} cm (limit 0.01; a 16-bit step is {FR / 65535:.5f})")
 # ---- trims (StepA extension, step L2): the page's trim fields (uvt + id G, uvts) against the build's (make_plate.py, trimfield.py)
 import trimfield as TF
 G = page_g.load()
-for key in ("main", "slit"):
+TP = Z["trimPack"]                                   # StepC step 2: the packing of the plate
+SLOT = {t["slot"]: t["id"] for t in P["trims"].values() if t.get("field") == "open"}
+for key in ("main", "open"):
     if key == "main" and "uvt" not in res: continue
-    if key == "slit" and "uvts" not in res: continue
+    if key == "open" and "uvts" not in res: continue
     buf = raw("uvt" if key == "main" else "uvts")
     ref = M["field"][key]
     page = {}
@@ -88,12 +90,12 @@ for key in ("main", "slit"):
             g = G[i % W, i // W]
             if not g: continue
         elif not (buf[k] or buf[k + 1] or buf[k + 2] or buf[k + 3]): continue
-        u = (buf[k] * 256 + buf[k + 1]) / 65535 * RANGE
-        v = (buf[k + 2] * 256 + buf[k + 3]) / 65535 * RANGE
-        if key == "main": page[i] = (g, u - TF.S_OFF_CM, v * 10 - TF.T_OFF_MM)
+        u = (buf[k] * 256 + buf[k + 1]) / 65535 * TP["rangeCm"]
+        v = (buf[k + 2] * 256 + buf[k + 3]) / 65535 * TP["rangeCm"]
+        if key == "main": page[i] = (g, u - TP["mainSOffCm"], v * 10 - TP["tOffMm"])
         else:
-            sid = 6 if u >= 64 else 5
-            page[i] = (sid, u - TF.SLIT_OFF_CM["slit-r" if sid == 6 else "slit-l"], v * 10 - TF.T_OFF_MM)
+            slot = 1 if u >= 0.5 * sum(TP["openSOffCm"]) else 0
+            page[i] = (SLOT.get(slot, -1), u - TP["openSOffCm"][slot], v * 10 - TP["tOffMm"])
     only_p = [i for i in page if i not in ref]; only_r = [i for i in ref if i not in page]
     # a pixel that only one side has must lie on the field's own border: a neighbour (8) without a value on that side, or at the
     # garment's edge (the page's soft-edge ribbon gives the zone 3 px beyond a free edge; the build's outline does not)

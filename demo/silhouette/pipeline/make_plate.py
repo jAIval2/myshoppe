@@ -19,7 +19,7 @@ As a module: build(plate_dir) -> P (the data with its decisions), maps_of(plate_
 
 Maps (in memory; the page builds the same on the GPU):
   id        R = fabric zone id, G = trim id (0 = none), B = 1 in the neck area
-  uv        fabric UV in cm, 12-bit packed: R=U hi8, G=V hi8, B=(U lo4<<4)|V lo4
+  uv        fabric UV in cm + the garment offset (UV_PACK), 12-bit packed (the review image only): R=U hi8, G=V hi8, B=(U lo4<<4)|V lo4
   field     the trim field: s = cloth cm along the trim's edge (0 at its anchor), t = px from the edge (+ on the garment)
   shade     garment luminance / median in LINEAR light, stored as sqrt(shade/2)*255 ("shadeEncoding": "sqrt");
             "shadeSpace": "srgb" = the old encoding, L/median stored as L/2*255 (128 = normal light)
@@ -31,8 +31,17 @@ sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 import platedat, plateframe
 
 STEP = 1.0  # quad size in px (one UV value per pixel)
-ZONE_ID = {"front": 1, "sleeve-l": 2, "sleeve-r": 3, "back": 4, "back-l": 5}   # back: panel beside the slit; back-l: shaded side panel (hem view)
-TRIM_ID = {"neck": 1, "cuff-l": 2, "cuff-r": 3, "hem": 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8}
+# StepB step 1: the packing of the fabric (u, v), the SAME for every plate (plate.dat "uvPack"). The page decodes
+# (u, v) = stored - offsetCm, the true garment cm, so the print's phase comes from the garment and not from the packing.
+# 16-bit over 256 cm: one step is 0.0039 cm (5.7 steps per px on the finest plate, 0.222 mm/px). u from -128 to 128 cm,
+# v from -32 (above the neck-point line) to 224 cm. pack() raises outside it.
+UV_PACK = {"rangeCm": 256.0, "offsetCm": [128.0, 32.0]}
+# StepB step 2: no id tables in code. Each plate numbers its zones and its trims (assign_tables): by draw order, then by name, from 1.
+# The page and the checks read the ids, the pieces, the groups and the roles from plate.dat. At most 15 of each (the page's arrays).
+MAX_ZONES = MAX_TRIMS = 15
+GROUPS = ("neck", "cuffs", "hem", "slits")                    # the page's trim buttons
+JOINS = ("mitre", "butt", "overlap", "open")
+ENDS = ("runout", "cut", "piece")                             # a trim's end (StepC): the silhouette cuts it, a square cut, a whole motif
 
 
 def pack(u, v):
@@ -87,14 +96,14 @@ def fill_exact(img, poly, value=255):
 def rasterise(Z, base):
     """The maps of one plate from its zone data Z (the shape silhouette/pipeline/platedat.py legacy() gives), in memory.
     Returns {id, uv, field, shade, plate (the decisions, as the plate header), k_of_stored, base, garment}.
-    field = {"main": {pixel index: (trim id, s cm, t px)}, "slit": {...}}: the trim field (silhouette/pipeline/trimfield.py).
+    field = {"main": {pixel index: (trim id, s cm, t px)}, "open": {...}}: the trim field (silhouette/pipeline/trimfield.py).
     Every zone has a fabric frame (StepA step 4): its (u, v) at each pixel, its coverage = its outline and its under-strips."""
     Z = copy.deepcopy(Z)
     W, H = base.size
     MMPX = Z["mmPerPx"]
-    # UV range in cm for 12-bit packing ("uvRangeCm"): a close view (0.22 mm/px) needs a finer step than 128 cm / 4095 = 0.031 cm,
-    # or neighbouring pixels share a UV value (block ratio). It must stay above the largest UV value; pack() raises if it does not.
-    CM_RANGE = float(Z.get("uvRangeCm", 128.0))
+    # the fabric packing of every plate (UV_PACK, StepB step 1). In memory the review image uses 12 bits of it (check.png only);
+    # the page packs 16 bits (maps.js). pack() raises if a (u, v) is outside the range.
+    CM_RANGE = UV_PACK["rangeCm"]
     # Cylinder angle of each zone (half the visible arc): "thetaDeg" of the view; defaults below.
     THETA_DEG = {"front": 60, "sleeve-l": 70, "sleeve-r": 70, **Z.get("thetaDeg", {})}
     THETA = {k: math.radians(v) for k, v in THETA_DEG.items()}
@@ -104,25 +113,28 @@ def rasterise(Z, base):
     NECK_REACH_DEEP_MM, NECK_REACH_WIDE_MM, NECK_BAND_MM = 70.0, 25.0, 60.0   # deeper than the photo; wider per side; the widest lace + blend
 
 
+    ZID = {n: z["id"] for n, z in Z["zones"].items()}       # the plate's own ids (StepB step 2)
+    TID = {n: t["id"] for n, t in Z.get("trims", {}).items()}
+    LIVE = next((n for n, t in Z.get("trims", {}).items() if t.get("live")), None)   # the trim the page lays on the live neck edge
+    NZ = Z.get("neckZone")                                     # the zone whose outline holds the cut (live) neck edge
     NECK = None
-    if "front" in Z["zones"] and Z.get("view") in ("neck", "torso") and "neck" in Z.get("trims", {}):
+    if NZ and LIVE:
         edge = [list(p) for p in Z["neckEdge"]] if Z.get("neckEdge") else None   # the cut edge (StepA step 3)
         if edge:
             cfx = Z.get("landmarks", {}).get("cf-neck", [W / 2])[0]
             ylo = max(p[1] for p in edge)
-            reach_w = (NECK_REACH_WIDE_MM + 56.0) / MMPX + 8      # the widest lace (silhouette/pipeline/trimfield.py LACE_IN_MM) past the widest reach
+            reach_w = (NECK_REACH_WIDE_MM + Z["trims"][LIVE]["bandInMm"]) / MMPX + 8   # the live trim's lace band past the widest reach
             rect = (max(0, int(edge[0][0] - reach_w)), int(min(p[1] for p in edge)) - 2,
                     min(W, int(edge[-1][0] + reach_w) + 1), min(H, int(ylo + (NECK_REACH_DEEP_MM + NECK_BAND_MM) / MMPX) + 1))
             NECK = {"edge": edge, "rect": rect, "cfx": cfx}
 
     id_img = Image.new("RGB", (W, H), (0, 0, 0))
     uv_img = Image.new("RGB", (W, H), (0, 0, 0))
-    plate = {"viewBox": [W, H], "mmPerPx": MMPX, "uvRangeCm": CM_RANGE, "zones": {}, "trims": {}}
+    plate = {"viewBox": [W, H], "mmPerPx": MMPX, "zones": {}, "trims": {}}
 
     # ---- StepA step 4: the fabric frame. Each zone's (u, v) from its frame (silhouette/pipeline/plateframe.py), evaluated over the zone's box
     # + 16 px (and, for the front, the whole neck area): exactly on the even pixels, bilinear between them. Coverage = the outline
-    # (and the lower zone's strips under the upper one at its seams). The 12-bit packing needs u, v >= 0: an offset for the whole view
-    # (decisions "uvOffsetCm"), the same in the page.
+    # (and the lower zone's strips under the upper one at its seams). Packed with the garment offset of UV_PACK (StepB step 1).
     FRAMES = {n: z for n, z in Z["zones"].items() if z.get("frame")}
     for n in Z["zones"]:
         if n not in FRAMES: raise ValueError(f"zone {n} has no fabric frame")
@@ -132,7 +144,7 @@ def rasterise(Z, base):
         xs = [p[0] for q in polys for p in q]; ys = [p[1] for q in polys for p in q]
         x0, y0 = max(0, int(min(xs)) - 16), max(0, int(min(ys)) - 16)
         x1, y1 = min(W - 1, int(max(xs)) + 17), min(H - 1, int(max(ys)) + 17)
-        if NECK and name == "front":
+        if NECK and name == NZ:
             x0, y0 = min(x0, NECK["rect"][0]), min(y0, NECK["rect"][1])
             x1, y1 = max(x1, NECK["rect"][2] - 1), max(y1, NECK["rect"][3] - 1)
         F = zone["frame"]
@@ -154,15 +166,13 @@ def rasterise(Z, base):
                 if fx: U[base_i + xx], V[base_i + xx] = (ru[i] + ru[i + 1]) / 2, (rv[i] + rv[i + 1]) / 2
                 else: U[base_i + xx], V[base_i + xx] = ru[i], rv[i]
         FMAP[name] = ((x0, y0, x1 + 1, y1 + 1), U, V)
+    UV_OFF = UV_PACK["offsetCm"]
     if FMAP:
         umin = min(min(m[1]) for m in FMAP.values()); vmin = min(min(m[2]) for m in FMAP.values())
         umax = max(max(m[1]) for m in FMAP.values()); vmax_ = max(max(m[2]) for m in FMAP.values())
-        U0, V0 = float(math.floor(-umin) + 1), float(math.floor(-vmin) + 1)
-        if umax + U0 >= CM_RANGE or vmax_ + V0 >= CM_RANGE:
-            raise ValueError(f"the frame's (u, v) span {umin:.1f}..{umax:.1f}, {vmin:.1f}..{vmax_:.1f} cm: more than uvRangeCm {CM_RANGE}")
-        UV_OFF = [U0, V0]
-    else:
-        UV_OFF = [0.0, 0.0]
+        if umin + UV_OFF[0] < 0 or vmin + UV_OFF[1] < 0 or umax + UV_OFF[0] > CM_RANGE or vmax_ + UV_OFF[1] > CM_RANGE:
+            raise ValueError(f"the frame's (u, v) span {umin:.1f}..{umax:.1f}, {vmin:.1f}..{vmax_:.1f} cm: outside the garment packing "
+                             f"({-UV_OFF[0]:.0f}..{CM_RANGE - UV_OFF[0]:.0f}, {-UV_OFF[1]:.0f}..{CM_RANGE - UV_OFF[1]:.0f} cm, UV_PACK)")
 
     # ---- fabric zones, back to front
     for name, zone in sorted(Z["zones"].items(), key=lambda kv: kv[1]["order"]):
@@ -174,7 +184,7 @@ def rasterise(Z, base):
             mask = Image.new("L", (W, H), 0)
             fill_exact(mask, zone["outline"])
             for strip in zone.get("under", []): fill_exact(mask, strip)
-            if NECK and name == "front":                   # the frame's uv in the whole neck area (the dip too)
+            if NECK and name == NZ:                        # the frame's uv in the whole neck area (the dip too)
                 nr = Image.new("L", (W, H), 0)
                 ImageDraw.Draw(nr).rectangle([NECK["rect"][0], NECK["rect"][1], NECK["rect"][2] - 1, NECK["rect"][3] - 1], fill=255)
                 uv_img.paste(full_uv, (0, 0), ImageChops.lighter(mask, nr))
@@ -183,11 +193,11 @@ def rasterise(Z, base):
                 NECK["area"] = ImageChops.multiply(nr, ImageChops.lighter(mask, dip))
             else:
                 uv_img.paste(full_uv, (0, 0), mask)
-            id_img.paste((ZONE_ID[name], 0, 0), (0, 0), mask)
-            if NECK and name != "front" and "area" in NECK:
+            id_img.paste((ZID[name], 0, 0), (0, 0), mask)
+            if NECK and name != NZ and "area" in NECK:
                 NECK["area"] = ImageChops.subtract(NECK["area"], mask)
             F = zone["frame"]
-            plate["zones"][name] = {"id": ZONE_ID[name], "heightCm": round(F["L"] * MMPX / 10, 1),
+            plate["zones"][name] = {"id": ZID[name], "piece": zone.get("piece", name), "heightCm": round(F["L"] * MMPX / 10, 1),
                                     "widthCm": round((plateframe.cubic(F["half"]["left"], 0.5) + plateframe.cubic(F["half"]["right"], 0.5)) * MMPX / 10, 1)}
             print(f"{name:9} frame  axis {F['L']:.0f} px, theta {F['thetaDeg']}")
 
@@ -202,15 +212,15 @@ def rasterise(Z, base):
     for poly in Z.get("occluders", []):
         ImageDraw.Draw(occl).polygon([tuple(q) for q in poly], fill=255)
     zpx, opx = id_img.load(), occl.load()
-    zorder = {ZONE_ID[n]: z["order"] for n, z in Z["zones"].items()}
-    groups = {"main": {}, "slit": {}}
+    zorder = {ZID[n]: z["order"] for n, z in Z["zones"].items()}
+    groups = {"main": {}, "open": {}}
     for name, trim in Z["trims"].items():
         zn = trim["zone"]
         els, tin, tout, length_cm = TF.trim_elements(trim, Z["zones"][zn]["frame"], MMPX)
-        plate["trims"][name] = {"id": TRIM_ID[name], "type": trim["type"], "lengthCm": round(length_cm, 2), "side": trim["side"],
+        plate["trims"][name] = {"id": TID[name], "type": trim["type"], "lengthCm": round(length_cm, 2), "side": trim["side"],
                                 "zone": zn, "anchor": trim.get("anchor", "cf")}
-        if name == "neck" and NECK: continue
-        groups["slit" if name in TF.SLIT_OFF_CM else "main"].setdefault(ZONE_ID[zn], []).append((TRIM_ID[name], els, tin, tout))
+        if name == LIVE and NECK: continue
+        groups[trim.get("field", "main")].setdefault(ZID[zn], []).append((TID[name], els, tin, tout))
     FIELD = {k: TF.rasterise(sorted(g.items(), key=lambda kv: zorder[kv[0]]), W, H, lambda x, y: zpx[x, y][0], zorder,
                              lambda x, y: opx[x, y] > 0) for k, g in groups.items()}
     gch = Image.new("L", (W, H), 0)
@@ -294,7 +304,7 @@ def rasterise(Z, base):
         r_px = max(1, round(SMOOTH_MM / MMPX))
         id_r = id_img.split()[0]
         smooth = shade_f.copy()
-        for zid in sorted(set(ZONE_ID[n] for n in Z["zones"])):
+        for zid in sorted(set(ZID.values())):
             zmask = id_r.point(lambda p, z=zid: 255 if p == z else 0)
             bb = zmask.getbbox()
             if not bb:
@@ -343,7 +353,7 @@ def rasterise(Z, base):
         shade = Image.composite(shade, Image.new("L", (W, H), 128), garment)
         k_of_stored = [v / 127.5 for v in range(256)]
     plate["shadeMedian"] = med
-    if FMAP: plate["uvOffsetCm"] = UV_OFF
+    plate["uvPack"] = UV_PACK
 
 
     def offset_poly(pts, d, away):
@@ -436,6 +446,21 @@ def rasterise(Z, base):
             "base": base, "garment": garment}
 
 
+def zone_colours(zones):
+    """The checker's colours of each zone id: by its piece (front red, sleeves blue, back green); a second zone of the same piece in
+    one view (the hem view's side panel) purple. The page's grain checker uses the same rule (testing.html zoneTints)."""
+    base = {"front": ((214, 72, 64), (245, 225, 210)), "back": ((38, 150, 96), (215, 240, 222))}
+    sleeve, second = ((44, 92, 190), (215, 228, 250)), ((140, 80, 170), (232, 222, 244))
+    out, seen = {}, set()
+    for n, z in sorted(zones.items(), key=lambda kv: kv[1]["id"]):
+        pc = z.get("piece", n)
+        col = base.get(pc, sleeve)
+        if pc in seen and pc in base: col = second
+        seen.add(pc)
+        out[z["id"]] = col
+    return out
+
+
 def check_image(M):
     """check.png: a 2 cm checker on the fabric, times the shade; on the trims, a 30 mm lace as stripes every cm along (purple on
     gold, the overhang orange), the mitres and the ends as the field lays them."""
@@ -445,13 +470,12 @@ def check_image(M):
     uvp, idp, shp = uv_img.load(), id_img.load(), shade.load()
     out = base.copy()
     op = out.load()
-    COL = {1: ((214, 72, 64), (245, 225, 210)), 2: ((44, 92, 190), (215, 228, 250)),
-           3: ((44, 92, 190), (215, 228, 250)), 4: ((38, 150, 96), (215, 240, 222)),
-           5: ((140, 80, 170), (232, 222, 244))}
+    COL = zone_colours(M["plate"]["zones"])
 
     def unpack(p):
-        u = ((p[0] << 4) | (p[2] >> 4)) / 4095 * M["plate"]["uvRangeCm"]
-        v = ((p[1] << 4) | (p[2] & 15)) / 4095 * M["plate"]["uvRangeCm"]
+        pk = M["plate"]["uvPack"]
+        u = ((p[0] << 4) | (p[2] >> 4)) / 4095 * pk["rangeCm"] - pk["offsetCm"][0]
+        v = ((p[1] << 4) | (p[2] & 15)) / 4095 * pk["rangeCm"] - pk["offsetCm"][1]
         return u, v
 
     for y in range(H):
@@ -460,7 +484,7 @@ def check_image(M):
             if not z: continue
             u, v = unpack(uvp[x, y])
             op[x, y] = tuple(min(255, int(ch * k_of_stored[shp[x, y]])) for ch in COL[z][(int(u / 2) + int(v / 2)) % 2])
-    for key in ("main", "slit"):
+    for key in ("main", "open"):
         for i, (tid, s_, t) in M["field"][key].items():
             x, y = i % W, i // W
             tm = t * MM
@@ -538,9 +562,15 @@ def source_png(pd):
     return os.path.join(SIL, "sources", os.path.basename(os.path.normpath(pd)) + ".png")
 
 
+def module_name(pd):
+    """The view's measured source: silhouette/views/<view>_<variant>.py for a look's own plate (torso-angrakha ->
+    torso_angrakha.py, 2026-11-23), else silhouette/views/<view>.py (the straight kurta's: torso-straight -> torso.py)."""
+    own = os.path.basename(os.path.normpath(pd)).replace("-", "_")
+    return own if os.path.exists(os.path.join(SIL, "views", own + ".py")) else view_of(pd)
+
+
 def annotate_module(pd):
-    """The view's measured source: silhouette/views/<view>.py."""
-    name = view_of(pd)
+    name = module_name(pd)
     if not os.path.exists(os.path.join(SIL, "views", name + ".py")): return None
     return importlib.import_module(name)
 
@@ -558,7 +588,7 @@ def derive_trims(P):
         e = P["edges"][t["edge"]]["points"]
         zn = next(z for z, zz in P["zones"].items() if any(n == t["edge"] for n, _ in zz["outline"]))
         C = SE.resample(e, 1.0)
-        h = max(1, round(2.0 / mm))                       # 4 mm window, symmetric: it shrinks toward the ends (no kink at an end)
+        h = max(1, round(t.get("smoothMm", 4.0) / 2 / mm))  # 4 mm window (a trim's "smoothMm": a gathered hem), symmetric: it shrinks toward the ends
         sm = []
         for i in range(len(C)):
             k = min(h, i, len(C) - 1 - i)
@@ -590,8 +620,9 @@ def fit_frames(P):
     for zn, z in P["zones"].items():
         spec = z.get("frame")
         if not spec: continue
-        spec = {k: v for k, v in spec.items() if k in ("axisFrom", "anchor", "sagEdge", "skipTop", "axisDegree")} if "axisFrom" in spec else {
-            "axisFrom": spec["axis"], **{k: v for k, v in spec.items() if k in ("anchor", "sagEdge", "skipTop", "axisDegree")}}
+        KEYS = ("anchor", "sagEdge", "skipTop", "axisDegree", "bodyOf")
+        spec = {k: v for k, v in spec.items() if k in ("axisFrom",) + KEYS} if "axisFrom" in spec else {
+            "axisFrom": spec["axis"], **{k: v for k, v in spec.items() if k in KEYS}}
         O = platedat.outline(P, zn)
         a = spec["axisFrom"]
         if a == "midline":
@@ -643,9 +674,17 @@ def fit_frames(P):
             s0 = plateframe.project(axis, P["landmarks"][an["point"]])[0]
         segs = []
         occl = {n for o in P.get("occluders", []) if o and isinstance(o[0][0], str) for n, _ in o}   # an object in front is no silhouette
-        for name, d in z["outline"]:
-            pts = P["edges"][name]["points"]
-            segs += [(p, q, "frame" if name in occl else P["edges"][name]["type"]) for p, q in zip(pts, pts[1:])]
+        # "bodyOf": the half widths from the silhouette of several zones (two panels of one front: the wrap's over and under panels,
+        # 2026-11-23), their seams with each other left out; default: the zone's own outline
+        group = spec.get("bodyOf") or [zn]
+        seen_e = set()
+        for gz in group:
+            for name, d in P["zones"][gz]["outline"]:
+                e = P["edges"][name]
+                if name in seen_e or (e["type"] == "seam" and len(group) > 1 and set(e.get("zones", [])) <= set(group)): continue
+                seen_e.add(name)
+                pts = e["points"]
+                segs += [(p, q, "frame" if name in occl else e["type"]) for p, q in zip(pts, pts[1:])]
         half, info = plateframe.fit_half(axis, segs, spec.get("skipTop", 0.0))
         F = {**spec, "axis": axis, "L": round(L, 3), "s0": round(s0, 3), "vMm": an.get("vMm", 0.0), "thetaDeg": thd[zn], "half": half,
              "sag": plateframe.fit_sag(axis, P["edges"][spec["sagEdge"]]["points"], s0) if spec.get("sagEdge") else {"c": 0.0, "s1": round(s0, 3)}}
@@ -680,17 +719,69 @@ def source(pd):
     return P, Image.open(os.path.join(pd, "base.jpg")).convert("RGB"), None
 
 
+def assign_tables(P):
+    """StepB step 2: what the page and the checks read from the plate instead of tables in code. Raises if the plate does not fit the
+    garment record (silhouette/pipeline/garment.py) or the page's limits.
+      garment      {look, version, hash} of the record the plate is built against (the look = the view's "variant")
+      zones        id (by draw order, then name, from 1), piece (the record's views.<view>.zones)
+      trims        id (the same rule), group (the page's buttons), field (main | slit: the slits have a field of their own), live (true
+                   on the trim whose edge is the cut edge: the page lays it on the live neckline), bandInMm / bandOutMm (the depth the
+                   trim field covers inward, and outward for an edging: settings "laceBandMm", default trimfield.DEFAULT_BAND_MM),
+                   join {kind: mitre | butt | overlap | open, with: [trims]}
+      landmarks    every landmark must be named in the record (a garment point, a point of a line, or null: not a garment point)"""
+    import garment as GM, trimfield as TF
+    look, view = P.get("variant"), P["view"]
+    G = GM.load(look)
+    bad = GM.validate(G)
+    if bad: raise ValueError(f"the garment record of {look} does not validate:\n  " + "\n  ".join(bad))
+    VG = G["views"].get(view)
+    if VG is None: raise ValueError(f"the garment record of {look} has no view {view}")
+    for lm in P.get("landmarks", {}):
+        if lm not in VG["landmarks"]: raise ValueError(f"{view}: landmark {lm} is not named in the garment record (views.{view}.landmarks)")
+    P["garment"] = {"look": look, "version": G["version"], "hash": GM.ghash(G)}
+    zs = sorted(P["zones"], key=lambda n: (P["zones"][n]["order"], n))
+    if len(zs) > MAX_ZONES: raise ValueError(f"{len(zs)} zones (at most {MAX_ZONES})")
+    for i, n in enumerate(zs, 1):
+        if n not in VG["zones"]: raise ValueError(f"{view}: zone {n} has no piece in the garment record (views.{view}.zones)")
+        P["zones"][n]["id"], P["zones"][n]["piece"] = i, VG["zones"][n]
+    T = P.get("trims", {})
+    ts = sorted(T, key=lambda n: (T[n].get("order", 0), n))
+    if len(ts) > MAX_TRIMS: raise ValueError(f"{len(ts)} trims (at most {MAX_TRIMS})")
+    band = P.get("settings", {}).get("laceBandMm", TF.DEFAULT_BAND_MM)
+    for i, n in enumerate(ts, 1):
+        t = T[n]
+        if t.get("group") not in GROUPS: raise ValueError(f"{view}: trim {n}: group {t.get('group')} (one of {GROUPS})")
+        j = t.get("join") or {"kind": "open", "with": []}
+        if isinstance(j, str) or j.get("kind") not in JOINS or any(w not in T for w in j.get("with", [])):
+            raise ValueError(f"{view}: trim {n}: join {j} (kind one of {JOINS}, with: trims of this plate)")
+        cut = t.get("cut", [])
+        ends = t.get("ends") or {e: ("cut" if e in cut else "runout") for e in ("from", "to")}
+        if any(k not in ENDS for k in ends.values()): raise ValueError(f"{view}: trim {n}: ends {ends} (each one of {ENDS})")
+        t.update({"id": i, "field": "open" if t["group"] == "slits" else "main", "ends": ends,
+                  "corners": TF.corners(t["line"], P["mmPerPx"]) if t.get("line") else [],
+                  "live": P["edges"].get(t.get("edge"), {}).get("type") == "cut",
+                  "bandInMm": float(t.get("bandInMm", band["in"])),
+                  "bandOutMm": float(t.get("bandOutMm", band["out"])) if t["type"] == "edging" else 0.0,
+                  "join": {"kind": j["kind"], "with": list(j.get("with", []))}})
+    if sum(t["live"] for t in T.values()) > 1: raise ValueError(f"{view}: more than one trim on a cut edge")
+    opens = sorted((t["id"], n) for n, t in T.items() if t["field"] == "open")
+    if len(opens) > 2: raise ValueError(f"{view}: {len(opens)} trims in the open field (at most 2: StepC step 2)")
+    for slot, (_, n) in enumerate(opens): T[n]["slot"] = slot
+    P["trimPack"] = dict(TF.TRIM_PACK)
+
+
 def decide(P, base):
     """The decisions of the plate (taken from the image), with the maps that they came from."""
-    for n, z in P["zones"].items(): z["id"] = ZONE_ID[n]
-    for n, t in P.get("trims", {}).items(): t["id"] = TRIM_ID[n]
+    assign_tables(P)
     _, Z = platedat.legacy(P)
     M = rasterise(Z, base)
     pl = M["plate"]
-    D = {k: pl[k] for k in ("shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck", "uvOffsetCm") if k in pl}
+    D = {k: pl[k] for k in ("shadeSmoothMm", "shadeSmoothPx", "shadeSpace", "shadeEncoding", "shadeMedian", "neck") if k in pl}
     D["zones"] = {n: {"widthCm": v["widthCm"], "heightCm": v["heightCm"]} for n, v in pl["zones"].items()}
     D["trims"] = {n: {"lengthCm": v["lengthCm"]} for n, v in pl["trims"].items()}
     P["decisions"] = D
+    P.pop("uvRangeCm", None)                                # StepB step 1: one packing for every plate
+    P["uvPack"] = dict(UV_PACK)
     return P, M
 
 
@@ -710,6 +801,12 @@ def build(pd, report=None):
                     break
         derive_trims(P)
         fit_frames(P)                                       # StepA step 4: the fabric frame of each zone
+        assign_tables(P)                                    # (the pieces, for the fit)
+        import garmentfit                                   # StepB step 3: the frames' free offsets fitted to the garment record
+        P["fit"] = garmentfit.fit(P, lambda zn: platedat.outline(P, zn))
+        for zn, r in P["fit"]["zones"].items():
+            F = P["zones"][zn]["frame"]
+            print(f"fit   {zn:9} free {','.join(r['free']) or '-':4} by {r['by'][:40]:40} uMm {F['uMm']:9.3f}  vMm {F['vMm']:9.3f}")
     P, M = decide(P, base)
     return P, M, base, mod
 

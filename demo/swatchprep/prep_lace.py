@@ -187,7 +187,7 @@ def make_repeat(src, out, out_json, prev, width_mm, flip=False):
     W, H = band.size
     P, c, peaks = find_period(band)
     info = {"source": src.split("/")[-1], "bandPx": [W, H], "edge": "bottom", "widthMm": width_mm,
-            "widthMmNote": "assumption: the real band width is not measured yet"}
+            "widthSrc": "assumed"}                          # then swatchprep/lace_sidecar.py upgrade: version 2 (name, class, sources)
     ed, cover = edge_depth(band)
     info["edgeDepth"] = ed
     if flip:

@@ -22,12 +22,32 @@ sys.path[:0] = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 
 import plateframe
 
-LACE_IN_MM = 56.0      # the band inward: the widest lace (53.4 mm, paisley) and a margin
-LACE_OUT_MM = 8.0      # the band outward: the deepest overhang (edgeDepth 0.123 x 53.4 mm = 6.6 mm) and a margin
+# The band a trim's field covers (StepB step 2: per trim in plate.dat, bandInMm / bandOutMm; these are the defaults the build writes,
+# overridden by the view's settings "laceBandMm" or by the trim itself). Inward: the widest lace (53.4 mm, paisley) and a margin.
+# Outward (an edging only): the deepest overhang (edgeDepth 0.123 x 53.4 mm = 6.6 mm) and a margin.
+DEFAULT_BAND_MM = {"in": 56.0, "out": 8.0}
 SPACING_PX = 2.0       # the line resampled every 2 px
 NORMAL_MM = 30.0       # the normal of a point: the chord over +-30 mm of the line
-S_OFF_CM, T_OFF_MM = 64.0, 64.0          # the packing (maps.js): u = s + 64 cm, v = (t mm + 64) / 10 cm
-SLIT_OFF_CM = {"slit-l": 32.0, "slit-r": 96.0}   # the slits' field: u = s + 32 (slit-l) or s + 96 (slit-r)
+# The page's packing of the trim fields (StepC step 2; plate.dat "trimPack", the same for every plate): 16 bits over rangeCm;
+# the main field u = s + mainSOffCm (s within +-128 cm); the open field (the slits: toggled apart, mitred against the hem) holds two
+# trims, slot 0 at s + openSOffCm[0], slot 1 at s + openSOffCm[1] (s within +-64 cm each); v = (t mm + tOffMm) / 10 cm.
+TRIM_PACK = {"rangeCm": 256.0, "mainSOffCm": 128.0, "openSOffCm": [64.0, 192.0], "tOffMm": 64.0}
+CORNER_DEG, CORNER_MM = 35.0, 5.0        # a corner: the line turns more than 35 deg within 5 mm (StepC step 2)
+
+
+def corners(line, mm):
+    """The sharp corners along a trim's line: [{at: px index along the resampled line, deg, side: +1 left / -1 right}]."""
+    import math as m
+    k = max(2, round(CORNER_MM / mm))
+    out, i = [], k
+    while i < len(line) - k:
+        a, b, c = line[i - k], line[i], line[i + k]
+        d1, d2 = m.atan2(b[1] - a[1], b[0] - a[0]), m.atan2(c[1] - b[1], c[0] - b[0])
+        turn = m.degrees((d2 - d1 + m.pi) % (2 * m.pi) - m.pi)
+        if abs(turn) > CORNER_DEG:
+            out.append({"at": [round(b[0], 1), round(b[1], 1)], "deg": round(turn, 1), "side": 1 if turn > 0 else -1}); i += 2 * k
+        else: i += 1
+    return out
 
 
 def resample(pts, n):
@@ -154,12 +174,19 @@ def triangles(el, tin, tout):
     return [(A0, B0, B1), (A0, B1, A1)]
 
 
+def square_ends(t):
+    """The ends that stop square (StepC step 3): "cut" and "piece" (the lace ends on its last whole motif there); a "runout" end carries
+    on and the outline cuts it. Plates before version 4: the "cut" list."""
+    E = t.get("ends")
+    return [e for e in ("from", "to") if E[e] != "runout"] if E else list(t.get("cut", []))
+
+
 def trim_elements(t, F, mm):
     """Everything the field needs of one trim t (the plate's trim with line, side, type, anchor, cut) on its zone's frame F:
     (elements, tin px, tout px, cloth length cm)."""
-    tin, tout = LACE_IN_MM / mm, (LACE_OUT_MM / mm if t.get("type") == "edging" else 0.0)
+    tin, tout = t["bandInMm"] / mm, (t["bandOutMm"] / mm if t.get("type") == "edging" else 0.0)
     P, S, N, length = points([tuple(p) for p in t["line"]], F, mm, t["side"], t.get("anchor", "cf"))
-    P, S, N, ok = extended(P, S, N, t.get("cut", []), tin)
+    P, S, N, ok = extended(P, S, N, square_ends(t), tin)
     return elements(P, S, N, ok, tout), tin, tout, length
 
 

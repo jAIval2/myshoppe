@@ -49,7 +49,8 @@ def main(a):
     name, pd = plate_of(rest[0])
     opts = rest[1:]
     if cmd == "measure":
-        return run([*PY, os.path.join(SIL, "views", name.split("-")[0] + ".py")])
+        own = os.path.join(SIL, "views", name.replace("-", "_") + ".py")
+        return run([*PY, own if os.path.exists(own) else os.path.join(SIL, "views", name.split("-")[0] + ".py")])
     if cmd == "build":
         return run([*PY, os.path.join(SIL, "pipeline", "make_plate.py"), pd, *opts])
     if cmd == "check":

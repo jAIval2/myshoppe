@@ -299,7 +299,7 @@ The rim fell by 80–100 %. The limits are met on the torso and the neck view in
 
 ## Step 8: Device and person checks
 
-**Pending the user's check on a phone and a laptop** of the published zip (2026-11-22). For each view, open `testing.html?step=<cloth|neck|sleeve|hem>&perf=1` and write here:
+**Passed** (the owner, 2026-11-23: "device checks have passed for the current html and works well"; the individual numbers were not supplied). The check was asked on a phone and a laptop of the published zip (2026-11-22). For each view, open `testing.html?step=<cloth|neck|sleeve|hem>&perf=1` and write here:
 
 | Device | View | Build (ms, limit 50 laptop / 250 phone) | Draw (ms) | Drag (fps, ≥ 30) | Float render targets |
 |---|---|---|---|---|---|
@@ -324,8 +324,8 @@ StepA is closed (2026-11-22), with step 8 pending on devices and the open items 
 | 9. Fabric frame, no Coons | Steps 4 and 7 | Met |
 | 10. The torso measured | Step 2; hem, seam and slit corner read again in the extension | Met |
 | 11. `plate_invariants.py` passes | neck ALL PASS; the others fail closure only, each written with its number | Open (3 closure FAILs) |
-| 12. The shade on the GPU | Built in `maps.js`; float targets on devices: step 8 | Pending step 8 |
-| 13. Speed | Software 1.05–1.19 s per view (faster than `numeric`); device budgets: step 8 | Pending step 8 |
+| 12. The shade on the GPU | Built in `maps.js`; float targets on devices: step 8 | Passed (step 8, 2026-11-23) |
+| 13. Speed | Software 1.05–1.19 s per view (faster than `numeric`); device budgets: step 8 | Passed (step 8, 2026-11-23) |
 
 **Open items, carried to the next plans:**
 - Closure FAILs: the sleeve view 0.0596 %, and small pieces on the torso (6 px) and the hem (10 px).

@@ -1,0 +1,21 @@
+{
+ "name": "Registration grid (test)",
+ "tile": "fabric-reg-1024.png",
+ "tilePx": [
+  1024,
+  1024
+ ],
+ "repeatCm": 30.0,
+ "repeatSrc": "measured",
+ "class": "allover",
+ "oneWay": false,
+ "sheen": 0.0,
+ "sheenWidth": 1.0,
+ "antiTile": false,
+ "meanRgb": [
+  214,
+  213,
+  210
+ ],
+ "test": true
+}

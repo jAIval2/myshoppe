@@ -1,0 +1,26 @@
+{
+ "version": 2,
+ "name": "Registration lace (test)",
+ "source": "lace-reg-2048.webp",
+ "bandPx": [
+  1200,
+  446
+ ],
+ "edge": "bottom",
+ "widthMm": 30.0,
+ "widthSrc": "measured",
+ "repeatSrc": "measured",
+ "class": "insertion",
+ "edgeDepth": 0.0,
+ "bottomOpen": 0.0,
+ "edging": false,
+ "periodPx": 300.0,
+ "periods": 4,
+ "periodRatio": 0.67265,
+ "motifCentrePx": 150.0,
+ "mirror": false,
+ "test": true,
+ "note": "a test lace made by swatchprep/test_prints.py: its scale is exact by construction",
+ "materialFile": null,
+ "endRule": "boundary"
+}

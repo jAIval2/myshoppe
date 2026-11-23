@@ -26,7 +26,7 @@ One folder for each plate: `assets/plates/<view>-<variant>/`, for example `asset
 |---|---|---|
 | `silhouette/sources/<plate>.png` | The image as received (the input; it is measured). Not in the plate folder | No |
 | `base.jpg` | The 1200 × 1600 photo, made from the source | Yes |
-| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP2`): typed edges, zone outlines and fabric frames, trims, stitches, landmarks, occluders, scale, settings, and the decisions taken from the image | Yes |
+| `plate.dat` | Every number of the view (`silhouette/pipeline/platedat.py`, `BSP3`): the garment it is built against, typed edges, zone outlines, pieces and fabric frames, trims with their ids, groups, roles, lace bands and joins, stitches, landmarks, occluders, scale, settings, the fabric packing (`uvPack`), and the decisions taken from the image | Yes |
 
 - The **source** of a plate is `silhouette/sources/<plate>.png` + `silhouette/views/<view>.py` (the measured points). `silhouette/pipeline/make_plate.py <plate>` builds `base.jpg` and `plate.dat` from them, deterministically.
 - **Nothing is edited by hand in a plate.** A change is a change to the annotate script (or to a tool), then `make_plate.py <plate>`.
@@ -149,8 +149,9 @@ Add an entry to `render.md` §11: source and crop, script, scale and its cross-c
 
 | Limit | Affects | Fix |
 |---|---|---|
-| Zone names are fixed in `make_plate.py` `ZONE_ID` (front 1, sleeve-l 2, sleeve-r 3, back 4, back-l 5) and the shader's checker colours | New pieces | Add a name and an id in both |
-| Trim names are fixed (`TRIM_ID`, the page's `TRIMS`) | New trims | Add a name and an id in both |
+| A view's zones must be pieces of the garment record, and its landmarks named there (`assets/looks/<look>.json`, `garment.views.<view>`; StepB step 2) | A new view or zone | Add the zone's piece and the landmarks' names to the record; ids are assigned by the build (draw order, then name) |
+| At most 15 zones and 15 trims in a plate (the page's arrays) | Many-piece garments | Split the view, or raise the arrays (`testing.html`, `maps.js`) and `MAX_ZONES` / `MAX_TRIMS` |
+| A trim needs a `group` (neck, cuffs, hem, slits: the page's buttons and the lace lines). The open field (the slits) holds at most 2 trims (`slot` 0, 1); an edge runs at most ±128 cm (main) or ±64 cm (open) from its anchor (`trimPack`) | A third opening; a very long hem | A second open field, or a wider `trimPack` |
 | One cylinder for each zone (`thetaDeg`, symmetric about the axis) | Turned views, zones cut by the frame | The axis and `thetaDeg` of the turned zone; a side whose rays end on the frame takes the other side's profile |
 | An axis has at most 33 points (the shader's arrays) | Very bent zones | A polynomial axis through a few measured centres (16 segments) |
 | The snap needs a colour step | Garment against the linen mannequin arm, white over white | Weak spans keep the measured points; measure them carefully |

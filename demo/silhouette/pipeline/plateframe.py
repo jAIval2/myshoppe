@@ -8,10 +8,16 @@ A frame (stored in plate.dat, zones.<name>.frame):
   half     {"left": [c0, c1, c2, c3], "right": [...]}: the half width (px) on each side, a cubic in t = s / L (clamped to 0..1)
   sag      {"c": c, "s1": s1}: the weft lines curve like the hem (or the cuff): s is corrected by c r^2, fully at s1 (the hem's position
            on the axis), not at all at the anchor, linearly between (0 when there is no hem or cuff)
+  yawDeg   the turn of the body about the axis in this view (StepB step 4; 0 = the old arithmetic exactly). With phi = yawDeg, a
+           side's edge at the cloth angle a_e = +-theta, x = r the signed distance: R = h / |sin(a_e + phi) - sin phi| and
+           u_px = R (asin(sin phi + r / R) - phi) for |r| <= h, continued past the silhouette with the slope 1 / cos(a_e + phi)
+  uMm      a shift of u (mm; StepB step 3): the zone's axis is its own midline, u = 0 on the piece's grain line is elsewhere
+           (silhouette/pipeline/garmentfit.py fits it, and vMm, to the garment record; 0 when the axis is the piece's grain line)
 For a point q: s = its position along the axis (the foot of the perpendicular; past the ends, along the end segments' lines), r = its
 signed distance (+ to the right of the axis, walking down it). With h = half(side, s):
   u = R asin(r / R'), R = h / sin(theta), r' = r sin(theta) / h ... i.e. u_px = (h / sin th) asin((r / h) sin th) for |r| <= h,
       continued linearly past the silhouette (the slope there: 1 / cos th);  u_cm = u_px * mmPerPx / 10
+  u_cm += uMm / 10
   v_cm = ((s - c r^2 w(s)) - s0) * mmPerPx / 10 + vMm / 10,   w = clamp((s - s0) / (s1 - s0), 0, 1)
 """
 import math
@@ -92,18 +98,26 @@ def uv(F, mm, x, y):
     s, r = project(F["axis"], (x, y))
     h = max(4.0, cubic(F["half"]["right" if r >= 0 else "left"], s / F["L"]))
     th = math.radians(F["thetaDeg"])
-    st, ct = math.sin(th), math.cos(th)
-    a = abs(r)
-    if a <= h:
-        up = (h / st) * math.asin(a / h * st)
-    else:
-        up = (h / st) * th + (a - h) / ct
-    if r < 0: up = -up
+    yaw = math.radians(F.get("yawDeg", 0.0))
+    if yaw == 0.0:                                        # the arithmetic of StepA, exactly
+        st, ct = math.sin(th), math.cos(th)
+        a = abs(r)
+        if a <= h:
+            up = (h / st) * math.asin(a / h * st)
+        else:
+            up = (h / st) * th + (a - h) / ct
+        if r < 0: up = -up
+    else:                                                 # a turned view (StepB step 4)
+        sg = 1.0 if r >= 0 else -1.0
+        ae, sp = sg * th, math.sin(yaw)
+        R = h / abs(math.sin(ae + yaw) - sp)
+        if abs(r) <= h: up = R * (math.asin(max(-1.0, min(1.0, sp + r / R))) - yaw)
+        else: up = R * ae + (r - sg * h) / math.cos(ae + yaw)
     sg = F.get("sag") or {}
     c, s1 = sg.get("c", 0.0), sg.get("s1", F["s0"])
     w = 0.0 if s1 == F["s0"] else min(1.0, max(0.0, (s - F["s0"]) / (s1 - F["s0"])))
     sc = s - c * r * r * w
-    return up * mm / 10.0, ((sc - F["s0"]) * mm + F.get("vMm", 0.0)) / 10.0
+    return (up * mm + F.get("uMm", 0.0)) / 10.0, ((sc - F["s0"]) * mm + F.get("vMm", 0.0)) / 10.0
 
 
 # ---- fitting (the build)

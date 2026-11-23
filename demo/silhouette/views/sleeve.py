@@ -171,8 +171,8 @@ def measure():
                   "Sparkle mark on the garment (1888-1985, 1888-1985) covered with a patch of garment from 190 px to the left.",
         "landmarks": L, "edges": edges, "zones": zones,
         # trims: each lace hangs on its garment edge (the build derives the line: StepA extension, step L1)
-        "trims": {"neck": {"order": 3, "type": "insertion", "edge": "neck", "from": "neck-l", "to": "neck-r"},
-                  "cuff-l": {"order": 3, "type": "edging", "edge": "cuff"}},
+        "trims": {"neck": {"order": 3, "type": "insertion", "group": "neck", "edge": "neck", "from": "neck-l", "to": "neck-r"},
+                  "cuff-l": {"order": 3, "type": "edging", "group": "cuffs", "edge": "cuff", "bandInMm": 100.0}},   # StepC step 6
         "stitches": {"neck-topstitch": neck_stitch, "cuff-topstitch": T(cuff_stitch)},
         # objects in front of the garment (polish.md step 5): an edging lace hanging past the cuff must not cover the arm
         # (a chain of the plate's edges, so that it follows the snapped edges)

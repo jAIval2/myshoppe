@@ -327,6 +327,13 @@
 
     <div data-section="lace">
       <p class="eyebrow">Lace</p>
+      <div class="pill-row" data-group="lace-scope" style="margin-bottom:10px">
+        <button class="pill" aria-pressed="true" data-scope="all">All lines</button>
+        <button class="pill" aria-pressed="false" data-scope="neck">Neckline</button>
+        <button class="pill" aria-pressed="false" data-scope="cuffs">Cuffs</button>
+        <button class="pill" aria-pressed="false" data-scope="hem">Hem</button>
+        <button class="pill" aria-pressed="false" data-scope="slits">Slits</button>
+      </div>
       <div class="lace-grid" data-group="lace">
         <button class="lace-card" aria-pressed="true" data-lace="pearl"><span class="lace-strip" style="background-image:url('assets/swatches/lace-pearl-2048.webp')"></span><strong>Pearl guipure</strong></button>
         <button class="lace-card" aria-pressed="false" data-lace="geometric"><span class="lace-strip" style="background-image:url('assets/swatches/lace-geometric-2048.webp')"></span><strong>Woven diamond</strong></button>
@@ -392,28 +399,106 @@
     hem:    { plate: "assets/plates/hem-straight/",    name: "hem and slit" },
   };
   // repeatCm = real width of one tile (assumptions until the atelier measures them)
-  const FABRICS = {
-    sage:    { src: "assets/swatches/fabric-sage-1024.jpg",    repeatCm: 30, name: "Sage Embroidered Organza", sheen: 0, sheenWidth: 1, antiTile: false },
-    mocha:   { src: "assets/swatches/fabric-mocha-1024.jpg",   repeatCm: 30, name: "Mocha Chikan", sheen: 0, sheenWidth: 1, antiTile: true },
-    mustard: { src: "assets/swatches/fabric-mustard-1024.jpg", repeatCm: 20, name: "Mustard Crinkled Gauze", sheen: 0, sheenWidth: 1, antiTile: true },
-  };
+  // StepB step 5: a fabric is its tile and its sidecar (swatchprep/fabric_sidecar.py): name, repeatCm and its source, class,
+  // placement data, sheen, anti-tiling. The test prints (reg, buta, border: ?fabric=<name>) are not in the picker.
+  const FABRICS = Object.fromEntries([["sage", "jpg"], ["mocha", "jpg"], ["mustard", "jpg"], ["reg", "png"], ["buta", "png"], ["border", "png"]]
+    .map(([k, ext]) => [k, { src: `assets/swatches/fabric-${k}-1024.${ext}`, meta: `assets/swatches/fabric-${k}.json` }]));
+  const fabricMeta = {};                               // key -> the sidecar (loaded in load())
+  const fabricName = (k) => fabricMeta[k]?.name ?? k;
   // laces: horizontal band, decorative edge at the bottom (swatchprep/prep_lace.py)
-  const LACES = {
-    pearl:     { src: "assets/swatches/lace-pearl-2048.webp", meta: "assets/swatches/lace-pearl.json", mat: "assets/swatches/lace-pearl-mat.webp",     name: "Pearl Guipure Lace" },
-    geometric: { src: "assets/swatches/lace-geometric-2048.webp", meta: "assets/swatches/lace-geometric.json", mat: "assets/swatches/lace-geometric-mat.webp", name: "Woven Diamond Border" },
-    leaf:      { src: "assets/swatches/lace-leaf-2048.webp", meta: "assets/swatches/lace-leaf.json", mat: "assets/swatches/lace-leaf-mat.webp",      name: "Resham Bel Lace" },
-    fine:      { src: "assets/swatches/lace-fine-2048.webp", meta: "assets/swatches/lace-fine.json", mat: "assets/swatches/lace-fine-mat.webp",      name: "Kiran Zari Edge" },
-    paisley:   { src: "assets/swatches/lace-paisley-2048.webp", meta: "assets/swatches/lace-paisley.json", mat: "assets/swatches/lace-paisley-mat.webp", name: "Zari Paisley Lotus Lace" },
-    brocade:   { src: "assets/swatches/lace-brocade-2048.webp", meta: "assets/swatches/lace-brocade.json", name: "Navy & Gold Brocade Border" },
-  };
+  // StepC step 1: a lace is its band and its sidecar (version 2: name, class, width and repeat with their sources, the material
+  // map's file). The registration lace (reg) is a test: ?lace=reg only.
+  const LACES = Object.fromEntries(["pearl", "geometric", "leaf", "fine", "paisley", "brocade", "reg"]
+    .map((k) => [k, { src: `assets/swatches/lace-${k}-2048.webp`, meta: `assets/swatches/lace-${k}.json` }]));
+  const laceMeta = {};                                 // key -> the sidecar (loaded in load())
+  const laceName = (k) => laceMeta[k]?.name ?? k;
+  const LINE_NAMES = { neck: "Neckline", cuffs: "Cuffs", hem: "Hem", slits: "Slits" };
+  const laceMixed = () => new Set(Object.values(state.laceBy)).size > 1;
+  const laceSummary = () => laceMixed()
+    ? Object.entries(state.laceBy).filter(([g]) => state.trims[g]).map(([g, k]) => `${LINE_NAMES[g]}: ${laceName(k)}`).join("; ")
+    : laceName(Object.values(state.laceBy)[0]);
+  function laceUI() {                                  // the picker shows the lace of the chosen line; the caption, every line's
+    const cur = state.laceScope === "all" ? (laceMixed() ? null : Object.values(state.laceBy)[0]) : state.laceBy[state.laceScope];
+    document.querySelectorAll("[data-lace]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.lace === cur)));
+    document.querySelectorAll("[data-scope]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.scope === state.laceScope)));
+    const any = Object.values(state.trims).some(Boolean);
+    const cap = document.getElementById("caption-trim");
+    if (cap) cap.textContent = any ? laceSummary() : "No Lace";
+  }
   // trim id in the id map (G channel) → button group
-  const TRIMS = { neck: 1, "cuff-l": 2, "cuff-r": 3, hem: 4, "slit-l": 5, "slit-r": 6, "hem-bl": 7, "hem-br": 8 };   // hem-bl / hem-br: the hem of the side pieces of the hem view
-  const GROUP = { neck: ["neck"], cuffs: ["cuff-l", "cuff-r"], hem: ["hem", "hem-bl", "hem-br"], slits: ["slit-l", "slit-r"] };
+  // StepB step 2: the trims of the current view, from its plate.dat (setTables): name -> id, and the page's button group -> names
+  let TRIMS = {};
+  let trimSpan = {};                                   // StepC step 3: trim name -> { sFrom, sTo (cm, 0 at the anchor), ends }
+  let GROUP = { neck: [], cuffs: [], hem: [], slits: [] };
+  // the grain checker's colour of each zone: by its piece (front red, sleeves blue, back green; a second zone of one piece purple),
+  // as make_plate.py zone_colours
+  function zoneTints(zones) {
+    const base = { front: [0.84, 0.28, 0.25], back: [0.15, 0.62, 0.38] }, sleeve = [0.17, 0.36, 0.75], second = [0.42, 0.24, 0.55];
+    const out = new Float32Array(16 * 3), seen = new Set();
+    for (const [n, z] of Object.entries(zones).sort((a, b) => a[1].id - b[1].id)) {
+      const pc = z.piece || n;
+      const c = base[pc] && seen.has(pc) ? second : base[pc] || sleeve;
+      seen.add(pc);
+      out.set(c, z.id * 3);
+    }
+    return out;
+  }
+  function setTables(pl, Zd) {
+    TRIMS = Object.fromEntries(Object.entries(pl.trims).map(([n, t]) => [n, t.id]));
+    GROUP = { neck: [], cuffs: [], hem: [], slits: [] };
+    for (const [n, t] of Object.entries(pl.trims)) (GROUP[t.group] || (GROUP[t.group] = [])).push(n);
+    const live = Object.entries(pl.trims).find(([, t]) => t.live);
+    const slot = { A: 0, B: 0 };                       // the open field's two slots (plate.dat, StepC step 2)
+    for (const t of Object.values(pl.trims)) if (t.field === "open") slot[t.slot === 1 ? "B" : "A"] = t.id;
+    const tp = pl.trimPack;
+    gl.uniform1f(U("uRange"), tp.rangeCm); gl.uniform1f(U("uMainSOff"), tp.mainSOffCm);
+    gl.uniform2f(U("uOpenSOff"), tp.openSOffCm[0], tp.openSOffCm[1]); gl.uniform1f(U("uTOffMm"), tp.tOffMm);
+    gl.uniform1i(U("uNeckTrim"), live && pl.neck ? live[1].id : 0);
+    gl.uniform1i(U("uNeckZone"), Zd.neckZone && pl.zones[Zd.neckZone] ? pl.zones[Zd.neckZone].id : 0);
+    gl.uniform1i(U("uSlitA"), slot.A); gl.uniform1i(U("uSlitB"), slot.B);
+    // StepC step 3: each trim's s at its ends (the lace's piece ends), and the joins (?joinkind=<trim>:<butt|overlap|mitre>: a test switch)
+    trimSpan = {};
+    for (const [n, t] of Object.entries(Zd.trims || {})) {
+      if (pl.trims[n]?.live || !t.line || !Zd.zones[t.zone]?.frame) continue;
+      const e = Plate.trimElements({ ...t, bandInMm: pl.trims[n].bandInMm, bandOutMm: pl.trims[n].bandOutMm }, Zd.zones[t.zone].frame, pl.mmPerPx);
+      trimSpan[n] = { sFrom: e.sFrom, sTo: e.sTo, ends: pl.trims[n].ends || { from: "runout", to: "runout" } };
+    }
+    const KIND = { mitre: 0, open: 0, butt: 2, overlap: 3 }, jk = new Int32Array(16), jw = new Int32Array(16);
+    const over = Object.fromEntries((params0.get("joinkind") || "").split(",").filter(Boolean).map((x) => x.split(":")));
+    for (const [n, t] of Object.entries(pl.trims)) {
+      const j = t.join || { kind: "open", with: [] };
+      jk[t.id] = KIND[over[n] || j.kind] ?? 0;
+      for (const w of j.with || []) if (pl.trims[w]) jw[t.id] |= 1 << pl.trims[w].id;
+    }
+    gl.uniform1iv(U("uJoinK"), jk); gl.uniform1iv(U("uJoinW"), jw);
+    const et = new Float32Array(16), bi = new Float32Array(16);   // StepC step 6: the edges a border fabric follows
+    for (const t of Object.values(pl.trims)) { et[t.id] = t.group === "hem" || t.group === "cuffs" ? 1 : 0; bi[t.id] = t.bandInMm || 56; }
+    gl.uniform1fv(U("uEdgeTrim"), et); gl.uniform1fv(U("uBandIn"), bi);
+    gl.uniform3fv(U("uZoneTint"), zoneTints(pl.zones));
+  }
 
   const params0 = new URLSearchParams(location.search);    // test switches: ?view=neck|sleeve|hem  ?fabric=mocha  ?lace=leaf
   const state = { view: VIEWS[params0.get("view")] ? params0.get("view") : "torso",
                   fabric: FABRICS[params0.get("fabric")] || params0.get("fabric") === "off" ? params0.get("fabric") : "sage",
-                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", trims: params0.has("trims") ? Object.fromEntries(["neck", "cuffs", "hem", "slits"].map((k) => [k, params0.get("trims").split(",").includes(k)])) : { neck: true, cuffs: true, hem: true, slits: false }, checker: params0.get("checker") === "1", photo: false };   // test: ?checker=1  the grain checker (2 cm squares from the uv: no fabric texture, so no texel noise)
+                  lace: LACES[params0.get("lace")] ? params0.get("lace") : "pearl", laceScope: "all", trims: params0.has("trims") ? Object.fromEntries(["neck", "cuffs", "hem", "slits"].map((k) => [k, params0.get("trims").split(",").includes(k)])) : { neck: true, cuffs: true, hem: true, slits: false }, checker: params0.get("checker") === "1", photo: false };   // test: ?checker=1  the grain checker (2 cm squares from the uv: no fabric texture, so no texel noise)
+  // StepC step 4: the lace of each line (?lace=<key> sets all; ?lace.neck=<key>, ?lace.cuffs=, ?lace.hem=, ?lace.slits= one line)
+  state.laceBy = Object.fromEntries(["neck", "cuffs", "hem", "slits"].map((g) => [g, LACES[params0.get("lace." + g)] ? params0.get("lace." + g) : state.lace]));
+  // StepC step 5: the count of whole repeats of each fitted trim, per lace (the design record: a shared link shows the same motifs).
+  // ?laceN=neck.pearl:5,slit-r.pearl:4
+  state.laceN = Object.fromEntries((params0.get("laceN") || "").split(",").filter(Boolean).map((x) => { const [k, n] = x.split(":"); return [k, +n]; }));
+  const HYST = 0.06;                                   // a count is kept while the lace stretches or shrinks by at most 6 %
+  function chooseN(key, L, r, preferOdd) {            // the count of whole repeats with hysteresis (StepC step 5)
+    const x = L / r;
+    let best = Math.max(1, Math.round(x));
+    if (preferOdd && best % 2 === 0) {                 // an odd count (a motif centred at the centre front) when it fits within 6 %
+      const o = Math.abs(x - (best - 1)) <= Math.abs(x - (best + 1)) && best > 1 ? best - 1 : best + 1;
+      if (Math.abs(x / o - 1) <= HYST) best = o;
+    }
+    const prev = state.laceN[key];
+    const n = prev && Math.abs(L / (prev * r) - 1) <= HYST ? prev : best;
+    state.laceN[key] = n;
+    return n;
+  }
   const stageImg = document.querySelector(".stage-frame img");
 
   const canvas = document.getElementById("stage");
@@ -461,23 +546,30 @@
   precision highp float;
   precision highp int;
   uniform sampler2D uPhoto, uId, uUV, uUVT, uShade, uFabric, uLace, uLaceMat, uUVTS;
+  // StepC step 4: a lace per line. Slot 0 = uLace / uLaceMat (units 6, 7); slots 1-3 on units 9-14. A trim reads its slot (uTrimSlot);
+  // every read is textureGrad (explicit gradients), so the per-pixel choice of the sampler is valid in divergent control flow
+  uniform sampler2D uLace1, uLaceMat1, uLace2, uLaceMat2, uLace3, uLaceMat3;
+  uniform float uLaceAspectS[4], uLaceWS[4], uHasMatS[4], uLaceEdgeS[4];   // per slot: tile aspect, width cm, has a material map, edgeDepth
+  uniform int uTrimSlot[16];                                                // each trim's lace slot
   uniform vec2  uCanvas;        // canvas size in device px
   uniform vec2  uPlate;         // plate size (1200, 1600)
   uniform float uCmPerPx;       // plate px → cm
-  uniform float uRange;         // UV range in cm of the built maps (Maps.UV_RANGE_CM, 128)
+  uniform float uRange;         // the trim fields' packing range in cm (the plate's trimPack, StepC step 2)
+  uniform float uMainSOff, uTOffMm;   // the main field: u = s + uMainSOff; both fields: v = (t mm + uTOffMm) / 10
+  uniform vec2 uOpenSOff;             // the open field's two slots: u = s + uOpenSOff.x (A) or s + uOpenSOff.y (B)
+  uniform float uFabricRange;   // the fabric's packing (the plate's uvPack, StepB step 1): (u, v) = stored * range - offset
+  uniform vec2  uFabricOff;
   uniform float uFabricOn, uFabricCm;
-  uniform float uLaceAspect;
-  uniform float uTrimOn[9];
-  uniform float uTrimFit[9], uTrimU0[9];  // the slits' whole repeats from the hem corner; the phase (half a period at u = 0: a motif centred)
-  uniform float uTrimEdging[9];  // 1 = an edging lace on an edging trim: its decorative edge hangs past the garment edge
-  uniform float uTrimOrder[9];   // the order of each trim's zone (a trim of a zone in front wins; the slit / hem mitre within one zone)
-  uniform float uLaceW;          // the lace's own width, cm (StepA extension: the lace decides)
+  uniform float uTrimOn[16];
+  uniform float uTrimFit[16], uTrimU0[16];
+  uniform float uPieceLo[16], uPieceHi[16];   // StepC step 3: a "piece" end: the lace only between these motif boundaries (tile units)
+  uniform int uJoinK[16], uJoinW[16];         // StepC step 3: each trim's join kind (0 mitre, 2 butt, 3 overlap) and the trims it meets (bits)  // the slits' whole repeats from the hem corner; the phase (half a period at u = 0: a motif centred)
+  uniform float uTrimEdging[16];  // 1 = an edging lace on an edging trim: its decorative edge hangs past the garment edge
+  uniform float uTrimOrder[16];   // the order of each trim's zone (a trim of a zone in front wins; the slit / hem mitre within one zone)
   uniform float uDisplaceMm;    // fabric shifted along the shade gradient in folds, mm at a strong fold slope (0 = off), step 7
   uniform float uSheen, uSheenWidth;   // directional sheen of the fabric
   uniform float uAntiTile;      // 1 = hex tiling of the fabric (irregular fabrics only), step 7
   uniform float uRelief;        // lace relief, metal and pearl (polish.md step 6); 0 = off (?relief=0)
-  uniform float uHasMat;        // 1 = the lace has a material map on unit 7
-  uniform float uLaceEdge;      // edgeDepth of the lace: share of its height that hangs past the garment edge
   uniform float uChecker, uPhotoOnly;
   const float MIP_BIAS = -0.5;  // log2 bias on the texture footprint (negative = sharper)
   uniform float uShadowStrength; // darkening of the fabric under the lace (0 = off), polish.md step 1
@@ -496,7 +588,16 @@
   uniform vec4  uFormPatch;     // a clean square of the dress form in the photo (x0, y0, x1, y1 plate px): its fine detail
   uniform vec2  uCfX;           // x of the centre front (plate px), and 1 / mm per plate px
   uniform float uGlow;          // step 7: the selected part glows softly (0..1, animated over about 1 s)
-  uniform float uGlowTrim[9];   // which trims glow (a placement was selected)
+  uniform float uGlowTrim[16];
+  // StepB step 2: the plate's own ids (plate.dat), no numbers in the shader. Trim and zone ids are 1..15.
+  uniform int uNeckTrim, uNeckZone;  // the trim the page lays on the live neckline, and its zone (0: none)
+  uniform int uSlitA, uSlitB;        // the trims of the open field's slots A and B (the slits; plate.dat slot 0, 1)
+  uniform vec3 uZoneTint[16];        // the grain checker's colour of each zone (by its piece: zoneTints)
+  uniform vec2 uPlace[16];           // StepB step 5: the print's place on each zone's piece (cm; setPlacement)
+  uniform vec2 uTileAnchor;          // the point of the tile that sits there (tile units)
+  uniform float uBorderTop;          // a border print: the band's upper edge in the tile (tile units); above it only the ground repeats. 0: not a border
+  uniform float uEdgeTrim[16];       // StepC step 6: 1 = a hem or cuff trim: a border fabric follows its edge (its field's t)
+  uniform float uBandIn[16];         // each trim's field depth, mm (the band: plate.dat bandInMm)   // which trims glow (a placement was selected)
   uniform float uGlowNeck;      // 1 = the band along the live neck edge glows (a pivot was selected)
   out vec4 outColor;
 
@@ -517,10 +618,12 @@
     return toLin1(min(so * uShadeMed, 1.0)) / toLin1(uShadeMed);
   }
 
-  vec2 decode(vec4 t) {                       // the 16-bit packing of maps.js (RG = u, BA = v) -> cm
+  vec2 unpack16(vec4 t) {                     // the 16-bit packing of maps.js (RG = u, BA = v) -> 0..1
     vec4 b = floor(t * 255.0 + 0.5);
-    return vec2(b.r * 256.0 + b.g, b.b * 256.0 + b.a) / 65535.0 * uRange;
+    return vec2(b.r * 256.0 + b.g, b.b * 256.0 + b.a) / 65535.0;
   }
+  vec2 decode(vec4 t) { return unpack16(t) * uRange; }                          // a trim field -> cm (its own offsets: fieldAt)
+  vec2 decodeF(vec4 t) { return unpack16(t) * uFabricRange - uFabricOff; }   // the fabric -> garment cm (StepB step 1)
 
   // UV step per canvas px, from the plate itself (central difference over +-R plate px).
   // Used only when both neighbours are in the same zone / trim: no derivatives across zone edges.
@@ -534,26 +637,40 @@
     bool okx = int(texelFetch(uId, a, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, b, 0).r * 255.0 + 0.5) == zone;
     bool oky = int(texelFetch(uId, c, 0).r * 255.0 + 0.5) == zone && int(texelFetch(uId, d, 0).r * 255.0 + 0.5) == zone;
     if (okx && oky) {
-      gx = (decode(texelFetch(uUV, a, 0)) - decode(texelFetch(uUV, b, 0))) / float(a.x - b.x) * k / uFabricCm;
-      gy = (decode(texelFetch(uUV, c, 0)) - decode(texelFetch(uUV, d, 0))) / float(c.y - d.y) * k / uFabricCm;
+      gx = (decodeF(texelFetch(uUV, a, 0)) - decodeF(texelFetch(uUV, b, 0))) / float(a.x - b.x) * k / uFabricCm;
+      gy = (decodeF(texelFetch(uUV, c, 0)) - decodeF(texelFetch(uUV, d, 0))) / float(c.y - d.y) * k / uFabricCm;
     }
   }
   // ---- StepA extension: the trim field (maps.js). Main field: id G = the trim, uvt = (s + 64 cm, (t mm + 64) / 10); the slits'
-  // field: uvts = (s + 32 slit-l | s + 96 slit-r, (t mm + 64) / 10). v = (s cm along the edge, t mm from it, + on the garment).
+  // field: uvts = the open field (the slits; slot A or B: s + uOpenSOff). v = (s cm along the edge, t mm from it, + on the garment).
+  float laceMmOf(int t) { return uLaceWS[uTrimSlot[t]] * 10.0; }   // the width of the lace on trim t, mm
+  vec4 laceTex(int sl, vec2 c, vec2 gx, vec2 gy) {
+    if (sl == 1) return textureGrad(uLace1, c, gx, gy);
+    if (sl == 2) return textureGrad(uLace2, c, gx, gy);
+    if (sl == 3) return textureGrad(uLace3, c, gx, gy);
+    return textureGrad(uLace, c, gx, gy);
+  }
+  vec4 matTex(int sl, vec2 c, vec2 gx, vec2 gy) {
+    if (sl == 1) return textureGrad(uLaceMat1, c, gx, gy);
+    if (sl == 2) return textureGrad(uLaceMat2, c, gx, gy);
+    if (sl == 3) return textureGrad(uLaceMat3, c, gx, gy);
+    return textureGrad(uLaceMat, c, gx, gy);
+  }
   bool fieldAt(ivec2 q, int want, bool slit, out vec2 v) {
     v = vec2(0.0);
     if (slit) {
       vec4 r = texelFetch(uUVTS, q, 0);
       if (r == vec4(0.0)) return false;
       vec2 f = decode(r);
-      int st = f.x >= 64.0 ? 6 : 5;
+      bool hiB = f.x >= 0.5 * (uOpenSOff.x + uOpenSOff.y);
+      int st = hiB ? uSlitB : uSlitA;
       if (st != want) return false;
-      v = vec2(f.x - (st == 6 ? 96.0 : 32.0), f.y * 10.0 - 64.0);
+      v = vec2(f.x - (hiB ? uOpenSOff.y : uOpenSOff.x), f.y * 10.0 - uTOffMm);
       return true;
     }
     if (int(texelFetch(uId, q, 0).g * 255.0 + 0.5) != want) return false;
     vec2 f = decode(texelFetch(uUVT, q, 0));
-    v = vec2(f.x - 64.0, f.y * 10.0 - 64.0);
+    v = vec2(f.x - uMainSOff, f.y * 10.0 - uTOffMm);
     return true;
   }
   // the field's (s, t) step per canvas px, from the plate (central differences over +-R px, both neighbours in the same trim);
@@ -665,12 +782,12 @@
       dL = sdNE(fpx, eI, eT);
       dO = sdNE0(fpx, oI, oT);
       covE = clamp(0.5 + dL / k, 0.0, 1.0);                          // analytic edge coverage (canvas px)
-      zone = covE > 0.0 ? 1 : 0;
+      zone = covE > 0.0 ? uNeckZone : 0;
       // ---- the neck lace from the LIVE edge (StepA extension, step L3): t = the distance from it (dL, + on the garment), s = the arc
       // length along it from the centre front; past a corner the end segment carries on (the garment's outline cuts the lace there).
       // The baked field has no neck in this view.
-      if (trim == 1) trim = 0;
-      if (zone == 1 && uTrimOn[1] > 0.5) {
+      if (trim == uNeckTrim) trim = 0;
+      if (zone == uNeckZone && uNeckTrim > 0 && uTrimOn[uNeckTrim] > 0.5) {
         vec2 a = uNE[eI], ab = uNE[eI + 1] - a;
         float sl = max(length(ab), 1e-6), tr = dot(fpx - a, ab) / (sl * sl);
         tT = ab / sl;
@@ -741,13 +858,28 @@
     int lt = 0;                                                      // the trim
     bool ltSlit = false;
     vec2 lf = vec2(0.0);                                             // (s cm, t mm)
-    if (liveTrim) { lt = 1; lf = tLive; }
+    if (liveTrim) { lt = uNeckTrim; lf = tLive; }
     else {
       vec2 fv;
       if (trim > 0 && uTrimOn[trim] > 0.5 && fieldAt(p, trim, false, fv)) { lt = trim; lf = fv; }
-      for (int st = 5; st <= 6; st++) {
-        if (uTrimOn[st] < 0.5 || !fieldAt(p, st, true, fv)) continue;
-        if (lt == 0 || uTrimOrder[st] > uTrimOrder[lt] || (uTrimOrder[st] == uTrimOrder[lt] && abs(fv.y) < abs(lf.y))) { lt = st; lf = fv; ltSlit = true; }
+      for (int k = 0; k < 2; k++) {
+        int st = k == 0 ? uSlitA : uSlitB;
+        if (st == 0 || uTrimOn[st] < 0.5 || !fieldAt(p, st, true, fv)) continue;
+        // StepC step 3: the join of the two (plate.dat join): a butt (or an overlap, drawn as a butt) lets the trim that declares it
+        // run through where its own lace is; otherwise (a mitre, or no join) the trim in front, then the nearer edge
+        int kd = 0; bool runnerLt = false;
+        if (lt > 0 && ((uJoinW[lt] >> st) & 1) == 1) { kd = uJoinK[lt]; runnerLt = true; }
+        else if (lt > 0 && ((uJoinW[st] >> lt) & 1) == 1) { kd = uJoinK[st]; }
+        bool takeSt;
+        if (lt > 0 && kd >= 2) {
+          float wr = (runnerLt ? laceMmOf(lt) : laceMmOf(st));
+          float tr = runnerLt ? lf.y : fv.y;
+          bool inRunner = tr >= -8.0 && tr <= wr;
+          takeSt = runnerLt ? !inRunner : inRunner;
+        } else {
+          takeSt = lt == 0 || uTrimOrder[st] > uTrimOrder[lt] || (uTrimOrder[st] == uTrimOrder[lt] && abs(fv.y) < abs(lf.y));
+        }
+        if (takeSt) { lt = st; lf = fv; ltSlit = true; }
       }
     }
     bool bg = zone == 0;                                             // wall, form, stand: only an edging overhang is drawn here
@@ -793,7 +925,7 @@
     bool revealed = neckA && dL - dO > 0.25 && dO < 0.0;
     vec3 toile = toLin(uToileRGB);
     vec3 toileCol = revealed ? toile * s : photo.rgb;                // fabric off: the photo, or the toile where it shows the form
-    if (neckA && zone == 1) {
+    if (neckA && zone == uNeckZone) {
       // ---- step 3: the edge band follows the live edge, and fabric that the photo did not have gets a smooth light.
       // Band (9 mm from the live edge): shade and photo from the photographed edge band at the same distance (edge roll,
       // top-stitch). Past it, where the pixel is in or above the photographed band: the shade just inside that band, averaged
@@ -818,10 +950,10 @@
         toileCol = mix(toileCol, mix(mix(photo.rgb, pe, restW), pb, bandW), mv);
       }
     }
-    vec2 uv = decode(texelFetch(uUV, p, 0));                          // cm
+    vec2 uv = decodeF(texelFetch(uUV, p, 0));                         // garment cm (StepB step 1)
     if (up && i00.r == idt.r && i10.r == idt.r && i01.r == idt.r && i11.r == idt.r)
-      uv = wq.x * decode(texelFetch(uUV, q00, 0)) + wq.y * decode(texelFetch(uUV, q10, 0))
-         + wq.z * decode(texelFetch(uUV, q01, 0)) + wq.w * decode(texelFetch(uUV, q11, 0));
+      uv = wq.x * decodeF(texelFetch(uUV, q00, 0)) + wq.y * decodeF(texelFetch(uUV, q10, 0))
+         + wq.z * decodeF(texelFetch(uUV, q01, 0)) + wq.w * decodeF(texelFetch(uUV, q11, 0));
 
     // ---- step 7: displacement in folds. Shade gradient from same-zone neighbours only (no tear at a zone edge), per mm;
     // the fabric moves along it by uDisplaceMm at a strong fold slope (0.05 per mm), at most 1.5 mm.
@@ -851,14 +983,26 @@
       // the photo stays: the lace and its shadow go on top
     } else if (uChecker > 0.5) {
       float c = mod(floor(uv.x / 2.0) + floor(uv.y / 2.0), 2.0);
-      vec3 a = zone == 1 ? vec3(0.84, 0.28, 0.25) : zone == 4 ? vec3(0.15, 0.62, 0.38)
-             : zone == 5 ? vec3(0.42, 0.24, 0.55) : vec3(0.17, 0.36, 0.75);    // 4 back, 5 side back
+      vec3 a = uZoneTint[clamp(zone, 0, 15)];                         // by the zone's piece (zoneTints)
       vec3 ck = mix(a, vec3(0.96, 0.92, 0.86), c);
       col = toLin(ck) * s;
     } else if (uFabricOn > 0.5) {
       // explicit gradients (from the plate, not from screen derivatives): no seams where UVs jump
       float bias = exp2(MIP_BIAS);
-      vec3 f = fabricAt(uv / uFabricCm, fgx * bias, fgy * bias);
+      vec2 tp = (uv - uPlace[clamp(zone, 0, 15)]) / uFabricCm + uTileAnchor;   // placed (StepB step 5)
+      if (uBorderTop > 0.0) {                         // StepC step 6: near a hem or a cuff, the border sits on the edge itself
+        int tg = int(texelFetch(uId, p, 0).g * 255.0 + 0.5);
+        vec2 fe;
+        if (tg > 0 && uEdgeTrim[tg] > 0.5 && fieldAt(p, tg, false, fe) && fe.y >= 0.0) {
+          float w = 1.0 - smoothstep(uBandIn[tg] - 20.0, uBandIn[tg] - 4.0, fe.y);   // fade to the frame's weft line at the field's end
+          tp.y = mix(tp.y, uTileAnchor.y - fe.y / 10.0 / uFabricCm, w);
+        }
+      }
+      if (uBorderTop > 0.0 && tp.y < uBorderTop) {                    // a border: one band at the hem, the ground above it
+        float e = 16.0 / float(textureSize(uFabric, 0).y);            // wrap 16 texels inside the ground: no filtering into the band
+        tp.y = e + mod(tp.y - e, uBorderTop - 2.0 * e);
+      }
+      vec3 f = fabricAt(tp, fgx * bias, fgy * bias);
       {
         col = f * s;                                                     // matte: no extra highlight
         if (uSheen > 0.0) {
@@ -889,11 +1033,12 @@
       }
       // the lace across: its decorative edge (the image's bottom, across = 1) on the garment edge, or edgeDepth of its width past it
       // for an edging lace on an edging trim; its own width (the lace decides). Along: s / the tile length, with the trim's phase.
-      float Wl = uLaceW, fit = uTrimFit[lt];
-      float e = uTrimEdging[lt] > 0.5 ? uLaceEdge : 0.0;
+      int sl = uTrimSlot[lt];                                         // this trim's lace (StepC step 4)
+      float Wl = uLaceWS[sl], fit = uTrimFit[lt], uLaceAspect = uLaceAspectS[sl];
+      float e = uTrimEdging[lt] > 0.5 ? uLaceEdgeS[sl] : 0.0;
       float across = 1.0 - e - lf.y / (10.0 * Wl);
-      bool inLace = across >= 0.0 && across <= 1.0;
       vec2 lc = vec2(lf.x / (Wl * uLaceAspect * fit) + uTrimU0[lt], across);
+      bool inLace = across >= 0.0 && across <= 1.0 && lc.x >= uPieceLo[lt] && lc.x <= uPieceHi[lt];   // a piece end: whole motifs only
       vec2 gx, gy, dsx, dsy;                                          // lace coordinates per canvas px
       if (liveTrim) {
         gx = vec2(tT.x * k * uCmPerPx / (Wl * uLaceAspect * fit), -tN.x * k * uCmPerPx / Wl);
@@ -917,14 +1062,14 @@
         }
       }
       float bias = exp2(MIP_BIAS);
-      vec4 lace = cin(textureGrad(uLace, lc, gx * bias, gy * bias));
+      vec4 lace = cin(laceTex(sl, lc, gx * bias, gy * bias));
       if (!inLace) lace = vec4(0.0);
-      if (uRelief > 0.5 && uHasMat > 0.5 && inLace) {
+      if (uRelief > 0.5 && uHasMatS[sl] > 0.5 && inLace) {
         // material map: R height, G metal, B pearl dome. Height gradient on the SCREEN (gx, gy = lace coords per canvas px),
         // so the light comes from the upper left on every trim, whatever its direction.
-        vec3 m0 = textureGrad(uLaceMat, lc, gx * bias, gy * bias).rgb;
-        vec3 mhx = textureGrad(uLaceMat, lc + gx * 1.5, gx * bias, gy * bias).rgb;
-        vec3 mhy = textureGrad(uLaceMat, lc + gy * 1.5, gx * bias, gy * bias).rgb;
+        vec3 m0 = matTex(sl, lc, gx * bias, gy * bias).rgb;
+        vec3 mhx = matTex(sl, lc + gx * 1.5, gx * bias, gy * bias).rgb;
+        vec3 mhy = matTex(sl, lc + gy * 1.5, gx * bias, gy * bias).rgb;
         // a surface that rises towards the lower right faces the key light: lighter; away from it: darker; +-15 % at most
         // gain 0.15: offline, on the tiles at stage scale, 0.25 already clamped 5-24 % of the lace px; 0.15 keeps it gentle
         float lit = clamp(1.0 + 0.15 * ((mhx.r - m0.r) + (mhy.r - m0.r)), 0.85, 1.15);
@@ -944,7 +1089,7 @@
         // metal (zari): a highlight tinted with the thread colour, stronger where the photo was lit (shade > 1),
         // stretched along the thread (the height read 3x longer along the lace)
         if (m0.g > 0.02) {
-          float hs = textureGrad(uLaceMat, lc, gx * bias * 3.0, gy * bias).r;
+          float hs = matTex(sl, lc, gx * bias * 3.0, gy * bias).r;
           float hl = smoothstep(0.02, 0.12, m0.r - hs + (lit - 1.0));
           lace.rgb += lace.rgb * m0.g * hl * (0.35 + 0.65 * clamp(sL - 0.8, 0.0, 1.0));
         }
@@ -957,7 +1102,7 @@
         vec2 off = gx * so.x + gy * so.y;
         float soft = bg ? 4.0 : 2.8284;
         vec2 sc = lc - off;
-        float sh = (sc.y >= 0.0 && sc.y <= 1.0) ? textureGrad(uLace, sc, gx * bias * soft, gy * bias * soft).a : 0.0;
+        float sh = (sc.y >= 0.0 && sc.y <= 1.0 && sc.x >= uPieceLo[lt] && sc.x <= uPieceHi[lt]) ? laceTex(sl, sc, gx * bias * soft, gy * bias * soft).a : 0.0;
         col *= 1.0 - uShadowStrength * sh * (1.0 - lace.a);           // the lace itself is not darkened
       }
       col = mix(col, lace.rgb * min(sL * 1.124, 1.399), lace.a);   // 1.05^2.4, 1.15^2.4
@@ -1100,20 +1245,40 @@
 
   async function setFabric(key) {                      // fabric on unit 5 (no-op for "off")
     if (key === "off") return;
-    const f = FABRICS[key], img = await swatch.decoded(f.src);
+    const f = FABRICS[key], m = fabricMeta[key], img = await swatch.decoded(f.src);
     if (state.fabric !== key) { release(img); return; }   // a later click won
     setUnit(5, img, { wrap: gl.REPEAT });              // swatch is made seamless offline
     release(img);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-    gl.uniform1f(U("uFabricCm"), f.repeatCm);
-    gl.uniform1f(U("uSheen"), f.sheen || 0);
-    gl.uniform1f(U("uSheenWidth"), f.sheenWidth || 1);
-    gl.uniform1f(U("uAntiTile"), f.antiTile ? 1 : 0);
+    gl.uniform1f(U("uFabricCm"), m.repeatCm);
+    gl.uniform1f(U("uSheen"), m.sheen || 0);
+    gl.uniform1f(U("uSheenWidth"), m.sheenWidth || 1);
+    gl.uniform1f(U("uAntiTile"), m.antiTile ? 1 : 0);
+    setPlacement();
+  }
+  // StepB step 5: where the print sits. Tile coordinate = (uv - place[zone]) / repeat + anchor. allover, irregular, oneway: place 0,
+  // anchor 0 (the garment's origin: the same in every view since step 1). buta: place = the garment record's point of the zone's
+  // piece, anchor = the motif's centre in the tile. border: place = (0, the piece's hem line), anchor = (0, the band's lower edge).
+  function placeOf(m, piece) {
+    const P = look?.garment?.placement || {};
+    if (m.class === "buta" && P.buta?.[piece]) return [P.buta[piece].u, P.buta[piece].v];
+    if (m.class === "border" && P.border?.[piece]) return [0, P.border[piece].hemV];
+    return [0, 0];
+  }
+  function setPlacement() {
+    const m = fabricMeta[state.fabric];
+    if (!m || !plate) return;
+    const place = new Float32Array(32);
+    for (const z of Object.values(plate.zones)) place.set(placeOf(m, z.piece), z.id * 2);
+    const anchor = m.class === "buta" ? [m.motifCentrePx[0] / m.tilePx[0], m.motifCentrePx[1] / m.tilePx[1]]
+                 : m.class === "border" ? [0, m.borderBottomPx / m.tilePx[1]] : [0, 0];
+    gl.uniform2fv(U("uPlace"), place);
+    gl.uniform2f(U("uTileAnchor"), anchor[0], anchor[1]);
+    gl.uniform1f(U("uBorderTop"), m.class === "border" ? m.borderTopPx / m.tilePx[1] : 0);
   }
   const matCache = {};                                 // url -> Promise of the lace material map
   const metaCache = {};                                // url -> Promise of the lace sidecar (swatchprep/prep_lace.py --repeat)
   const laceMetaOf = (url) => (metaCache[url] ||= fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null));
-  let lace = null;                                     // { meta, aspect } of the lace on unit 6
 
   function bleed(img) {                                // an ImageData: every texel with alpha < 8 gets the mean colour of the opaque ones
     const cv = document.createElement("canvas");
@@ -1128,26 +1293,46 @@
     for (let i = 0; i < d.length; i += 4) if (d[i + 3] < 8) { d[i] = r; d[i + 1] = g; d[i + 2] = b; }
     return im;
   }
-  async function setLace(key) {                        // lace on unit 6
-    const [img, meta, matBlob] = await Promise.all([swatch.decoded(LACES[key].src), laceMetaOf(LACES[key].meta),
-      LACES[key].mat ? (matCache[LACES[key].mat] ||= blobOf(LACES[key].mat).catch(() => { delete matCache[LACES[key].mat]; return null; })) : null]);
+  // StepC step 4: up to 4 laces at once, one slot each (units: slot 0 = 6, 7; 1 = 9, 10; 2 = 11, 12; 3 = 13, 14)
+  const LACE_UNITS = [[6, 7], [9, 10], [11, 12], [13, 14]];
+  const laceSlots = [null, null, null, null];         // { key, meta, aspect, mirror, hasMat }
+  let laceSlotOf = {};                                 // lace key -> slot
+  async function loadLaceInto(slot, key) {
+    const meta0 = await laceMetaOf(LACES[key].meta), matUrl = meta0?.materialFile ? `assets/swatches/${meta0.materialFile}` : null;
+    const [img, meta, matBlob] = await Promise.all([swatch.decoded(LACES[key].src), meta0,
+      matUrl ? (matCache[matUrl] ||= blobOf(matUrl).catch(() => { delete matCache[matUrl]; return null; })) : null]);
     const mat = matBlob ? await decode(matBlob, true) : null;
-    if (state.lace !== key) { release(img); release(mat); return; }
-    // a lace with a measured repeat tiles with REPEAT; a lace without one (or ?lacefit=0) keeps the mirror
+    // a lace with a measured repeat tiles with REPEAT; a lace without one keeps the mirror
     const mirror = !meta || meta.mirror;
-    // StepA extension: the lace's transparent texels carry the colour of the lace, not the paper's grey of the cut-out, so that its
-    // smaller mipmaps (a lace a few px tall) average lace with lace and the alpha alone thins it: no grey, no speckle
-    setUnit(6, bleed(img), { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
+    // StepA extension: the lace's transparent texels carry the colour of the lace (its smaller mipmaps: no grey, no speckle)
+    const [lu, mu] = LACE_UNITS[slot];
+    setUnit(lu, bleed(img), { wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });   // along the trim (S); across (T) is clamped
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    if (mat) {                                         // material map on unit 7: same coordinates and wrap as the lace
-      setUnit(7, mat, { data: true, mips: true, wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });
+    if (mat) {                                         // its material map: the same coordinates and wrap
+      setUnit(mu, mat, { data: true, mips: true, wrap: mirror ? gl.MIRRORED_REPEAT : gl.REPEAT });
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
-    gl.uniform1f(U("uHasMat"), mat ? 1 : 0);
-    lace = { meta, aspect: img.width / img.height, mirror };
+    laceSlots[slot] = { key, meta, aspect: img.width / img.height, mirror, hasMat: !!mat };
     release(img); release(mat);
-    gl.uniform1f(U("uLaceAspect"), lace.aspect);
+  }
+  async function loadLaces() {                         // the distinct laces of the lines -> slots (a loaded lace keeps its slot)
+    const keys = [...new Set(Object.values(state.laceBy))];
+    const keep = {};
+    laceSlots.forEach((L, i) => { if (L && keys.includes(L.key)) keep[L.key] = i; });
+    const free = [0, 1, 2, 3].filter((i) => !Object.values(keep).includes(i));
+    const todo = keys.filter((k) => keep[k] === undefined).map((k) => [free.shift(), k]);
+    await Promise.all(todo.map(([sl, k]) => loadLaceInto(sl, k)));
+    if (JSON.stringify([...new Set(Object.values(state.laceBy))]) !== JSON.stringify(keys)) return;   // a later choice won
+    laceSlotOf = { ...keep, ...Object.fromEntries(todo.map(([sl, k]) => [k, sl])) };
+    const f = (fn) => new Float32Array(laceSlots.map((L) => (L ? fn(L) : 0)));
+    gl.uniform1fv(U("uLaceAspectS"), f((L) => L.aspect));
+    gl.uniform1fv(U("uLaceWS"), f((L) => (L.meta?.widthMm ?? 30) / 10));
+    gl.uniform1fv(U("uHasMatS"), f((L) => (L.hasMat ? 1 : 0)));
+    gl.uniform1fv(U("uLaceEdgeS"), f((L) => L.meta?.edgeDepth ?? 0));
     laceFit();
+  }
+  function rebindLaceUnits() {                         // the map build uses units 14, 15 as scratch: give the laces their units back
+    for (const u of LACE_UNITS.flat()) if (units[u]) { gl.activeTexture(gl.TEXTURE0 + u); gl.bindTexture(gl.TEXTURE_2D, units[u]); }
   }
 
   // The lace on each trim (StepA extension, step L3): its own width and repeat on every trim (the lace decides). x = s / (tile length
@@ -1157,31 +1342,52 @@
   // +-10 % under 3 repeats). A lace without a repeat mirrors about the anchor.
   const fitLog = {};
   let zonesData = null;                                // the zone data of the current view (the order of each trim's zone)
-  function laceFit() {
-    if (!plate || !lace) return;
-    const fit = new Float32Array(9).fill(1), u0 = new Float32Array(9), edging = new Float32Array(9), order = new Float32Array(9);
-    const W = (lace.meta?.widthMm ?? 30) / 10, tile = W * lace.aspect;   // cm
+  function laceFit() {                                // each trim with the lace of its line (StepC step 4)
+    if (!plate || !laceSlots.some(Boolean)) return;
+    const fit = new Float32Array(16).fill(1), u0 = new Float32Array(16), edging = new Float32Array(16), order = new Float32Array(16);
+    const lo = new Float32Array(16).fill(-1e9), hi = new Float32Array(16).fill(1e9), slotOf = new Int32Array(16);
     for (const [name, id] of Object.entries(TRIMS)) {
       const t = plate.trims[name];
       if (!t) continue;
+      const sl = laceSlotOf[state.laceBy[t.group]] ?? 0, lace = laceSlots[sl];
+      if (!lace) continue;
+      slotOf[id] = sl;
+      const W = (lace.meta?.widthMm ?? 30) / 10;       // cm
       order[id] = zonesData?.zones[t.zone]?.order ?? 0;
       edging[id] = t.type === "edging" && lace.meta?.edging ? 1 : 0;   // only laces with a clean (keyed) edge
-      if (lace.mirror) { fitLog[name] = "mirror"; continue; }
+      if (lace.mirror) { fitLog[name] = { lace: lace.key, rule: "mirror" }; continue; }
       const m = lace.meta, p = 1 / m.periods, r = m.periodRatio * W;   // the repeat in cm
-      if ((t.anchor || "cf") === "cf") { u0[id] = 0.5 * p; fitLog[name] = { anchor: "cf", repeatCm: +r.toFixed(3) }; continue; }
-      const L = t.lengthCm, lim = L < 3 * r ? 0.10 : 0.05;
-      const n = Math.max(1, Math.round(L / r));
-      let f = L / (n * r);
-      if (Math.abs(f - 1) > lim) f = 1;                 // keep the scale; recorded in fitLog
-      fit[id] = f;
-      fitLog[name] = { anchor: t.anchor, n, fit: +f.toFixed(4), repeatCm: +r.toFixed(3) };
+      if (t.group === "neck") {
+        // StepC step 5: the neckline in whole repeats, both corners on motif boundaries: an odd count (a motif centred at the centre
+        // front) when one fits within 6 %, else the nearest (a gap at the centre front). The live neck's length is the live edge's
+        // (corner to corner); a count is kept while it fits within +-6 % (hysteresis)
+        const L = t.live && neckGeo?.sent ? neckGeo.sent.cum[neckGeo.sent.cum.length - 1] * plate.mmPerPx / 10 : t.lengthCm;
+        const n = chooseN(`neck.${lace.key}`, L, r, true), f = L / (n * r);
+        u0[id] = n % 2 ? 0.5 * p : 0; fit[id] = f;          // odd: a motif at the centre front; even: a gap between two
+        fitLog[name] = { lace: lace.key, anchor: "cf", n, fit: +f.toFixed(4), lengthCm: +L.toFixed(2), repeatCm: +r.toFixed(3) };
+      } else if ((t.anchor || "cf") === "cf") { u0[id] = 0.5 * p; fitLog[name] = { lace: lace.key, anchor: "cf", repeatCm: +r.toFixed(3) }; }
+      else {
+        const L = t.lengthCm, lim = L < 3 * r ? 0.10 : 0.05;
+        const n = chooseN(`${name}.${lace.key}`, L, r, false);
+        let f = L / (n * r);
+        if (Math.abs(f - 1) > Math.max(lim, HYST)) f = 1;   // keep the scale; recorded in fitLog
+        fit[id] = f;
+        fitLog[name] = { lace: lace.key, anchor: t.anchor, n, fit: +f.toFixed(4), repeatCm: +r.toFixed(3) };
+      }
+      // StepC step 3: a "piece" end keeps the lace to whole motifs: the motif boundary inside the end (lace tile units)
+      const sp = trimSpan[name];
+      if (sp) {
+        const P_ = m.periods, x = (s) => s / (W * lace.aspect * fit[id]) + u0[id];
+        if (sp.ends.from === "piece") lo[id] = Math.ceil(x(sp.sFrom) * P_ - 1e-4) / P_;
+        if (sp.ends.to === "piece") hi[id] = Math.floor(x(sp.sTo) * P_ + 1e-4) / P_;
+      }
     }
+    gl.uniform1iv(U("uTrimSlot"), slotOf);
+    gl.uniform1fv(U("uPieceLo"), lo); gl.uniform1fv(U("uPieceHi"), hi);
     gl.uniform1fv(U("uTrimFit"), fit);
     gl.uniform1fv(U("uTrimU0"), u0);
     gl.uniform1fv(U("uTrimEdging"), edging);
     gl.uniform1fv(U("uTrimOrder"), order);
-    gl.uniform1f(U("uLaceW"), W);
-    gl.uniform1f(U("uLaceEdge"), lace.meta?.edgeDepth ?? 0);
     document.documentElement.dataset.lacefit = JSON.stringify(fitLog);   // for the harness (--dump-dom)
   }
 
@@ -1313,6 +1519,7 @@
     gl.uniform1fv(U("uNEcum"), new Float32Array(cum));
     gl.uniform1f(U("uNeckS0"), s0);
     neckGeo.sent = { ne: pts, cum, s0 };               // what the shader has (test hook)
+    laceFit();                                         // StepC step 5: the neck lace's whole repeats follow the live edge
   }
 
   // ---------- pivots (halfway.md step 4): three handles in the neckline view, each on a rail, in plate px (SVG viewBox)
@@ -1406,6 +1613,8 @@
     const q = new URLSearchParams(location.search), L = look.neck;
     for (const [k, p] of [["depthMm", "neckDepth"], ["widthMm", "neckWidth"]])
       if (Math.abs(state.neck[k] - L[k].default) < 0.05) q.delete(p); else q.set(p, Math.round(state.neck[k] * 10) / 10);
+    const nk = Object.entries(state.laceN).filter(([k]) => k.startsWith("neck.")).map(([k, n]) => `${k}:${n}`).join(",");
+    if (nk) q.set("laceN", nk); else q.delete("laceN");  // StepC step 5: the neck's count of motifs
     history.replaceState(null, "", `${location.pathname}${q.toString() ? "?" + q : ""}`);
   }
   // pointer: one redraw per animation frame at most while dragging (halfway.md step 4.6)
@@ -1456,6 +1665,7 @@
 
   async function loadShared() {                        // samplers and swatches: once for all views
     ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat", "uUVTS"].forEach((n, i) => gl.uniform1i(U(n), i));
+    [["uLace1", 9], ["uLaceMat1", 10], ["uLace2", 11], ["uLaceMat2", 12], ["uLace3", 13], ["uLaceMat3", 14]].forEach(([n, i]) => gl.uniform1i(U(n), i));
     gl.uniform1f(U("uShadowStrength"), 0.35);         // the lace's shadow (polish step 1)
     gl.uniform1f(U("uRelief"), 1);
     gl.uniform1f(U("uDisplaceMm"), 1.0);
@@ -1466,8 +1676,11 @@
       const L = look.neck;
       state.neck = clampNeck({ depthMm: params0.get("neckDepth") ?? L.depthMm.default, widthMm: params0.get("neckWidth") ?? L.widthMm.default });
     }
-    await Promise.all([setFabric(state.fabric), setLace(state.lace)]);
-    gl.uniform1fv(U("uTrimFit"), new Float32Array(9).fill(1));
+    await Promise.all(Object.entries(FABRICS).map(async ([k, f]) => { fabricMeta[k] = await fetch(f.meta).then((r) => r.json()); }));
+    await Promise.all(Object.entries(LACES).map(async ([k, l]) => { laceMeta[k] = await laceMetaOf(l.meta); }));
+    laceUI();
+    await Promise.all([setFabric(state.fabric), loadLaces()]);
+    gl.uniform1fv(U("uTrimFit"), new Float32Array(16).fill(1));
   }
 
   function flatTexture(rgba, linear) {                 // a 1 x 1 data texture (a missing map)
@@ -1523,6 +1736,7 @@
     setUnitTex(2, built.uv);
     setUnitTex(3, built.uvt || flatTexture([0, 0, 0, 0]));
     setUnitTex(8, built.uvts || flatTexture([0, 0, 0, 0]));   // the slits' trim field (StepA extension)
+    rebindLaceUnits();                                 // StepC step 4: the build used unit 14 as scratch
     setUnitTex(4, built.shade || flatTexture([180, 0, 0, 255], true));   // 180 = shade 1.0 (no float targets: flat light)
     stat.dataset.build = built.ms.toFixed(1);
     builtMaps = built;
@@ -1531,11 +1745,14 @@
     note.classList.remove("show");
     gl.uniform2f(U("uPlate"), plate.viewBox[0], plate.viewBox[1]);
     gl.uniform1f(U("uCmPerPx"), plate.mmPerPx / 10);
-    gl.uniform1f(U("uRange"), Maps.UV_RANGE_CM);
+    gl.uniform1f(U("uFabricRange"), plate.uvPack.rangeCm);
+    gl.uniform2f(U("uFabricOff"), plate.uvPack.offsetCm[0], plate.uvPack.offsetCm[1]);
     perfShow({ build: builtMaps.ms });
     gl.uniform1f(U("uShadeSqrt"), plate.shadeEncoding === "sqrt" ? 1 : 0);
     gl.uniform1f(U("uShadeMed"), (plate.shadeMedian || 213) / 255);
     zonesData = v.zones;
+    setTables(plate, v.zones);                         // StepB step 2: ids, groups and roles of this view
+    setPlacement();                                    // StepB step 5: the print's place on this view's pieces
     neckSetup();
     neckUpload();
     laceFit();
@@ -1571,7 +1788,7 @@
 
   // ---------- draw (only on change)
   function render() {
-    const on = new Float32Array(9);
+    const on = new Float32Array(16);
     for (const [group, names] of Object.entries(GROUP))
       for (const n of names) on[TRIMS[n]] = state.trims[group] ? 1 : 0;
     gl.uniform1fv(U("uTrimOn"), on);
@@ -1602,9 +1819,9 @@
   }
 
   function describe() {
-    const parts = [state.fabric === "off" ? "Plain white straight kurta" : `Straight kurta in ${FABRICS[state.fabric].name.toLowerCase()}`];
+    const parts = [state.fabric === "off" ? "Plain white straight kurta" : `Straight kurta in ${fabricName(state.fabric).toLowerCase()}`];
     const on = Object.entries(state.trims).filter(([, v]) => v).map(([k]) => ({ neck: "neckline", cuffs: "cuffs", hem: "hem", slits: "slits" })[k]);
-    if (on.length) parts.push(`${LACES[state.lace].name.toLowerCase()} on the ${on.join(", ")}`);
+    if (on.length) parts.push(laceMixed() ? laceSummary().toLowerCase() : `${laceSummary().toLowerCase()} on the ${on.join(", ")}`);
     return `View: ${VIEWS[state.view].name}. ` + parts.join(", with ") + ".";
   }
 
@@ -1664,7 +1881,7 @@
   let glowRaf = 0;
   function glow({ trims = [], neck = false }) {
     if (!plate) return;
-    const on = new Float32Array(9);
+    const on = new Float32Array(16);
     trims.forEach((n) => { if (TRIMS[n]) on[TRIMS[n]] = 1; });
     gl.uniform1fv(U("uGlowTrim"), on);
     gl.uniform1f(U("uGlowNeck"), neck ? 1 : 0);
@@ -1705,8 +1922,8 @@
   const choicesText = () => {
     const on = Object.entries(state.trims).filter(([, v]) => v).map(([k]) => ({ neck: "neckline", cuffs: "sleeve cuffs", hem: "hem border", slits: "chaak slits" })[k]);
     return [
-      ["Cloth", state.fabric === "off" ? "Original white toile" : FABRICS[state.fabric].name],
-      ["Lace", on.length ? LACES[state.lace].name : "No lace"],
+      ["Cloth", state.fabric === "off" ? "Original white toile" : fabricName(state.fabric)],
+      ["Lace", on.length ? laceSummary() : "No lace"],
       ["Placement", on.length ? on.join(", ") : "none"],
       ["Neckline", state.neck ? `${fmt(state.neck.depthMm)} deep, ${fmt(state.neck.widthMm)} wide` : "as photographed"],
     ];
@@ -1715,7 +1932,7 @@
     const list = document.getElementById("review-list");
     list.textContent = "";
     for (const [k, v] of choicesText()) { const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; list.append(dt, dd); }
-    const key = JSON.stringify([state.fabric, state.lace, state.trims, state.neck]);
+    const key = JSON.stringify([state.fabric, state.laceBy, state.trims, state.neck]);
     if (key === reviewKey) return;
     // the 3 close views: drawn one after the other on the stage canvas (behind a still of the torso), copied to the strip.
     // First let the step's own cross-fade finish (the torso shows at once; the strip fills in after).
@@ -1773,9 +1990,8 @@
   });
 
   document.querySelectorAll("[data-fabric]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.fabric === state.fabric)));
-  document.querySelectorAll("[data-lace]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.lace === state.lace)));
-  document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : FABRICS[state.fabric].name;
-  document.getElementById("caption-trim").textContent = LACES[state.lace].name;
+  document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : fabricName(state.fabric);
+  laceUI();
 
   // ---------- controls
   document.querySelector('[data-group="fabric"]').addEventListener("click", (e) => {
@@ -1783,24 +1999,31 @@
     if (!b) return;
     state.fabric = b.dataset.fabric;
     b.parentElement.querySelectorAll("[data-fabric]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : FABRICS[state.fabric].name;
+    document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : fabricName(state.fabric);
     setFabric(state.fabric).then(() => plate && render()).catch((err) => fail("The fabric did not load: " + err.message));
   });
+  // StepC step 4: the lace picker applies to the chosen line (or all lines)
   document.querySelector('[data-group="lace"]').addEventListener("click", (e) => {
     const b = e.target.closest("[data-lace]");
-    if (!b || b.dataset.lace === state.lace) return;
+    if (!b) return;
     state.lace = b.dataset.lace;
-    b.parentElement.querySelectorAll("[data-lace]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    const any = Object.values(state.trims).some(Boolean);
-    document.getElementById("caption-trim").textContent = any ? LACES[state.lace].name : "No Lace";
-    setLace(state.lace).then(() => plate && render()).catch((err) => fail("The lace did not load: " + err.message));
+    for (const g of state.laceScope === "all" ? Object.keys(state.laceBy) : [state.laceScope]) state.laceBy[g] = state.lace;
+    laceUI();
+    loadLaces().then(() => plate && render()).catch((err) => fail("The lace did not load: " + err.message));
+  });
+  document.querySelector('[data-group="lace-scope"]').addEventListener("click", (e) => {
+    const b = e.target.closest("[data-scope]");
+    if (!b) return;
+    state.laceScope = b.dataset.scope;
+    if (state.laceScope !== "all") state.lace = state.laceBy[state.laceScope];
+    laceUI();
   });
   document.querySelectorAll("[data-trim]").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.trim;
     state.trims[k] = !state.trims[k];
     b.setAttribute("aria-pressed", String(state.trims[k]));
     const any = Object.values(state.trims).some(Boolean);
-    document.getElementById("caption-trim").textContent = any ? LACES[state.lace].name : "No Lace";
+    document.getElementById("caption-trim").textContent = any ? laceSummary() : "No Lace";
     if (plate) { if (state.trims[k]) glow({ trims: GROUP[k] }); else render(); }
   }));
   document.querySelectorAll("[data-test]").forEach((b) => b.addEventListener("click", () => {
