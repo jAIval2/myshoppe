@@ -1,4 +1,6 @@
-"""A kit for views measured from a garment mask (the new looks of 2026-11-23: 765 x 1024 sources). Pillow only, deterministic.
+"""A kit for views measured from a garment mask (the new looks: any source size, fit_to(path)). Pillow only, deterministic.
+A view whose garment has the wall's colour on one side is read in parts (spec "parts", parts_labels): each part on its own crop,
+with measured edges as barriers where the flood would leak (silhouette/views/torso_lehenga.py).
 
 The straight kurta's views read every edge by eye on gridded crops (docs/annotate.md, Path A). These sources have a plain wall and a
 white garment, so the kit reads the SILHOUETTE from the image and only the seams by eye:
@@ -18,6 +20,15 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 SRC_W, CROP_H = 765, 1020                  # the 765 x 1024 sources: 765 x 1020 is exactly 3:4
 K = 1200 / SRC_W                           # source px -> plate px
+
+
+def fit_to(path):
+    """Set the crop and the scale from the source's own size (a 3:4 crop of the full width): 765 x 1024 -> 765 x 1020, 1792 x 2400
+    -> 1792 x 2389. Called by a view before its base(), measure() or spec()."""
+    global SRC_W, CROP_H, K
+    SRC_W = Image.open(path).size[0]
+    CROP_H = round(SRC_W * 4 / 3)
+    K = 1200 / SRC_W
 
 
 def T(pts):
@@ -72,6 +83,24 @@ def background(im, seeds, G=7, D=5.0, A=0.08, barriers=()):
                     seen[ny * W + nx] = 1
                     ema[(nx, ny)] = tuple(e[k] + A * (c[k] - e[k]) for k in range(3))
                     q.append((nx, ny))
+    # a barrier's own pixels are never filled: where a barrier (or a seam) runs through wall it would stay "not background", a thin
+    # line of garment. Two 1 px passes give its pixels that touch the background to the background: a 3 px line in the wall goes,
+    # and a line beside the cloth goes up to the cloth (a seam inside the garment loses at most 2 px at its end)
+    if barriers:
+        bm = Image.new("L", (W, H), 0); dm = ImageDraw.Draw(bm)
+        for line in barriers: dm.line([tuple(p) for p in line], fill=255, width=3)
+        b = bm.load()
+        grown = []
+        for _ in range(2):
+            grow = [(x, y) for y in range(1, H - 1) for x in range(1, W - 1)
+                    if b[x, y] and not seen[y * W + x]
+                    and (seen[y * W + x - 1] or seen[y * W + x + 1] or seen[(y - 1) * W + x] or seen[(y + 1) * W + x])]
+            for x, y in grow: seen[y * W + x] = 1
+            grown += grow
+        # ... but where a seam enters the cloth, its end pixel has cloth on three sides: it stays (no notch between two zones)
+        back = [(x, y) for x, y in grown
+                if (not seen[y * W + x - 1]) + (not seen[y * W + x + 1]) + (not seen[(y - 1) * W + x]) + (not seen[(y + 1) * W + x]) >= 3]
+        for x, y in back: seen[y * W + x] = 0
     # the 3 px ring at the image border (its filter edge blocks the fill): each ring pixel takes the state of the pixel 3 px in, so
     # the wall reaches the border and a garment that runs off the frame (a close view) still does
     for y in range(H):
@@ -125,9 +154,10 @@ def garment(im, bg, keep=1, max_chroma=34, min_l=110, close_holes=400, exclude=(
     return out
 
 
-def zones(gmask, seeds, seams, strict=True):
+def zones(gmask, seeds, seams, strict=True, only_seams=False):
     """Label image {pixel index: zone name} of the garment cut by the seams (polylines; extended past the garment by the caller),
-    each zone flooded from its seed; the seam pixels then join their nearest zone (so the zones touch along the seam)."""
+    each zone flooded from its seed; the seam pixels then join their nearest zone (so the zones touch along the seam), and so do
+    stray garment px, unless only_seams (a part of a split view: the garment beyond its seams is another part's)."""
     W, H = gmask.size
     cut = gmask.copy(); d = ImageDraw.Draw(cut)
     for line in seams: d.line([tuple(p) for p in line], fill=0, width=2)
@@ -150,7 +180,7 @@ def zones(gmask, seeds, seams, strict=True):
     while front:                                                     # the seam pixels (and stray garment px) join the nearest zone
         i = front.popleft(); x, y = i % W, i // W
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if 0 <= nx < W and 0 <= ny < H and g[nx, ny] and lab[ny * W + nx] is None:
+            if 0 <= nx < W and 0 <= ny < H and g[nx, ny] and lab[ny * W + nx] is None and not (only_seams and c[nx, ny]):
                 lab[ny * W + nx] = lab[i]; front.append(ny * W + nx)
     return lab
 
@@ -203,7 +233,21 @@ def dp(pts, eps):
     return dp(pts[:k + 1], eps)[:-1] + dp(pts[k:], eps)
 
 
-def edges(lab, W, H, order, cuts, eps=0.9, holes_ok=False):
+def smooth(pts, k=3):
+    """A traced run along the pixel edges is a staircase of 1 px steps. Each inner corner becomes the mean of its neighbours within k
+    corners on both sides (fewer near the ends; the ends stay). Where the build's snap keeps these points (a weak span, a measured
+    line), a staircase gives the soft free edge a speckled rim (2026-11-24)."""
+    n = len(pts)
+    if n < 5: return list(pts)
+    out = [pts[0]]
+    for i in range(1, n - 1):
+        w = min(k, i, n - 1 - i)
+        seg = pts[i - w:i + w + 1]
+        out.append((sum(p[0] for p in seg) / len(seg), sum(p[1] for p in seg) / len(seg)))
+    return out + [pts[-1]]
+
+
+def edges(lab, W, H, order, cuts, eps=0.9, holes_ok=False, smooth_k=0):
     """Typed edges and outline chains (plate px) of the zones in `order`.
     cuts: {zone: [(edge name, source point a, source point b), ...]}: a free run is cut at the boundary corners nearest a and b, and
     the part from a to b (along the outline's direction, whichever way round is shorter) gets the name. Returns (edges, outlines)."""
@@ -257,7 +301,7 @@ def edges(lab, W, H, order, cuts, eps=0.9, holes_ok=False):
             elif across is None:
                 en = nm or f"{zn}-free-{free_k}"; free_k += 0 if nm else 1
                 if en in E: raise ValueError(f"edge {en} twice")
-                E[en] = {"type": "free", "points": T(dp(pts, eps))}
+                E[en] = {"type": "free", "points": T(dp(smooth(pts, smooth_k) if smooth_k else pts, eps))}
                 chain.append([en, 1])
             else:
                 key = tuple(sorted([zn, across])) + (frozenset([pts[0], pts[-1]]),)
@@ -266,7 +310,7 @@ def edges(lab, W, H, order, cuts, eps=0.9, holes_ok=False):
                     chain.append([en, 1 if stored[0] == pts[0] else -1])
                 else:
                     en = f"seam-{zn}-{across}" + (f"-{len(seam_of)}" if f"seam-{zn}-{across}" in E else "")
-                    E[en] = {"type": "seam", "zones": [zn, across], "points": T(dp(pts, eps))}
+                    E[en] = {"type": "seam", "zones": [zn, across], "points": T(dp(smooth(pts, smooth_k) if smooth_k else pts, eps))}
                     seam_of[key] = (en, pts)
                     chain.append([en, 1])
         O[zn] = chain
@@ -292,6 +336,41 @@ def border_seeds(im, step=8, min_chroma=20):
     return [(x, y) for x, y in out if max(raw[x, y]) - min(raw[x, y]) > min_chroma]
 
 
+def parts_labels(im, spec):
+    """The split measurement (spec "parts"): each part has a box (source px) and the zones it holds. Each part is read on its own
+    crop: the wall flood starts on the box's border (wall-coloured points only) and may not leave the box; the garment is what is
+    left in the box; the part's zones are flooded from their seeds inside it, cut by the seams. Its own thresholds ("G", "D") and
+    its own barriers ("barriers": measured edges where the garment has the wall's colour, a few px outside the garment). The
+    parts are merged in the order of the spec: a pixel already labelled by an earlier part keeps its label."""
+    W, H = im.size
+    lab = [None] * (W * H)
+    for name, part in spec["parts"].items():
+        x0, y0, x1, y1 = part["box"]
+        c = im.crop((x0, y0, x1, y1)); cw, ch = c.size
+        tr = lambda pts: [(x - x0, y - y0) for x, y in pts]
+        box = [(0, 0), (cw - 1, 0), (cw - 1, ch - 1), (0, ch - 1), (0, 0)]
+        barriers = ([box] + [tr(s) for s in spec.get("seams", {}).values()] + [tr(b) for b in spec.get("bg_barriers", ())]
+                    + [tr(b) for b in part.get("barriers", ())])
+        inside = lambda p: x0 <= p[0] < x1 and y0 <= p[1] < y1
+        sides = part.get("seed_sides", "ltrb")       # only the box sides that lie on wall: a side across the garment would seed it
+        seeds = [(x, y) for x, y in border_seeds(c)
+                 if ("l" in sides and x == 3) or ("r" in sides and x == cw - 4) or ("t" in sides and y == 3) or ("b" in sides and y == ch - 4)]
+        seeds += [(x - x0, y - y0) for x, y in spec.get("extra_seeds", ()) if inside((x, y))]
+        bgp = background(c, seeds, G=part.get("G", 7), D=part.get("D", 5.0), barriers=barriers)
+        gmp = garment(c, bgp, max_chroma=255, min_l=spec.get("min_l", 70),
+                      exclude=[tr(p) for p in spec.get("exclude", ())], close_holes=spec.get("close_holes", 400))
+        zs = {z: (spec["zones"][z]["seed"][0] - x0, spec["zones"][z]["seed"][1] - y0) for z in part["zones"]}
+        lc = zones(gmp, zs, [tr(s) for s in spec.get("seams", {}).values()], only_seams=True)
+        for i, v in enumerate(lc):
+            if v is None: continue
+            j = (i // cw + y0) * W + (i % cw + x0)
+            if lab[j] is None: lab[j] = v
+    gm = Image.new("L", (W, H), 0); g = gm.load()
+    for i, v in enumerate(lab):
+        if v is not None: g[i % W, i // W] = 255
+    return lab, gm, None
+
+
 def measure(spec):
     """The plate data of a view from its spec (all points in SOURCE px):
       path, patches                the source and its sparkle patches
@@ -303,16 +382,22 @@ def measure(spec):
       landmarks                    {name: (x, y)}
       scale                        (landmark a, landmark b, mm, note)
       trims, settings, occluders (source polygons), view, variant, source_note
+      measured                     polylines measured on the source where the garment has the background's colour: the build's snap
+                                   keeps the edge there (P["measured"])
+      smooth_k, dp_eps             the traced runs smoothed over k corners (0: as traced), then simplified (Douglas-Peucker, eps px)
     Returns (P, extras) with P as the straight kurta's views return it (plate px)."""
     im = source(spec["path"], spec.get("patches", ()))
     W, H = im.size
-    seeds = (border_seeds(im) if spec.get("border", True) else []) + [tuple(p) for p in spec.get("extra_seeds", ())]
-    bg = background(im, seeds, barriers=spec.get("bg_barriers", ()))
-    gm = garment(im, bg, max_chroma=255, min_l=spec.get("min_l", 70), exclude=spec.get("exclude", ()),
-                 close_holes=spec.get("close_holes", 400))
-    lab = zones(gm, {z: tuple(v["seed"]) for z, v in spec["zones"].items()}, list(spec.get("seams", {}).values()))
+    if spec.get("parts"):
+        lab, gm, bg = parts_labels(im, spec)
+    else:
+        seeds = (border_seeds(im) if spec.get("border", True) else []) + [tuple(p) for p in spec.get("extra_seeds", ())]
+        bg = background(im, seeds, barriers=spec.get("bg_barriers", ()))
+        gm = garment(im, bg, max_chroma=255, min_l=spec.get("min_l", 70), exclude=spec.get("exclude", ()),
+                     close_holes=spec.get("close_holes", 400))
+        lab = zones(gm, {z: tuple(v["seed"]) for z, v in spec["zones"].items()}, list(spec.get("seams", {}).values()))
     order = sorted(spec["zones"], key=lambda z: (spec["zones"][z]["order"], z))
-    E, O = edges(lab, W, H, order, spec.get("cuts", {}))
+    E, O = edges(lab, W, H, order, spec.get("cuts", {}), eps=spec.get("dp_eps", 0.9), smooth_k=spec.get("smooth_k", 0))
     L = {k: [round(x * K, 1), round(y * K, 1)] for k, (x, y) in spec["landmarks"].items()}
     a, b, mm, note = spec["scale"]
     mm_per_px = mm / math.dist(L[a], L[b])
@@ -321,6 +406,7 @@ def measure(spec):
          "scaleNote": note, "source": spec["source_note"], "landmarks": L, "edges": E, "zones": Z, "stitches": {},
          "settings": spec.get("settings", {}), "trims": spec.get("trims", {})}
     if spec.get("occluders"): P["occluders"] = [T(p) for p in spec["occluders"]]
+    if spec.get("measured"): P["measured"] = [T(p) for p in spec["measured"]]      # lines the build's snap keeps (snap_edges.py)
     return P, {"im": im, "bg": bg, "garment": gm, "labels": lab, "W": W, "H": H}
 
 

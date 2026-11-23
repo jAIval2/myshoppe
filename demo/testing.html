@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atelier Studio — Live Garment Preview</title>
 <!--
-  Test page for one pre-made plate (torso view, straight kurta).
+  Test page for the pre-made plates (four views of the straight kurta; ?look=lehenga: the lehenga's full-length view).
   WebGL2, one full-screen triangle, one fragment shader, no libraries.
   It draws only when a choice changes (no animation loop).
 
@@ -274,7 +274,7 @@
   <!-- LEFT: STAGE — photo underneath (fallback), WebGL canvas on top -->
   <div class="stage-col">
   <div class="stage-frame">
-    <img src="assets/plates/torso-straight/base.jpg" alt="" width="1200" height="1600">
+    <img alt="" width="1200" height="1600">
     <canvas id="stage" role="img" aria-label="Straight kurta on a dress form"></canvas>
     <canvas id="fade" aria-hidden="true"></canvas>
     <svg class="pivots" id="pivots" viewBox="0 0 1200 1600" preserveAspectRatio="none">
@@ -303,6 +303,13 @@
 
   <!-- RIGHT: CONTROLS (the sections of the current step) -->
   <div class="panel">
+    <div id="look-panel">
+      <p class="eyebrow">Silhouette</p>
+      <div class="pill-row" data-group="look" style="margin-bottom:14px">
+        <button class="pill" aria-pressed="true" data-look="straight-kurta">Straight kurta</button>
+        <button class="pill" aria-pressed="false" data-look="lehenga">Lehenga</button>
+      </div>
+    </div>
     <div data-section="fabric">
       <p class="eyebrow">Cloth</p>
       <div class="swatch-grid" data-group="fabric">
@@ -362,7 +369,7 @@
     </div>
 
     <div data-section="review" id="review-panel">
-      <p class="eyebrow">Your kurta</p>
+      <p class="eyebrow" id="review-title">Your kurta</p>
       <dl class="review-list" id="review-list"></dl>
       <div class="pill-row">
         <button class="pill primary" id="share">Share image</button>
@@ -392,12 +399,20 @@
 <script>
 (() => {
   // one journey step = one fixed view = one plate (render.md §4)
-  const VIEWS = {
-    torso:  { plate: "assets/plates/torso-straight/",  name: "full torso" },
-    neck:   { plate: "assets/plates/neck-straight/",   name: "neckline" },
-    sleeve: { plate: "assets/plates/sleeve-straight/", name: "shoulder and sleeve" },
-    hem:    { plate: "assets/plates/hem-straight/",    name: "hem and slit" },
+  // A look (a silhouette) has its own plates and its own design record (assets/looks/<look>.json); ?look=<key> picks it. A look
+  // without a plate for a view shows its torso view there. A record without a "neck" block has no live neckline (as photographed).
+  const LOOKS = {
+    "straight-kurta": { name: "Straight kurta", file: "assets/looks/straight-kurta.json", views: {
+      torso:  { plate: "assets/plates/torso-straight/",  name: "full torso" },
+      neck:   { plate: "assets/plates/neck-straight/",   name: "neckline" },
+      sleeve: { plate: "assets/plates/sleeve-straight/", name: "shoulder and sleeve" },
+      hem:    { plate: "assets/plates/hem-straight/",    name: "hem and slit" } } },
+    lehenga: { name: "Lehenga", file: "assets/looks/lehenga.json", views: {
+      torso:  { plate: "assets/plates/torso-lehenga/",   name: "full length" } } },
   };
+  const LOOK = LOOKS[new URLSearchParams(location.search).get("look")] ? new URLSearchParams(location.search).get("look") : "straight-kurta";
+  const VIEWS = Object.fromEntries(["torso", "neck", "sleeve", "hem"].map((v) => [v, LOOKS[LOOK].views[v] || LOOKS[LOOK].views.torso]));
+  const CLOSE = ["neck", "sleeve", "hem"].filter((v) => LOOKS[LOOK].views[v]);   // the review's close views: the look's own plates
   // repeatCm = real width of one tile (assumptions until the atelier measures them)
   // StepB step 5: a fabric is its tile and its sidecar (swatchprep/fabric_sidecar.py): name, repeatCm and its source, class,
   // placement data, sheen, anti-tiling. The test prints (reg, buta, border: ?fabric=<name>) are not in the picker.
@@ -1207,7 +1222,7 @@
 
   let plate = null;
   const units = [];                                    // texture object on each unit (replaced on a view switch)
-  const cache = {};                                    // view -> Promise of { plate, photo, id, uv, uvt, shade }
+  const cache = {};                                    // plate folder -> Promise of { plate, zones, blobs }
 
   function setUnit(unit, img, opts) {
     if (units[unit]) gl.deleteTexture(units[unit]);
@@ -1215,16 +1230,16 @@
   }
 
   const MAPS = [["photo", "base.jpg", false]];          // the only image a view downloads (with its plate.dat)
-  function fetchView(view) {                           // download once, keep the compressed files (blobs)
-    if (!cache[view]) {
-      const P = VIEWS[view].plate, maps = MAPS;
+  function fetchView(view) {                           // download once per plate (views of a look may share one), keep the blobs
+    const P = VIEWS[view].plate, maps = MAPS;
+    if (!cache[P]) {
       // every view reads ONE small plate.dat (version 2, StepA step 1): the curves, the typed edges and the decisions
       const meta = blobOf(P + "plate.dat").then((b) => b.arrayBuffer()).then((ab) => Plate.parseDat(ab));
-      cache[view] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
+      cache[P] = Promise.all([meta, ...maps.map(([, f]) => blobOf(P + f))])
         .then(([{ plate, zones }, ...blobs]) => ({ plate, zones, blobs: Object.fromEntries(maps.map(([k], i) => [k, blobs[i]])) }));
-      cache[view].catch(() => delete cache[view]);    // allow a retry
+      cache[P].catch(() => delete cache[P]);          // allow a retry
     }
-    return cache[view];
+    return cache[P];
   }
   async function decodeView(view, v) {
     const maps = MAPS;
@@ -1461,7 +1476,7 @@
   function neckSetup() {                               // per view, from the plate's "neck" block
     neckGeo = null;
     const n = plate.neck;
-    if (!n || !look) return;
+    if (!n || !look?.neck) return;
     const e = n.edge, c0 = e[0], c1 = e[e.length - 1], mmpp = plate.mmPerPx;
     const lineY = (x) => c0[1] + (c1[1] - c0[1]) * (x - c0[0]) / (c1[0] - c0[0]);
     const away = [n.cf[0], -1e4];
@@ -1610,8 +1625,8 @@
     pivotsUpdate();
   }
   function writeURL() {                                // the record in the URL (for tests and sharing): ?neckDepth=&neckWidth=
-    const q = new URLSearchParams(location.search), L = look.neck;
-    for (const [k, p] of [["depthMm", "neckDepth"], ["widthMm", "neckWidth"]])
+    const q = new URLSearchParams(location.search), L = look?.neck;
+    if (L && state.neck) for (const [k, p] of [["depthMm", "neckDepth"], ["widthMm", "neckWidth"]])
       if (Math.abs(state.neck[k] - L[k].default) < 0.05) q.delete(p); else q.set(p, Math.round(state.neck[k] * 10) / 10);
     const nk = Object.entries(state.laceN).filter(([k]) => k.startsWith("neck.")).map(([k, n]) => `${k}:${n}`).join(",");
     if (nk) q.set("laceN", nk); else q.delete("laceN");  // StepC step 5: the neck's count of motifs
@@ -1653,7 +1668,7 @@
     });
   }
   document.getElementById("neck-reset").addEventListener("click", () => {
-    if (!look) return;
+    if (!look?.neck) return;
     applyNeck({ depthMm: look.neck.depthMm.default, widthMm: look.neck.widthMm.default });
     writeURL();
   });
@@ -1663,6 +1678,24 @@
   });
   document.getElementById("neck-snap").setAttribute("aria-pressed", String(snapOn));
 
+  // the silhouette: a look is its own plates and design record, so choosing one reloads the page with it (the cloth and laces kept)
+  document.getElementById("stage").setAttribute("aria-label", `${LOOKS[LOOK].name} on a dress form`);
+  document.getElementById("review-title").textContent = `Your ${LOOKS[LOOK].name.toLowerCase()}`;
+  document.querySelectorAll("[data-thumb]").forEach((th) => { th.closest("figure").hidden = !CLOSE.includes(th.dataset.thumb); });
+  document.querySelectorAll('[data-group="look"] [data-look]').forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.look === LOOK));
+    b.addEventListener("click", () => {
+      if (b.dataset.look === LOOK) return;
+      const q = new URLSearchParams();
+      if (b.dataset.look !== "straight-kurta") q.set("look", b.dataset.look);
+      q.set("fabric", state.fabric);
+      const laces = new Set(Object.values(state.laceBy));
+      if (laces.size === 1) q.set("lace", [...laces][0]);
+      else for (const [g, k] of Object.entries(state.laceBy)) q.set("lace." + g, k);
+      location.search = q.toString();
+    });
+  });
+
   async function loadShared() {                        // samplers and swatches: once for all views
     ["uPhoto", "uId", "uUV", "uUVT", "uShade", "uFabric", "uLace", "uLaceMat", "uUVTS"].forEach((n, i) => gl.uniform1i(U(n), i));
     [["uLace1", 9], ["uLaceMat1", 10], ["uLace2", 11], ["uLaceMat2", 12], ["uLace3", 13], ["uLaceMat3", 14]].forEach(([n, i]) => gl.uniform1i(U(n), i));
@@ -1671,12 +1704,13 @@
     gl.uniform1f(U("uDisplaceMm"), 1.0);
     gl.uniform1f(U("uSrgbTex"), SRGB_TEX);
     gl.uniform2f(U("uShadowMm"), 0.6, 0.9);
-    look = await fetch("assets/looks/straight-kurta.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (look) {                                        // the design record; ?neckDepth=110&neckWidth=165 for tests
+    look = await fetch(LOOKS[LOOK].file).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (look?.neck) {                                        // the design record; ?neckDepth=110&neckWidth=165 for tests
       const L = look.neck;
       state.neck = clampNeck({ depthMm: params0.get("neckDepth") ?? L.depthMm.default, widthMm: params0.get("neckWidth") ?? L.widthMm.default });
     }
     await Promise.all(Object.entries(FABRICS).map(async ([k, f]) => { fabricMeta[k] = await fetch(f.meta).then((r) => r.json()); }));
+    document.getElementById("caption-fabric").textContent = state.fabric === "off" ? "Plain White Toile" : fabricName(state.fabric);
     await Promise.all(Object.entries(LACES).map(async ([k, l]) => { laceMeta[k] = await laceMetaOf(l.meta); }));
     laceUI();
     await Promise.all([setFabric(state.fabric), loadLaces()]);
@@ -1819,7 +1853,8 @@
   }
 
   function describe() {
-    const parts = [state.fabric === "off" ? "Plain white straight kurta" : `Straight kurta in ${fabricName(state.fabric).toLowerCase()}`];
+    const lk = LOOKS[LOOK].name;
+    const parts = [state.fabric === "off" ? `Plain white ${lk.toLowerCase()}` : `${lk} in ${fabricName(state.fabric).toLowerCase()}`];
     const on = Object.entries(state.trims).filter(([, v]) => v).map(([k]) => ({ neck: "neckline", cuffs: "cuffs", hem: "hem", slits: "slits" })[k]);
     if (on.length) parts.push(laceMixed() ? laceSummary().toLowerCase() : `${laceSummary().toLowerCase()} on the ${on.join(", ")}`);
     return `View: ${VIEWS[state.view].name}. ` + parts.join(", with ") + ".";
@@ -1845,7 +1880,7 @@
     });
     const secs = STEPS[state.step].sections;
     document.querySelectorAll("[data-section]").forEach((d) => { d.hidden = d.dataset.section === "test" ? !SHOW_TEST : !secs.includes(d.dataset.section); });
-    document.getElementById("review-strip").hidden = state.step !== "review";
+    document.getElementById("review-strip").hidden = state.step !== "review" || !CLOSE.length;   // a look with no close views: none
     const i = ORDER.indexOf(state.step);
     document.getElementById("prev-step").hidden = i === 0;
     const next = document.getElementById("next-step");
@@ -1938,7 +1973,7 @@
     // First let the step's own cross-fade finish (the torso shows at once; the strip fills in after).
     await new Promise((r) => setTimeout(r, REDUCED.matches ? 0 : 280));
     freeze();
-    for (const v of ["neck", "sleeve", "hem"]) {
+    for (const v of CLOSE) {
       state.view = v;
       await showView(v, { fade: false });
       const th = document.querySelector(`[data-thumb="${v}"]`);
@@ -1958,7 +1993,7 @@
     x.fillStyle = "#f6f1e9"; x.fillRect(0, 0, W, H);
     const big = [M, 112, 600, 800];
     x.drawImage(canvas, ...big);
-    x.fillStyle = "#1d1a16"; x.font = "500 40px Helvetica Neue, Arial, sans-serif"; x.fillText("Your kurta", M, 78);
+    x.fillStyle = "#1d1a16"; x.font = "500 40px Helvetica Neue, Arial, sans-serif"; x.fillText(`Your ${LOOKS[LOOK].name.toLowerCase()}`, M, 78);
     let y = 150;
     for (const [k, v] of choicesText()) {
       x.fillStyle = "#6f675d"; x.font = "500 20px Helvetica Neue, Arial, sans-serif"; x.fillText(k.toUpperCase(), 680, y);
@@ -1968,7 +2003,7 @@
       x.fillText(line, 680, y + 38); y += 110;
     }
     const tw = (W - 2 * M - 2 * 24) / 3, th = tw * 4 / 3;
-    ["neck", "sleeve", "hem"].forEach((v, i) => x.drawImage(document.querySelector(`[data-thumb="${v}"]`), M + i * (tw + 24), 112 + 800 + 40, tw, th));
+    CLOSE.forEach((v, i) => x.drawImage(document.querySelector(`[data-thumb="${v}"]`), M + i * (tw + 24), 112 + 800 + 40, tw, th));
     x.fillStyle = "#6f675d"; x.font = "20px Helvetica Neue, Arial, sans-serif";
     x.fillText("Atelier Studio · live preview from the studio photographs", M, H - 40);
     return new Promise((res) => c.toBlob(res, "image/png"));

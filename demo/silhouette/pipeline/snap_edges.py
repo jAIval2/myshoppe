@@ -12,7 +12,9 @@ For every FREE or CUT edge (the occluders are chains of these edges, so they fol
      crossing of the projection between the two (bilinear colour, 0.25 px steps, within +-8 px; the crossing nearest the edge);
      a WEAK sample (inside and outside closer than 14 levels: a fold against a like background) keeps the measured position (its
      target is 0); so does a sample that a later zone COVERS, or that lies OVER another zone (4 px outward is that zone's fabric: a
-     sleeve's edge over the body, white over white): those are counted apart, they are not contour against the background;
+     sleeve's edge over the body, white over white): those are counted apart, they are not contour against the background; and so
+     does a sample within 3 px of one of the view's MEASURED lines (P["measured"], plate px: an edge measured on the source where the
+     garment has the background's colour, and the photo's nearest step is a fold of the cloth, not its edge; 2026-11-24);
   3. a robust smooth fit of the displacement along the edge (Whittaker: data term + lambda x the squared second difference, lambda 4
      at 2 px spacing); samples more than 1.2 px off the fit are dropped and the fit repeated (3 rounds); then the colour model is
      taken again at the fitted edge and steps 2-3 run once more;
@@ -184,6 +186,16 @@ def spans(S, flags):
     return out
 
 
+def near_measured(p, lines, r=3.0):
+    """p within r px of a measured line (a polyline, plate px)."""
+    for L in lines:
+        for (ax, ay), (bx, by) in zip(L, L[1:]):
+            dx, dy = bx - ax, by - ay; l2 = dx * dx + dy * dy
+            t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / l2))
+            if math.hypot(p[0] - ax - t * dx, p[1] - ay - t * dy) <= r: return True
+    return False
+
+
 def snap(P, base):
     import platedat
     img = RGB(base)
@@ -204,7 +216,8 @@ def snap(P, base):
         later = [O[u] for u in Z if Z[u]["order"] > Z[zn]["order"]]
         others = [O[u] for u in Z if u != zn]
         covered = lambda p, n_, later=later, others=others: (any(inside(p, q) for q in later)
-                                                           or any(inside((p[0] + 4 * n_[0], p[1] + 4 * n_[1]), q) for q in others))
+                                                           or any(inside((p[0] + 4 * n_[0], p[1] + 4 * n_[1]), q) for q in others)
+                                                           or near_measured(p, P.get("measured", ())))
         pts, rep = snap_edge(img, e["points"], sign, covered)
         e["points"] = pts
         report[n] = rep

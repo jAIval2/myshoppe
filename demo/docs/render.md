@@ -521,44 +521,75 @@ The photos disagree on the neck depth (7 mm), the slit length (8 cm) and the sle
 | 5 Repeats | The neckline in whole repeats, both corners on motif boundaries; a count is kept while the lace stretches by at most 6 % (no jumping while dragging) and is part of the design record |
 | 6 Border | A border fabric lies on the photographed hem and cuff edges (the trim field's distance from the edge), the curved hem and the slit corners included |
 
-### 2026-11-23: four plates of new looks (`torso-angrakha`, `torso-lehenga`, `torso-sharara`, `neck-anarkali`)
+### 2026-11-23: new looks; 2026-11-24: `torso-lehenga` from a 1792 x 2400 image, read in parts
 
-Six AI images arrived (765 x 1024 each, a sparkle mark on each); four are plates, two wait. Each plate: `assets/plates/<plate>/`
-(base.jpg + plate.dat, BSP4), its source `silhouette/sources/<plate>.png`, its view `silhouette/views/<view>_<variant>.py`, its look
-record `assets/looks/<look>.json` (garment v1: pieces, zones and landmark names; every landmark `compare: none`, so the fit moves
-nothing and the cross-view checks compare nothing until the atelier gives values). Review images: `review/<plate>/`
-(annotate.png, check.png, crops.png); **not yet approved by a person**. Rebuild: `make plate VIEW=<view> VARIANT=<look>`.
-
-How they were measured: the silhouette is read from the image by `silhouette/views/_kit.py` (new): the wall grown from seeds under a
-gradient barrier and a running-colour limit, the garment = the rest minus the form above the neckline, the floor and other
-excluded polygons; seams (measured polylines) cut it into zones, each boundary is split into free / seam / frame runs, and the named
-free runs (neck, cuffs, hems) are cut at measured landmarks. Seams, necklines and landmarks were read by eye on gridded crops of the
-source. Scale: neck-l -> neck-r = 158 mm on every plate (the straight kurta's agreed value: the same dress form); an assumption, not a
-measurement of these garments.
-
-Tool changes (every existing plate rebuilds byte-identical):
+**The first four plates of new looks were removed** (`torso-angrakha`, `torso-lehenga`, `torso-sharara`, `neck-anarkali`, from
+765 x 1024 images): below the standard (6 .. 11 invariant FAILs each, visible defects on their check images, the base upscaled 1.57 x,
+sparkle marks not fully covered). Their view modules (`silhouette/views/<view>_<look>.py`) and look records stay as templates; they
+do not build (their sources are gone). The tool changes made for them stay (every plate rebuilds byte-identical):
 - `make_plate.py`: a look's own view module (`views/<view>_<variant>.py`) when it exists; a frame may take its body from several
-  zones (`bodyOf`, the angrakha's two front panels); a trim's smoothing window from its spec (`smoothMm`, default 4).
+  zones (`bodyOf`); a trim's smoothing window from its spec (`smoothMm`, default 4). `plate.py measure` uses the look's module.
 - `snap_edges.py`: the seam-end taper no longer moves the seam's far end (a short seam's far end was moved 0.08 px off its partner).
-- `plate.py measure` uses the look's own view module.
 
-| Plate | Zones | Invariants FAIL (number, reason) |
-|---|---|---|
-| torso-angrakha | wrap, front (the panel under the wrap), skirt, sleeve-l, sleeve-r | 11: closure 112 px = 0.0233 % (limit 0.02 %; slivers along the wrap seam); hairline 30 px (limit 8); neck smooth 0.96 px (limit 0.8); hem line mean 1.15 / std 1.21 px and smooth 2.11 px, 17 field seams (a gathered, wavy hem: `smoothMm` 40 is the trade-off); grain wrap 3.59°, front 21.0°, skirt 7.36°, sleeve-l 6.12° (limit 3: shaped and flared pieces, the under-panel shows a sliver only); frame cf front 1.06 px (limit 1) |
-| torso-lehenga | top, skirt, sleeve-l, sleeve-r | 6: neck smooth 0.88 px; hem line 0.75 / 0.90 px, smooth 2.06 px, 230 field seams (the flared hem's folds); grain top 8.72°, skirt 6.51° (a circular skirt has no straight grain) |
-| torso-sharara | kurta, leg-l, leg-r, sleeve-l, sleeve-r | 9: closure 306 px = 0.0571 % (a strip at source y 917 .. 924 below the hem, inside the excluded floor: the check reads the sunlit floor as cloth; to be confirmed on check.png); neck smooth 0.96 px; cuff-r 33 field seams; hem-leg-l line 1.22 / 1.25 px, 1 field seam; hem-leg-r line 1.00 / 1.20 px, smooth 1.06 px, 33 field seams (tiered, gathered hems); grain leg-l 3.38° |
-| neck-anarkali | front (bodice), skirt, sleeve-l, sleeve-r | 6: closure 50 px = 0.0049 % passes the area limit, but one piece is wider than 1 px (24 px at source (299 .. 307, 207 .. 214): the neckline's left end against the excluded form); hairline 19 px (limit 8); neck smooth 0.82 px (limit 0.8); cuff-l 53 field seams; grain front 5.72°, skirt 4.77°. The left underarm gap is wall only at y 396 .. 480; below it the sleeve meets the bodice on a fold (a seam, not a gap) |
+**`torso-lehenga`** (2026-11-24): the white-cotton crop top and flared skirt, `silhouette/sources/torso-lehenga.png` (1792 x 2400,
+the sparkle mark at x 1632 .. 1727, y 2240 .. 2335 patched from 170 px left), cut to 1792 x 2389 and resized to 1200 x 1600.
+View `silhouette/views/torso_lehenga.py`; look record `assets/looks/lehenga.json` (garment v1, every landmark `compare: none`).
+Scale: neck-l -> neck-r = 158 mm (198 px; the straight kurta's agreed value, the same dress form): an assumption, not a measurement
+of this garment (shoulder width then 367 mm, neck point to hem 1.44 m). **Not yet approved by a person** (`review/torso-lehenga/`). On the page: `testing.html?look=lehenga`, or the Silhouette picker
+(a look without a plate for a view shows its torso there; without a `neck` block in its record, the neckline is as photographed).
 
-Known problems: the grain limit (3°) is written for straight pieces; flared skirts, tiers and the wrap fail it by nature. The hems of
-the flared and tiered pieces are wavy in the photo, so the trim line follows a smoothed hem (40 mm window) and misses the photo's
-edge by about a pixel. The neck-anarkali's cloth is close to the wall's colour: its outer silhouette is a barrier drawn by eye 3 px
-outside the edge, and the build's snap brings the edges onto the photo (13 of 16 snapped edges report weak samples).
+How it was measured. The lit left side has a strong edge against the wall (20 .. 43 levels); the shaded right side has the wall's own
+colour (the right sleeve L 170 / chroma 34 against the wall's L 167 / 34; the right shoulder L 175 .. 181 against 180), so a wall flood
+leaks into it. So the view is **read in parts** (`_kit.parts_labels`): the top, the sleeves and the skirt each on their own crop,
+seeded only from the crop's sides that lie on wall, their zones flooded from their seeds and merged.
+- **The shaded right side is measured** (`EDGE_R`, one line from the shoulder down the sleeve, under the cuff, down the skirt and
+  along the right half of the hem): the shoulder per column (where the chroma steps), the sleeve from profiles across it, the cuff
+  on a x0.9 crop, a notch of wall under its inner corner (x 1170 .. 1183), the skirt from the dark line where the cloth ends (per
+  row) and the strongest step per row, the hem per column (at
+  x 1280 .. 1300 the cloth is 3 .. 8 levels above the wall: interpolated). Everything beyond it is excluded (`RIGHT_WALL`), a
+  barrier 2 px outside keeps the flood out of the cloth, and the build keeps the line (`measured`: the photo's nearest step there
+  is a fold of the cloth, which the snap followed inward and so bit into the edge).
+- **The left underarm has no gap**: what shows between the sleeve and the bodice is a crease (a dark line 1 .. 3 px wide), not wall;
+  the armhole seam runs down it and the fabric keeps it as a fold. (The first build cut out 8 .. 10 px there from a chroma test that
+  also took the shaded cloth beside the crease: a pale stripe through the fabric, 2026-11-24.)
+- **The right sleeve hangs apart from the body** (`GAP_R`): wall shows between them from the armpit (1108, 505) to the notch under
+  the cuff's inner corner, 7 .. 40 px wide, in shadow (L 152 .. 175 / chroma 32 .. 41; the deepest part by the armpit L 89 .. 138).
+  Per row, the sleeve's side where the wall's chroma (>= 32.5) gives way to the sleeve's (25 .. 31), smoothed; the body's side: the
+  top's shaded side (on a x2 plain crop: its chroma is the wall's), the midriff and the waistband's end, then the skirt's lit edge
+  (chroma 22 .. 28). Both sides are measured lines; only the armhole joins the sleeve to the top, nothing joins it to the skirt.
+  (Earlier builds took the gap for a crease and its shadow for a sleeve-to-skirt seam: the sleeve looked merged with the top and the
+  skirt, 2026-11-24.)
+- **Background inside the garment** is measured polygons, not seeds (a seed in a narrow region leaks into the cloth): the wedge of wall
+  between the left sleeve and the skirt (its sleeve side where the sleeve's shading ends on the wall's plateau, L 192; measured,
+  not snapped; it tapers along the skirt's edge to y 904, where it is still 5 px wide: below, the soft edge would take its
+  background from the skirt across it, and the 2 .. 4 px dark line stays as a crease) that joins the bare midriff; the midriff (its top is the top's hem, per column where the chroma reaches the form's);
+  the sunlit wall and floor under the left half of the hem (as bright as the cloth: its top is the stepped panel bottoms).
+- The traced runs are smoothed over 3 corners before they are simplified (`smooth_k`): where the snap keeps them, a pixel staircase
+  gave the soft free edge a speckled rim.
+Seams: the left armhole from the shoulder down the crease into the wedge; the right armhole from the shoulder to the gap at the
+armpit; the left sleeve's inner edge over the skirt (per row from the step, 20 .. 43 levels).
 
-Waiting: `sleeve-anarkali` and `hem-anarkali` (sources in `silhouette/sources/pending/`, outside the default rebuild loop). The sleeve
-view's points read so far (source px): the armhole from about (318, 201) to (377, 420); the sleeve's front edge x 377 at y 420 to
-x 407 at the cuff; the cuff (297, 927) -> (407, 917); the sleeve's outer edge leaves the skirt at about (265, 735). Both need a
-scale (the sleeve: shoulder -> cuff-out = 470 mm as on the straight sleeve; the hem: none visible) and the mannequin arm below the
-sleeve's cuff as an occluder.
+Tool changes (every plate rebuilds byte-identical):
+- `_kit.fit_to(path)`: the crop and the scale from the source's own size (was fixed to 765 x 1024).
+- `_kit.parts_labels` and the spec's `parts` (box, zones, `seed_sides`, per-part `barriers`, `G`, `D`); `zones(..., only_seams)`: in a
+  part, only the seam pixels join a zone (the garment beyond the seams is another part's).
+- `_kit.background`: a barrier's own pixels that touch the background join it (two 1 px passes), so a barrier or seam through the
+  wall leaves no line of "garment"; a seam's end pixel with cloth on three sides stays.
+- `_kit.smooth` and the spec's `smooth_k`, `dp_eps`; the spec's `measured` lines go to the build as `P["measured"]`.
+- `snap_edges.py`: a sample within 3 px of a measured line keeps its position (counted with the covered samples).
+
+| Check | Result |
+|---|---|
+| Snap | 21 edges; all PASS but a 7-sample stub of the top (one weak sample); the measured lines kept (covered) |
+| Invariants | 2 FAIL: grain top 3.70°, skirt 8.83° (limit 3: a fitted crop top with darts, a circular skirt has no straight grain). Closure, gaps, the trims' lines, smoothness and fields, landmarks, frames: PASS |
+| Trims | neck, top-hem, cuffs, hem: on their edges and smooth; the hem's smoothing window 20 mm (40 mm missed the stepped hem by 0.55 px) |
+| Frame parity (`frame_check.mjs`) | 3.9 x 10^-14 cm (limit 10^-4) |
+| `platedat.py --check`, `rebuild-check` | PASS, ALL IDENTICAL |
+| Page (`testing.html?look=lehenga`) | `maps_check.py` ALL PASS: coverage 0 px outside the 1 px edge band, uv max 0.0083 cm, trim fields s 0.0020 cm / t 0.0196 mm; no console error |
+| Render (`fringe.py`) | uncovered 1 px, none wider than 1 px; rim 0.00 % mocha, 0.09 % sage (limit 0.5 %); halo median 2.1 %, 95 % 20.0 % (limit 10 %, open): the soft free edge paints the band just outside the edge with the background and so erases the photo's contact shadows (under the top's hem on the form, along the right gap, the hem over the wall's shadow), the open item StepA recorded for the torso hem over the floor |
+
+Waiting: `sleeve-anarkali` and `hem-anarkali` (765 x 1024 images of 2026-11-23) were removed with the first four plates; the anarkali
+look is to be redone from the 1792 x 2400 torso image on the branch `anarkali-wip`.
 
 ## 12. Sources
 
