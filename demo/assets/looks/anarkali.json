@@ -56,6 +56,22 @@
     "compare": "none",
     "note": "named, not yet measured on the garment"
    },
+   "hem-cf": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-l": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "hem-slit-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
    "neck-l": {
     "compare": "none",
     "note": "named, not yet measured on the garment"
@@ -69,6 +85,10 @@
     "note": "named, not yet measured on the garment"
    },
    "shoulder-r": {
+    "compare": "none",
+    "note": "named, not yet measured on the garment"
+   },
+   "slit-r": {
     "compare": "none",
     "note": "named, not yet measured on the garment"
    },
@@ -114,6 +134,35 @@
      "waist-l": "waist-l",
      "waist-r": "waist-r",
      "waist-cf": "waist-cf",
+     "cuff-out-l": "cuff-out-l",
+     "cuff-in-l": "cuff-in-l",
+     "cuff-out-r": "cuff-out-r",
+     "cuff-in-r": "cuff-in-r"
+    }
+   },
+   "torso": {
+    "zones": {
+     "front": "bodice",
+     "skirt": "skirt",
+     "sleeve-l": "sleeve-l",
+     "sleeve-r": "sleeve-r"
+    },
+    "landmarks": {
+     "neck-l": "neck-l",
+     "neck-r": "neck-r",
+     "cf-neck": "cf-neck",
+     "shoulder-l": "shoulder-l",
+     "shoulder-r": "shoulder-r",
+     "underarm-l": "underarm-l",
+     "underarm-r": "underarm-r",
+     "waist-l": "waist-l",
+     "waist-r": "waist-r",
+     "waist-cf": "waist-cf",
+     "hem-l": "hem-l",
+     "hem-r": "hem-r",
+     "hem-cf": "hem-cf",
+     "slit-r": "slit-r",
+     "hem-slit-r": "hem-slit-r",
      "cuff-out-l": "cuff-out-l",
      "cuff-in-l": "cuff-in-l",
      "cuff-out-r": "cuff-out-r",

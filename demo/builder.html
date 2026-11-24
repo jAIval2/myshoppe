@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier Studio — Build by parts</title>
+<!--
+  StepD by parts: a look is a base layer (the garment as photographed, or without its sleeves) and parts (sleeves, collars)
+  that sit on the look's anchors. Every layer is in the plate frame (1200 x 1600), so the page only stacks images at their boxes.
+  Everything comes from assets/layers/manifest.js (written by silhouette/parts/build_layers.py): a new part is a new layer and a
+  manifest entry, no page change.
+
+  Opens from disk or from a server (make serve -> http://localhost:8300/builder.html). Download needs the server (a canvas
+  drawn from file:// images cannot be read back).
+  URL: ?look=anarkali&sleeve=bell&neck=mandarin  (&anchors=1)
+-->
+<style>
+  :root {
+    --bg: #f6f1e9;
+    --card: #fbf8f3;
+    --ink: #1d1a16;
+    --muted: #6f675d;
+    --line: rgba(29, 26, 22, 0.14);
+    --placed: #9a6a2f;
+    --join: #b4532a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px; background: var(--bg); color: var(--ink);
+    font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .studio-shell {
+    display: grid; grid-template-columns: minmax(320px, 430px) minmax(300px, 380px); gap: 40px; align-items: start;
+    max-width: 880px; width: 100%;
+  }
+  @media (max-width: 760px) {
+    body { padding: 16px; }
+    .studio-shell { grid-template-columns: 1fr; gap: 24px; }
+  }
+  /* JOURNEY */
+  .journey { width: 100%; max-width: 880px; margin: -12px 0 22px; }
+  .journey ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .journey li { flex: 1 0 auto; }
+  .journey button {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+    color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+    transition: background 0.16s, color 0.16s, border-color 0.16s;
+  }
+  .journey .num {
+    width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center;
+    font-size: 11px; background: rgba(29, 26, 22, 0.07); color: var(--ink);
+  }
+  .journey button[aria-current="step"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .journey button[aria-current="step"] .num { background: var(--card); color: var(--ink); }
+  .journey button.done:not([aria-current="step"]) { color: var(--ink); }
+  .journey button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  @media (max-width: 760px) {
+    .journey { margin: -4px 0 14px; }
+    .journey li { flex: 1 1 0; min-width: 0; }
+    .journey button { padding: 8px 4px; gap: 5px; font-size: 11.5px; }
+  }
+  @media (max-width: 440px) { .journey .num { display: none; } }
+
+  /* STAGE: one <img> per layer, placed by its box in frame px (percent of 1200 x 1600) */
+  .stage-col { display: grid; gap: 12px; align-content: start; }
+  .stage-frame {
+    position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden;
+    background: #e5ddd0; box-shadow: 0 20px 48px rgba(29, 26, 22, 0.12);
+  }
+  .stage-frame .layer {
+    position: absolute; display: block; opacity: 0; transition: opacity 220ms ease-out; pointer-events: none;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .stage-frame .layer.on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .stage-frame .layer { transition: none; } }
+  .anchors { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 50; }
+  .anchors.show { display: block; }
+  .anchors .pt { fill: rgba(251, 248, 243, 0.92); stroke: rgba(29, 26, 22, 0.55); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+  .anchors .pt.join { fill: var(--join); stroke: #fff; stroke-width: 1.5; }
+  .anchors .seam { fill: none; stroke: var(--join); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+  .anchors text { font: 600 22px "Helvetica Neue", sans-serif; fill: var(--ink); paint-order: stroke; stroke: rgba(251, 248, 243, 0.9); stroke-width: 5px; }
+  .anchors text.dim { fill: var(--muted); font-weight: 400; }
+  .stage-badge {
+    position: absolute; top: 14px; left: 14px; max-width: calc(100% - 170px); margin: 0; z-index: 60;
+    padding: 6px 11px; border-radius: 999px; background: rgba(251, 248, 243, 0.92); backdrop-filter: blur(8px);
+    font-size: 11px; line-height: 1.35; color: var(--placed); display: none;
+  }
+  .stage-badge.show { display: block; }
+  .before-btn {
+    position: absolute; top: 14px; right: 14px; padding: 7px 12px; border-radius: 999px; border: 0; z-index: 60;
+    background: rgba(251, 248, 243, 0.9); backdrop-filter: blur(8px); color: var(--ink); font: inherit; font-size: 11px;
+    letter-spacing: 0.04em; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .before-btn[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+  .before-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .stage-caption {
+    position: absolute; bottom: 14px; left: 14px; right: 14px; z-index: 60;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 999px;
+    background: rgba(251, 248, 243, 0.86); backdrop-filter: blur(8px); font-size: 11px; letter-spacing: 0.06em; color: var(--ink);
+  }
+  .stage-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .legend { font-size: 11px; color: var(--muted); display: none; align-items: center; gap: 6px; }
+  .legend.show { display: flex; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--join); display: inline-block; }
+
+  /* PANEL */
+  .panel { display: grid; gap: 22px; padding-top: 4px; }
+  .panel [hidden] { display: none !important; }
+  .eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+  .lede { font-size: 13px; line-height: 1.5; margin: -4px 0 14px; color: var(--muted); }
+  .pill {
+    padding: 8px 15px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    font: inherit; font-size: 12.5px; cursor: pointer; transition: background 0.16s, color 0.16s, border-color 0.16s;
+  }
+  .pill[aria-pressed="true"], .pill.primary { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  .pill:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .step-nav { display: flex; justify-content: space-between; gap: 8px; }
+
+  .look-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .look-card, .part-card {
+    display: grid; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+    color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.18s, opacity 0.18s;
+  }
+  .look-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 9px; display: block; background: #e5ddd0; }
+  .look-card strong, .part-card strong { font-size: 13px; font-weight: 500; display: block; }
+  .look-card span, .part-card .sub { font-size: 11px; color: var(--muted); line-height: 1.35; }
+  .look-card[aria-pressed="true"], .part-card[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .look-card:focus-visible, .part-card:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .part-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .part-card { grid-template-columns: 56px 1fr; align-items: center; gap: 10px; padding: 7px 9px 7px 7px; }
+  .part-card .thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #e5ddd0; display: block; }
+  .part-card .thumb.empty {
+    border: 1px dashed rgba(29, 26, 22, 0.25); background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(29, 26, 22, 0.05) 6px 12px);
+  }
+  .tag { display: inline-block; margin-top: 3px; font-size: 10px; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 999px; }
+  .tag.own { background: rgba(29, 26, 22, 0.06); color: var(--muted); }
+  .tag.placed { background: rgba(154, 106, 47, 0.12); color: var(--placed); }
+  .tag.missing { background: transparent; border: 1px dashed rgba(29, 26, 22, 0.25); color: var(--muted); }
+  .part-card[aria-disabled="true"] { cursor: help; opacity: 0.62; }
+  .part-card[aria-disabled="true"]:hover { opacity: 0.85; }
+
+  .hint { font-size: 11.5px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; min-height: 1em; }
+  .hint.warn { color: var(--placed); }
+  .hint a { color: var(--ink); }
+  .review-list { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 16px; font-size: 13px; }
+  .review-list dt { color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 2px; }
+  .review-list dd { margin: 0; }
+  .stack { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }
+  .stack li {
+    display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 12px; line-height: 1.45; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  }
+  .stack .z { width: 22px; height: 22px; border-radius: 50%; background: rgba(29, 26, 22, 0.07); display: grid; place-items: center; font-size: 10.5px; }
+  .stack b { font-weight: 500; }
+  .stack small { display: block; color: var(--muted); font-size: 11px; }
+  .stack small.fit { color: var(--placed); }
+</style>
+</head>
+<body>
+
+<nav class="journey" aria-label="Design steps">
+  <ol>
+    <li><button data-step="look"><span class="num">1</span>Silhouette</button></li>
+    <li><button data-step="sleeve"><span class="num">2</span>Sleeves</button></li>
+    <li><button data-step="neck"><span class="num">3</span>Neckline</button></li>
+    <li><button data-step="review"><span class="num">4</span>Review</button></li>
+  </ol>
+</nav>
+
+<div class="studio-shell">
+  <div class="stage-col">
+    <div class="stage-frame" id="stage" role="img" aria-label="">
+      <svg class="anchors" id="anchors" viewBox="0 0 1200 1600" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <p class="stage-badge" id="badge" aria-live="polite"></p>
+      <button class="before-btn" id="before" aria-pressed="false" title="Hold (or hold the space key) to see the look as photographed">Hold: as photographed</button>
+      <div class="stage-caption"><span id="cap-look"></span><span id="cap-parts"></span></div>
+    </div>
+    <div class="stage-tools">
+      <button class="pill" id="anchors-btn" aria-pressed="false">Show anchors</button>
+      <span class="legend" id="legend"><i></i>where the chosen parts join the torso</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <section data-section="look">
+      <p class="eyebrow">Silhouette</p>
+      <p class="lede">Choose the torso. Its anchors (shoulders, underarms, neck points) stay in place; sleeves and necklines are built on them.</p>
+      <div class="look-grid" id="look-grid"></div>
+    </section>
+
+    <section data-section="sleeve">
+      <p class="eyebrow">Sleeves</p>
+      <div class="part-grid" id="grid-sleeve"></div>
+      <p class="hint" id="hint-sleeve"></p>
+    </section>
+
+    <section data-section="neck">
+      <p class="eyebrow">Neckline</p>
+      <div class="part-grid" id="grid-neck"></div>
+      <p class="hint" id="hint-neck"></p>
+    </section>
+
+    <section data-section="review">
+      <p class="eyebrow" id="review-title">Your design</p>
+      <dl class="review-list" id="review-list"></dl>
+      <p class="eyebrow" style="margin-top:4px">How it is built</p>
+      <ol class="stack" id="stack"></ol>
+      <div class="pill-row">
+        <button class="pill primary" id="download">Download image</button>
+        <button class="pill" id="copy">Copy link</button>
+      </div>
+      <p class="hint" id="review-hint">The parts are shown in white toile. Cloth and lace on parts come next (StepD steps 2–5); the live cloth and lace preview is <a href="testing.html">testing.html</a>.</p>
+    </section>
+
+    <div class="step-nav">
+      <button class="pill" id="prev-step">Back</button>
+      <button class="pill primary" id="next-step">Next</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/layers/manifest.js"></script>
+<script>
+(() => {
+  "use strict";
+  const M = window.LAYERS;
+  if (!M) { document.body.textContent = "assets/layers/manifest.js is missing: run silhouette/parts/build_layers.py"; return; }
+  const [FW, FH] = M.frame;
+  const STEPS = ["look", "sleeve", "neck", "review"];
+  const SLOT_IDS = M.slots.map((s) => s.id);
+  const looks = Object.fromEntries(M.looks.map((l) => [l.id, l]));
+  const $ = (s) => document.querySelector(s);
+  const stage = $("#stage");
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  // ---------------------------------------------------------------- state (and the URL)
+  const q = new URLSearchParams(location.search);
+  const state = { look: looks[q.get("look")] ? q.get("look") : M.looks[0].id, step: "look", anchors: q.get("anchors") === "1", before: false };
+  const picks = {};                                       // per look: { slot: option id }; a look keeps its picks when you come back
+  for (const l of M.looks) {
+    picks[l.id] = {};
+    for (const s of SLOT_IDS) picks[l.id][s] = l.slots[s].default;
+  }
+  for (const s of SLOT_IDS) {
+    const v = q.get(s), opt = v && option(state.look, s, v);
+    if (opt && opt.kind !== "missing") picks[state.look][s] = v;
+  }
+  if (q.get("step") && STEPS.includes(q.get("step"))) state.step = q.get("step");
+
+  function option(lookId, slot, id) { return looks[lookId].slots[slot].options.find((o) => o.id === id); }
+  function chosen(slot) { return option(state.look, slot, picks[state.look][slot]); }
+  function shown(slot) { return state.before ? option(state.look, slot, looks[state.look].slots[slot].default) : chosen(slot); }
+
+  function writeURL() {
+    const p = new URLSearchParams();
+    p.set("look", state.look);
+    for (const s of SLOT_IDS) p.set(s, picks[state.look][s]);
+    if (state.step !== "look") p.set("step", state.step);
+    if (state.anchors) p.set("anchors", "1");
+    history.replaceState(null, "", "?" + p.toString());
+  }
+
+  // ---------------------------------------------------------------- the stage: every layer of every look, made once
+  const layerEl = {};                                     // "look/base" and "look/slot/option" -> <img>
+  const pct = (v, of) => (100 * v / of) + "%";
+  function addLayer(key, file, box, z) {
+    const im = new Image();
+    im.className = "layer";
+    im.alt = "";
+    im.decoding = "async";
+    im.src = file;
+    const [x, y, w, h] = box;
+    Object.assign(im.style, { left: pct(x, FW), top: pct(y, FH), width: pct(w, FW), height: pct(h, FH), zIndex: String(z) });
+    stage.insertBefore(im, $("#anchors"));
+    layerEl[key] = im;
+  }
+  for (const l of M.looks) {
+    addLayer(l.id + "/base", l.base.file, [0, 0, FW, FH], 0);
+    for (const s of M.slots) {
+      for (const o of l.slots[s.id].options) {
+        if (o.layer) addLayer(`${l.id}/${s.id}/${o.id}`, o.layer.file, o.layer.box, s.z);
+      }
+    }
+  }
+
+  function renderStage() {
+    const on = new Set([state.look + "/base"]);
+    for (const s of SLOT_IDS) {
+      const o = shown(s);
+      if (o && o.layer) on.add(`${state.look}/${s}/${o.id}`);
+    }
+    for (const [k, el] of Object.entries(layerEl)) el.classList.toggle("on", on.has(k));
+    const l = looks[state.look];
+    const names = SLOT_IDS.map((s) => shown(s).name);
+    $("#cap-look").textContent = l.name;
+    $("#cap-parts").textContent = names.join(" · ");
+    stage.setAttribute("aria-label", `${l.name} with ${names.join(" and ").toLowerCase()}`);
+    const placed = SLOT_IDS.map(shown).filter((o) => o.kind === "placed");
+    const badge = $("#badge");
+    badge.textContent = placed.length ? `${placed.map((o) => o.name).join(" + ")}: placed from another look, awaiting a person's check` : "";
+    badge.classList.toggle("show", placed.length > 0 && !state.before);
+    renderAnchors();
+  }
+
+  // ---------------------------------------------------------------- anchors: where the parts join the torso
+  const SEAMS = [["shoulder-l", "underarm-l"], ["shoulder-r", "underarm-r"], ["neck-l", "cf-neck", "neck-r"]];
+  function renderAnchors() {
+    const svg = $("#anchors");
+    svg.classList.toggle("show", state.anchors);
+    $("#legend").classList.toggle("show", state.anchors);
+    $("#anchors-btn").setAttribute("aria-pressed", String(state.anchors));
+    if (!state.anchors) return;
+    svg.replaceChildren();
+    const A = looks[state.look].anchors;
+    const joins = new Set(SLOT_IDS.flatMap((s) => shown(s).joins || []));
+    for (const seam of SEAMS) {
+      if (!seam.every((k) => joins.has(k) && A[k])) continue;
+      const pl = document.createElementNS(svgNS, "polyline");
+      pl.setAttribute("class", "seam");
+      pl.setAttribute("points", seam.map((k) => A[k].join(",")).join(" "));
+      svg.append(pl);
+    }
+    for (const [k, [x, y]] of Object.entries(A)) {
+      const j = joins.has(k);
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", j ? 9 : 6);
+      c.setAttribute("class", "pt" + (j ? " join" : ""));
+      svg.append(c);
+      if (j || k.startsWith("waist") || k.startsWith("hem-l") || k.startsWith("hem-r")) {
+        const t = document.createElementNS(svgNS, "text");
+        const left = x < FW / 2;
+        t.setAttribute("x", x + (left ? -14 : 14)); t.setAttribute("y", y + 7);
+        t.setAttribute("text-anchor", left ? "end" : "start");
+        t.setAttribute("class", j ? "" : "dim");
+        t.textContent = k;
+        svg.append(t);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- the panel
+  function lookCards() {
+    const grid = $("#look-grid");
+    grid.replaceChildren();
+    for (const l of M.looks) {
+      const b = document.createElement("button");
+      b.className = "look-card";
+      b.dataset.look = l.id;
+      b.setAttribute("aria-pressed", String(l.id === state.look));
+      const counts = SLOT_IDS.map((s) => `${l.slots[s].options.filter((o) => o.kind !== "missing").length} ${s === "sleeve" ? "sleeves" : "necklines"}`);
+      b.innerHTML = `<img alt="" src="${l.thumb}"><div><strong></strong><span></span></div>`;
+      b.querySelector("strong").textContent = l.name;
+      b.querySelector("span").textContent = `${l.note}. ${counts.join(", ")}.`;
+      b.addEventListener("click", () => { state.look = l.id; update(); });
+      grid.append(b);
+    }
+  }
+
+  const TAG = { own: "Own edit", placed: "Placed · to check", missing: "Not yet" };
+  function partCards(slot) {
+    const grid = $("#grid-" + slot), hint = $("#hint-" + slot);
+    grid.replaceChildren();
+    const l = looks[state.look];
+    for (const o of l.slots[slot].options) {
+      const b = document.createElement("button");
+      b.className = "part-card";
+      b.dataset.option = o.id;
+      const missing = o.kind === "missing";
+      b.setAttribute("aria-pressed", String(!missing && picks[state.look][slot] === o.id));
+      if (missing) b.setAttribute("aria-disabled", "true");
+      b.innerHTML = `${o.thumb ? `<img class="thumb" alt="" src="${o.thumb}">` : `<span class="thumb empty"></span>`}
+        <span><strong></strong><span class="sub"></span><span class="tag ${o.kind}">${TAG[o.kind]}</span></span>`;
+      b.querySelector("strong").textContent = o.name;
+      b.querySelector(".sub").textContent = o.sub || "";
+      b.title = missing ? o.needs : o.source + (o.fit ? `\nFit: ${o.fit}` : "");
+      b.addEventListener("click", () => {
+        if (missing) { hint.textContent = `${o.name} on the ${l.name.toLowerCase()}: ${o.needs}`; hint.className = "hint"; return; }
+        picks[state.look][slot] = o.id;
+        update();
+      });
+      grid.append(b);
+    }
+    const c = chosen(slot);
+    hint.className = "hint" + (c.kind === "placed" ? " warn" : "");
+    hint.textContent = c.kind === "placed" ? `${c.name}: ${c.source}. ${c.fit}.` : c.kind === "own" && c.layer ? `${c.name}: ${c.source}.` : "";
+  }
+
+  function review() {
+    const l = looks[state.look];
+    $("#review-title").textContent = "Your " + l.name.toLowerCase();
+    const dl = $("#review-list");
+    dl.replaceChildren();
+    const rows = [["Silhouette", l.name], ...M.slots.map((s) => [s.label, chosen(s.id).name])];
+    for (const [k, v] of rows) {
+      const dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.textContent = k; dd.textContent = v;
+      dl.append(dt, dd);
+    }
+    const st = $("#stack");
+    st.replaceChildren();
+    const items = [{ z: 0, name: "Base", text: l.base.what }];
+    for (const s of M.slots) {
+      const o = chosen(s.id);
+      items.push({ z: s.z, name: `${s.label}: ${o.name}`, text: o.layer ? o.source : "nothing on top (the base shows it)",
+                   joins: o.layer ? (o.joins || []) : [], fit: o.fit });
+    }
+    for (const it of items) {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="z"></span><span><b></b><small></small>${it.joins && it.joins.length ? "<small class='j'></small>" : ""}${it.fit ? "<small class='fit'></small>" : ""}</span>`;
+      li.querySelector(".z").textContent = it.z;
+      li.querySelector("b").textContent = it.name;
+      li.querySelector("small").textContent = it.text;
+      if (li.querySelector(".j")) li.querySelector(".j").textContent = "Joins at " + it.joins.join(", ");
+      if (li.querySelector(".fit")) li.querySelector(".fit").textContent = "Placed: " + it.fit;
+      st.append(li);
+    }
+  }
+
+  function steps() {
+    document.querySelectorAll("[data-section]").forEach((sec) => { sec.hidden = sec.dataset.section !== state.step; });
+    const i = STEPS.indexOf(state.step);
+    document.querySelectorAll(".journey button").forEach((b) => {
+      const j = STEPS.indexOf(b.dataset.step);
+      if (j === i) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", j < i);
+    });
+    $("#prev-step").style.visibility = i === 0 ? "hidden" : "visible";
+    $("#next-step").textContent = i === STEPS.length - 1 ? "Start again" : "Next";
+  }
+
+  function update() {
+    lookCards();
+    for (const s of SLOT_IDS) partCards(s);
+    review();
+    steps();
+    renderStage();
+    writeURL();
+  }
+
+  // ---------------------------------------------------------------- controls
+  document.querySelectorAll(".journey button").forEach((b) => b.addEventListener("click", () => { state.step = b.dataset.step; update(); }));
+  $("#prev-step").addEventListener("click", () => { state.step = STEPS[Math.max(0, STEPS.indexOf(state.step) - 1)]; update(); });
+  $("#next-step").addEventListener("click", () => {
+    const i = STEPS.indexOf(state.step);
+    state.step = i === STEPS.length - 1 ? STEPS[0] : STEPS[i + 1];
+    update();
+  });
+  $("#anchors-btn").addEventListener("click", () => { state.anchors = !state.anchors; renderAnchors(); writeURL(); });
+
+  const before = $("#before");
+  const setBefore = (v) => { if (state.before === v) return; state.before = v; before.setAttribute("aria-pressed", String(v)); renderStage(); };
+  before.addEventListener("pointerdown", (e) => { before.setPointerCapture(e.pointerId); setBefore(true); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) before.addEventListener(ev, () => setBefore(false));
+  before.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setBefore(true); } });
+  before.addEventListener("keyup", () => setBefore(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === " " && e.target === document.body) { e.preventDefault(); setBefore(true); }
+  });
+  document.addEventListener("keyup", (e) => { if (e.key === " " && e.target === document.body) setBefore(false); });
+
+  $("#download").addEventListener("click", async () => {
+    const hint = $("#review-hint");
+    const c = document.createElement("canvas");
+    c.width = FW; c.height = FH;
+    const g = c.getContext("2d");
+    const l = looks[state.look];
+    const draw = [[layerEl[l.id + "/base"], [0, 0, FW, FH]]];
+    for (const s of M.slots) {
+      const o = chosen(s.id);
+      if (o.layer) draw.push([layerEl[`${l.id}/${s.id}/${o.id}`], o.layer.box]);
+    }
+    try {
+      await Promise.all(draw.map(([im]) => im.decode()));
+      for (const [im, [x, y, w, h]] of draw) g.drawImage(im, x, y, w, h);
+      const blob = await new Promise((res, rej) => { try { c.toBlob((b) => (b ? res(b) : rej(new Error("empty"))), "image/jpeg", 0.92); } catch (err) { rej(err); } });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${l.id}-${SLOT_IDS.map((s) => picks[l.id][s]).join("-")}.jpg`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (err) {
+      hint.textContent = "Download needs the page served over HTTP (make serve, then http://localhost:8300/builder.html): a browser will not export a picture drawn from files opened from disk.";
+      hint.className = "hint warn";
+    }
+  });
+  $("#copy").addEventListener("click", async () => {
+    const hint = $("#review-hint");
+    try { await navigator.clipboard.writeText(location.href); hint.textContent = "Link copied: it opens this design."; hint.className = "hint"; }
+    catch { hint.textContent = location.href; hint.className = "hint"; }
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

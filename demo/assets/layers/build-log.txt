@@ -1,0 +1,15 @@
+kurta bell: 319111 px; mean |edit - photo| outside the part after the tone match 1.55 / 255
+kurta mandarin: 30898 px; mean |edit - photo| outside the part after the tone match 1.48 / 255
+kurta boat: 22217 px; mean |edit - photo| outside the part after the tone match 1.47 / 255
+kurta overlaps (px): bell/mandarin 0, bell/boat 0
+anarkali sleeveless: mean |edit - photo| where unchanged, after the tone match 1.89 / 255
+bell on anarkali: {"l": {"scale": 0.857, "rotation_deg": 0.4, "shape_change_pct": 0.8, "bend_px": 33.9, "join_px": 0.0}, "r": {"scale": 0.853, "rotation_deg": 0.8, "shape_change_pct": -0.7, "bend_px": 33.1, "join_px": 0.0}}
+mandarin on anarkali: {"scale": 0.816, "rotation_deg": 0.6, "join_px": 6.9}
+anarkali overlaps (px): bell/mandarin 0, puff/mandarin 0, full/mandarin 0
+lehenga sleeveless: mean |edit - photo| away from the sleeves, after the tone match 1.59 / 255
+lehenga v neck: 30478 px; mean |edit - photo| outside it 1.48 / 255
+lehenga boat neck: 12474 px; mean |edit - photo| outside it 1.52 / 255
+lehenga mandarin neck: 15382 px; mean |edit - photo| outside it 1.47 / 255
+lehenga overlaps (px): full/v 0, full/boat 0, full/mandarin 0, short/v 0, short/boat 0, short/mandarin 0
+lehenga V-neck ported onto anarkali: {"scale": 1.086, "rotation_deg": 0.1, "bend_px": 4.4, "join_px": 0.0, "gain": [1.007, 1.007, 1.011]}
+lehenga V-neck ported onto straight-kurta: {"scale": 1.327, "rotation_deg": -0.4, "bend_px": 3.6, "join_px": 0.0, "gain": [1.073, 1.136, 1.185]}

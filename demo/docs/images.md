@@ -33,7 +33,7 @@ Priority:
 | 7 | lehenga | sleeve | `sleeve-lehenga.png` | **need** | 3 | shoulder → cuff-out (open: the straight's 470 mm?) |
 | 8 | lehenga | hem | `hem-lehenga.png` | **need** | 3 | open: no slit; the atelier to give a length |
 | 9 | lehenga | **waist** (its own view) | `waist-lehenga.png` | **need**; the page has no slot yet | 3 | open: the waistband's height, from the atelier |
-| 10 | anarkali | torso | `torso-anarkali.png` | redo (the image is on the branch `anarkali-wip`) | 1 | neck-l → neck-r 158 mm (assumed) |
+| 10 | anarkali | torso | `torso-anarkali.png` | have (2026-11-24; plate `torso-anarkali` built, not yet approved; its puff-sleeve edit is plate `torso-anarkali-puff`) | — | neck-l → neck-r 158 mm (assumed) |
 | 11 | anarkali | neck | `pending/neck-anarkali.png` | pending (2026-11-24) | 2 | neck-l → neck-r 158 mm (assumed) |
 | 12 | anarkali | sleeve | `pending/sleeve-anarkali.png` | pending (2026-11-24) | 3 | shoulder → cuff-out (open) |
 | 13 | anarkali | hem | `pending/hem-anarkali.png` | pending (2026-11-24); framed wider than §5, see below | 3 | open: no slit shows in this image |

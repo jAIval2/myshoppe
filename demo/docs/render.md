@@ -591,6 +591,41 @@ Tool changes (every plate rebuilds byte-identical):
 Waiting: `sleeve-anarkali` and `hem-anarkali` (765 x 1024 images of 2026-11-23) were removed with the first four plates; the anarkali
 look is to be redone from the 1792 x 2400 torso image on the branch `anarkali-wip`.
 
+### 2026-11-24: `torso-anarkali` and `torso-anarkali-puff` (StepD, the owner's images)
+
+**`torso-anarkali`**: the white-cotton anarkali (fitted bodice, empire seam, pleated flared skirt with a slit at the image right, full
+sleeves), `silhouette/sources/torso-anarkali.png` (1792 x 2400, as received 2026-11-24; highlights max 244.8, intake PASS), the
+sparkle mark on the floor patched, cut to 1792 x 2389, resized to 1200 x 1600. View `silhouette/views/torso_anarkali.py` (the kit,
+one flood, no parts); look record `assets/looks/anarkali.json` (a `torso` view and the hem and slit landmarks added; garment v1,
+every landmark `compare: none`). Scale: neck-l -> neck-r = 158 mm (211 px), the shared assumption of the new looks.
+- **The neckline was measured, not read**: per column, the first run of cloth colour going down (the form's linen R-B 35 .. 41, the
+  cloth 17 .. 22); a reading by eye had put it 10 px too high.
+- **The left sleeve lies on the body**: the armhole, then the crease to the empire seam, then the sleeve's inner edge over the skirt
+  to the cuff (seams).
+- **The right sleeve hangs apart**: a run of wall in shadow (chroma >= 35, L < 165) between it and the body, 6 .. 22 px wide, traced
+  per row (`GAP_R`). The shaded right side has the wall's colour, so the wall's flood leaked into the skirt's right panel: the skirt's
+  right edge below the cuff (per row against the wall) and the hem of the shaded part (per column; weak at x 1095 .. 1185, a straight
+  run there) are measured lines with barriers 2 px outside, and the seams are barriers too (without them the flood crept in at the
+  shaded right shoulder).
+- **The slit is a line**, not an opening (the front panel lies over the back panel): the skirt is one zone.
+- Invariants: closure 0 px, no gaps, landmarks PASS; **6 FAIL**: the hem lace (on its edge 0.44 px, limit 0.3; smooth 2.19 px, limit
+  0.8; 2 seams of its field) on a hem stepped at each pleat; 1 seam in the left cuff's field; the frame grain of the bodice 5.55 deg
+  and the skirt 4.59 deg (limit 3: a flared skirt is not a cylinder; the lehenga's are 3.70 and 8.83). Snap: weak spans on the
+  shaded hem (12 %), the right sleeve's outer edge (12 %) and a short run of the bodice's right side (86 %).
+
+**`torso-anarkali-puff`**: the owner's edit of the anarkali photo ("change only both sleeves into short puff sleeves"), lines up with
+it (0 px at 7 landmarks, the body 2 / 255). View `silhouette/views/torso_anarkali_puff.py` takes the base's measurements and measures
+what the edit changed: the puffs (each ends in a band at y 645 .. 690; the armholes run down the puffs' inner creases), the bare
+linen arms below them (excluded), the body's sides the long sleeves hid (left: per row, the first chromatic run going left; right:
+the arm's left edge, read on a x1.5 crop). The edit lit the strip the long sleeve had shaded on the right, so the cloth reaches the
+arm there; below the arm the skirt's edge is the base's. **No cuff lace**: the band is about 20 mm deep and the cuff laces 25 mm
+wide (a 30 mm field folded inside the puff: 13 .. 17 seams). Invariants: closure 0 px, no gaps, landmarks PASS; **6 FAIL**: the hem
+lace (as the base), the frame grain of the bodice 5.81, the skirt 4.16, the puffs 3.35 and 5.31 deg (gathered).
+
+Both: **not yet approved by a person** (`review/torso-anarkali/`, `review/torso-anarkali-puff/`). Not checked in the page (no Chrome
+and Node 18 on this machine; `page-check`, `fringe.py` and the edge crops are open). On the page: `testing.html?look=anarkali`,
+`?look=anarkali-puff`, or the Silhouette picker.
+
 ## 12. Sources
 
 - [Nukepedia: Understanding UVMaps, Warping with STMap](https://www.nukepedia.com/written-tutorials/understanding-uvmaps-warping-with-stmap-pt-2)

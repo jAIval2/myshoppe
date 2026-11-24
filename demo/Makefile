@@ -5,6 +5,7 @@
 #   make plates                                     rebuild all four
 #   make check                                      every offline gate (rebuild identical, invariants, frame parity, record, cross-view)
 #   make serve                                      the page on http://localhost:8300/testing.html (PORT=...)
+#   make layers LAYERS_PYTHON=<python>              StepD by parts: the layers of builder.html (needs numpy + scipy)
 #
 # A plate is base.jpg + plate.dat (docs/plate.md). It is made from the source image AND the points measured on it, which live in
 # silhouette/views/<view>.py. So a new image makes a correct plate by itself only when it shows the form in the same place (a
@@ -25,7 +26,7 @@ PY       = $(PYTHON) -W ignore
 .PHONY: help deps intake replace plate plates check rebuild-check xview lace-check serve page-check need-view need-image
 
 help:
-	@sed -n '2,14p' Makefile | sed 's/^# \{0,1\}//'
+	@sed -n '2,15p' Makefile | sed 's/^# \{0,1\}//'
 	@echo ""
 	@echo "Variables: VIEW=$(VIEWS)  IMAGE=<path>  VARIANT=$(VARIANT)  PORT=$(PORT)  PYTHON=$(PYTHON)  NODE=$(NODE)"
 	@echo "Other targets: replace, rebuild-check, xview, lace-check, page-check (needs 'make serve' running), deps"
@@ -100,3 +101,10 @@ serve:
 
 page-check: need-view
 	$(PY) silhouette/plate.py page-check $(VIEW) --port $(PORT)
+
+# StepD by parts (builder.html): a base per look and its sleeve and neckline parts, in the plate frame. Unlike the plate pipeline it
+# needs numpy and scipy: LAYERS_PYTHON=<a python with numpy, scipy and Pillow>.
+LAYERS_PYTHON ?= $(PYTHON)
+.PHONY: layers
+layers:
+	$(LAYERS_PYTHON) -W ignore silhouette/parts/build_layers.py --review

@@ -308,6 +308,8 @@
       <div class="pill-row" data-group="look" style="margin-bottom:14px">
         <button class="pill" aria-pressed="true" data-look="straight-kurta">Straight kurta</button>
         <button class="pill" aria-pressed="false" data-look="lehenga">Lehenga</button>
+        <button class="pill" aria-pressed="false" data-look="anarkali">Anarkali</button>
+        <button class="pill" aria-pressed="false" data-look="anarkali-puff">Anarkali, puff sleeves</button>
       </div>
     </div>
     <div data-section="fabric">
@@ -409,6 +411,11 @@
       hem:    { plate: "assets/plates/hem-straight/",    name: "hem and slit" } } },
     lehenga: { name: "Lehenga", file: "assets/looks/lehenga.json", views: {
       torso:  { plate: "assets/plates/torso-lehenga/",   name: "full length" } } },
+    anarkali: { name: "Anarkali", file: "assets/looks/anarkali.json", views: {
+      torso:  { plate: "assets/plates/torso-anarkali/",  name: "full length" } } },
+    // a sleeve variant of the anarkali (StepD): the same record, its own plate (the owner's edit of the anarkali photo)
+    "anarkali-puff": { name: "Anarkali, puff sleeves", file: "assets/looks/anarkali.json", views: {
+      torso:  { plate: "assets/plates/torso-anarkali-puff/", name: "full length" } } },
   };
   const LOOK = LOOKS[new URLSearchParams(location.search).get("look")] ? new URLSearchParams(location.search).get("look") : "straight-kurta";
   const VIEWS = Object.fromEntries(["torso", "neck", "sleeve", "hem"].map((v) => [v, LOOKS[LOOK].views[v] || LOOKS[LOOK].views.torso]));
